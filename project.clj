@@ -7,7 +7,9 @@
                  [thheller/shadow-cljs "2.11.7"]
                  [reagent "0.10.0"]
                  [re-frame "1.1.2"]
-                 [day8.re-frame/tracing "0.6.0"]]
+                 [day8.re-frame/tracing "0.6.0"]
+                 [garden "1.3.10"]
+                 [stylefy "2.2.1"]]
 
   :plugins [[lein-shadow "0.3.1"]
             
@@ -73,7 +75,8 @@
   :profiles
   {:dev
    {:dependencies [[binaryage/devtools "1.0.2"]
-                   [day8.re-frame/re-frame-10x "0.7.0"]]
+                   [day8.re-frame/re-frame-10x "0.7.0"]
+                   [cider/cider-nrepl "0.25.1"]]
     :source-paths ["dev"]}
 
    :prod {}
