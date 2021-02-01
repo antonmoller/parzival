@@ -4,6 +4,7 @@
             ["@material-ui/icons" :as mui-icons]
             [parzival.views.buttons :refer [button]]
             [parzival.style :refer [color OPACITIES]]
+            [reagent.core :as r]
             [stylefy.core :as stylefy :refer [use-style use-sub-style]]))
 
 ;;; Styles
@@ -104,7 +105,6 @@
     [:li [:div (use-style shortcut-style) [:span "testing"]]]
     [:li [:div (use-style shortcut-style) [:span "testing"]]]
     [:li [:div (use-style shortcut-style) [:span "testing"]]]])
-
   
 (defn left-sidebar
   []

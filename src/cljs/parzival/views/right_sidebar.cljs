@@ -2,33 +2,46 @@
   (:require
             [re-frame.core :refer [subscribe dispatch]]
             [reagent.core :as r]
-            [parzival.style :refer [color]]
+            [parzival.style :refer [color ZINDICES]]
             [stylefy.core :as stylefy :refer [use-style]]))
 
 ;;; Styles
 
 (def right-sidebar-dragger-style
-  {:width "3px"
-   :cursor "col-resize"
+  {:cursor "col-resize"
+   :position "absolute"
+   :z-index (:zindex-fixed ZINDICES)
+   :top 0
+   :width "3px"
+   :height "100%"
    :background-color (color :border-color)})
 
-(def right-sidebar-style
+
+(def sidebar-content-style
+  {:display "flex"
+   :flex "1 1 32vw"
+   :flex-direction "column"
+   :margin-left "0"
+   :oveflow-y "auto"
+   :transition "all 0.35s ease-out"
+   ::stylefy/manual [[:&.is-closed {:margin-left "-32vw"
+                                    :opacity 0}]
+                     [:&.is-open   {:opacity 1}]]})
+
+
+(def sidebar-style
   {:grid-area "secondary-content"
    :justify-self "stretch"
-   :display "flex"
-   :align-items "stretch"
    :width "0"
-   :height "100%"
-   :resize "horizontal"
+   :oveflow "hidden"
+   :display "flex"
+   :justify-content "space-between"
    :background-color (color :background-plus-1-color)
    :transition-property "width, border, background"
    :transition-duration "0.35s"
    :transition-timing-function "ease-out"
    ::stylefy/manual [[:&.is-open {:width "32vw"}]
                      [:&.is-closed {:width "0"}]]})
-
-(def right-sidebar-content-style
-  {})
 
 ;;; Components
 
@@ -59,9 +72,11 @@
                                 (js/document.removeEventListener "mousemove" handle-mousemove)
                                 (js/document.removeEventListener "mouseup" handle-mouseup))
        :reagent-render (fn []
-                         [:div (merge (use-style right-sidebar-style 
+                         [:div (merge (use-style sidebar-style 
                                                  {:class (if @open? "is-open" "is-closed")})
                                       {:style (cond-> {}
                                                 @dragging? (assoc :transition-duration "0s")
                                                 @open? (assoc :width (str @width "vw")))})
-                          [:div (use-style right-sidebar-dragger-style {:on-mouse-down #(reset! dragging? true)})]])})))
+                          [:div (use-style right-sidebar-dragger-style {:on-mouse-down #(reset! dragging? true)})]
+                          [:div (use-style sidebar-content-style {:class (if @open? "is-open" "is-closed")})]
+                          ])})))

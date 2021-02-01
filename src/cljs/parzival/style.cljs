@@ -6,7 +6,7 @@
 
 (def THEME-DARK
   {:background-color          "rgba(30, 30, 30, 1)"          ; "#1E1E1E"
-   :background-plus-1-color   "rgba(37, 30, 38, 1)"         ; "#252526"
+   :background-plus-1-color   "rgba(37, 37, 38, 1)"         ; "#252526"
    :left-sidebar-color        "rgba(51, 51, 51, 1)"         ; "#333333"
    :border-color              "rgba(55, 60, 63, 1)"        ; "#373C3F"
    :header-text-color         "rgba(186, 186, 186, 1)"         ; "#BABABA"
