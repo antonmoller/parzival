@@ -1,35 +1,44 @@
 (ns parzival.style
   (:require
-            [stylefy.core :as stylefy]
-            [garden.color :refer [opacify hex->hsl]]
-            [re-frame.core :refer [subscribe]]))
+            [clojure.string]
+            [re-frame.core :refer [subscribe]]
+            [stylefy.core :as stylefy]))
 
 (def THEME-DARK
-  {:background-color        "#1E1E1E"
-   :background-plus-1-color "#252526"
-   :left-sidebar-color      "#333333"
-   :border-color            "#373C3F"
-   :header-text-color       "#BABABA"
-   :body-text-color         "#AAA"
-   :link-color              "#2399E7"
-   :highlight-color         "#FBBE63"})
+  {:background-color          "rgba(30, 30, 30, 1)"          ; "#1E1E1E"
+   :background-plus-1-color   "rgba(37, 30, 38, 1)"         ; "#252526"
+   :left-sidebar-color        "rgba(51, 51, 51, 1)"         ; "#333333"
+   :border-color              "rgba(55, 60, 63, 1)"        ; "#373C3F"
+   :header-text-color         "rgba(186, 186, 186, 1)"         ; "#BABABA"
+   :body-text-color           "rgba(170, 170, 170, 1)"        ; "#AAA"
+   :link-color                "rgba(100, 141, 174, 1)"   ; "#648DAE"
+   :highlight-color           "rgba(251, 190, 99, 1)"       ; "#FBBE63"
+   :secondary-color           "rgba(170, 100, 123, 1)"        ; "#AA647B"
+   :warning-color             "rgba(211, 47, 47, 1)"      ; "#D32F2F"
+   :confirmation-color        "rgba(56, 142, 60, 1)"})      ; "#388E3C"})
 
 (def THEME-LIGHT
-  {:background-color        "#FFFFFF"
-   :background-plus-1-color "#F3F3F3"
-   :left-sidebar-color      "#2C2C2C"
-   :body-text-color         "#4333F38"})
-
-   ; :warning-color
-   ; :confirmation-color
-   ; :border-color
-   ; :background-color})
+  {:background-color          "rgba(30, 30, 30, 1)"       ; "#1E1E1E"
+   :background-plus-1-color   "rgba(37, 30, 38, 1)"      ; "#252526"
+   :left-sidebar-color        "rgba(51, 51, 51, 1)"      ; "#333333"
+   :border-color              "rgba(55, 60, 63, 1)"     ; "#373C3F"
+   :header-text-color         "rgba(186, 186, 186, 1)"         ; "#BABABA"
+   :body-text-color           "rgba(170, 170, 170, 1)"        ; "#AAA"
+   :link-color                "rgba(100, 141, 174, 1)"   ; "#648DAE"
+   :highlight-color           "rgba(251, 190, 99, 1)"       ; "#FBBE63"
+   :secondary-color           "rgba(170, 100, 123, 1)"        ; "#AA647B"
+   :warning-color             "rgba(211, 47, 47, 1)"      ; "#D32F2F"
+   :confirmation-color        "rgba(56, 142, 60, 1)"})        ; "#388E3C"})
+  ; {:background-color        "#FFFFFF"
+  ;  :background-plus-1-color "#F3F3F3"
+  ;  :left-sidebar-color      "#2C2C2C"
+  ;  :body-text-color         "#4333F38"})
 
 (def OPACITIES
-  {:opacity-lower 0.10
-   :opacity-low 0.25
-   :opacity-med 0.50
-   :opacity-high 0.75
+  {:opacity-lower  0.10
+   :opacity-low    0.25
+   :opacity-med    0.50
+   :opacity-high   0.75
    :opacity-higher 0.85})
 
 (def ZINDICES
@@ -42,7 +51,7 @@
    :zindex-tooltip          1070})
 
 (defn color
-  "Turns a color and optional opacity into a css variable.
+  "Turns a color and optional opacity into a CSS variable.
   Only accepts keywords."
   ([variable]
    (when (keyword? variable)
@@ -63,19 +72,27 @@
    :height "100vh"
    :width "100vw"})
 
+(defn opacify
+  [color opacity]
+  (clojure.string/replace color #"(.)\)" (str opacity ")")))
+
+
 (defn permute-color-opacities
-  "Permutes all color and opacities."
+  "Permutes all colors and opacities.
+  There are 5 opacities and 12 colors. There are 72 keys (includes default opacity, 1.0)"
   [theme]
   (->> theme
        (mapcat (fn [[color-k color-v]]
-                 (concat [(keyword (str "--" (symbol color-k))) color-v]
+                 (concat [(keyword (str "--" (symbol color-k)))
+                          color-v]
                          (mapcat (fn [[opacity-k opacity-v]]
-                                   [(keyword (str "--" 
-                                                  (symbol color-k) 
-                                                  "---" 
+                                   [(keyword (str "--"
+                                                  (symbol color-k)
+                                                  "---"
                                                   (symbol opacity-k)))
-                                    (opacify (hex->hsl color-v) opacity-v)])
-                                 OPACITIES))))
+                                    (opacify color-v opacity-v)])
+                                 OPACITIES)
+                         )))
        (apply hash-map)))
 
 (defn init

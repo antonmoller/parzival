@@ -2,8 +2,9 @@
   (:require
             [re-frame.core :refer [subscribe]]
             ["@material-ui/icons" :as mui-icons]
+            [parzival.views.buttons :refer [button]]
             [parzival.style :refer [color OPACITIES]]
-            [stylefy.core :as stylefy :refer [use-style]]))
+            [stylefy.core :as stylefy :refer [use-style use-sub-style]]))
 
 ;;; Styles
 
@@ -11,7 +12,9 @@
   {:grid-area "left-sidebar"
    :place-self "stretch stretch"
    :overflow-x "hidden"
-   :overflow-y "auto"
+   :height "fixed" ; what does this do? It works but I don't know why.
+   :oveflow-y "none"
+   ; :overflow-y "auto"
    :background-color (color :left-sidebar-color)
    :transition "all 0.2s ease" ; try 0.3s wtf???
    ::stylefy/manual [[:&.is-open {:width "16rem"}]
@@ -23,7 +26,7 @@
    :height "100%"
    :width "16rem"
    :box-sizing "border-box"
-   :padding "2.5rem 1.25rem"})
+   :padding "2.5rem 1.25rem 5rem"})
 
 (def menu-item-style
   {:display "flex"
@@ -35,7 +38,7 @@
    ::stylefy/mode [[:hover {:background (color :body-text-color :opacity-lower)}]]})
 
 (def icon-style
-  {:padding-right "0.25rem"})
+  {:padding-right "8px"})
 
 (def divider-style
   {:border-bottom-style "solid"
@@ -43,20 +46,64 @@
    :padding-top "1rem"
    :border-bottom-color (color :body-text-color :opacity-med)})
 
+(def shortcut-list-style
+  {:flex "1 1 100%"
+   :display "flex"
+   :flex-direction "column"
+   :padding-left 0
+   :height "fixed"
+   :overflow-y "auto"
+   :list-style "none"
+   ::stylefy/vendors ["webkit"]
+   ::stylefy/mode [["::-webkit-scrollbar" {:width "0px"
+                                           :background "transparent"}]]
+   ::stylefy/sub-styles {:heading {:cursor "default"
+                                   :flex "0 0 auto"
+                                   :opacity (:opacity-med OPACITIES)
+                                   :line-height "1"
+                                   :margin "0 0 0.25rem"
+                                   :font-size "16px"}}})
+
+(def shortcut-style
+  {:color (color :body-text-color)
+   :cursor "pointer"
+   :display "flex"
+   :flex "0 0 auto"
+   :padding "0.25rem 0"
+   ::stylefy/mode [[:hover {:background (color :body-text-color :opacity-lower)}]]})
+
+(def button-container-style
+  {:display "grid"
+   :grid-template-rows "auto auto"
+   :grid-auto-flow "row"
+   :height "auto"
+   :row-gap "1rem"})
+
+
 (defn menu
   []
   [:<>
     [:div (use-style menu-item-style)
      [:> mui-icons/AccountBox (use-style icon-style)] 
-     "ACCOUNT"
+     [:span "ACCOUNT"]
      [:> mui-icons/ExpandMore]]
     [:div (use-style menu-item-style)
      [:> mui-icons/Reorder (use-style icon-style)] 
-     "ALL DOCUMENTS"]
+     [:span "ALL DOCUMENTS"]]
     [:div (use-style menu-item-style)
      [:> mui-icons/Subtitles (use-style icon-style)] 
-     "ALL FLASHCARDS"]
+     [:span "ALL FLASHCARDS"]]
     [:div (use-style divider-style)]])
+
+(defn shortcut-list
+  []
+  [:ol (use-style shortcut-list-style)
+   [:h2 (use-sub-style shortcut-list-style :heading) 
+    [:> mui-icons/Star {:style {:font-size "16px" :padding-right "0.5rem"}}]
+    [:span "SHORTCUTS"]]
+    [:li [:div (use-style shortcut-style) [:span "testing"]]]
+    [:li [:div (use-style shortcut-style) [:span "testing"]]]
+    [:li [:div (use-style shortcut-style) [:span "testing"]]]])
 
   
 (defn left-sidebar
@@ -65,21 +112,7 @@
         [:div (use-style left-sidebar-style {:class (if @open? "is-open" "is-closed")})
          [:div (use-style left-sidebar-content-style)
           [menu]
-         ]]))
-
-
-
-
-
-
-
-          ; [:div (use-style menu-style)
-          ;    [:h3 (use-style menu-item-style) 
-          ;     [:> mui-icons/Reorder] " ALL DOCUMENTS"]
-          ;   [:a "SPACED REPETITION"]]
-          ; [:div (use-style divider-style)]
-          ; [:div "testing this out"]
-          ; [:span "testing this very long even longer link out"]
-          ; [:h3 "testing this out"]
-          ; [:h3 "testing this out"]
-          ; [:h3 "testing this out"]
+          [shortcut-list]
+          [:div (use-style button-container-style)
+            [button {:primary true} [:<> [:span "Start Learning"] [:> mui-icons/ChevronRight]]]
+            [button [:<> [:span "Start Reviewing"] [:> mui-icons/ChevronRight]]]]]]))
