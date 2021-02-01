@@ -30,6 +30,6 @@
    ; [settings]
    [app-toolbar]
    [left-sidebar]
-   ; [main-content]
+   [main-content]
    [right-sidebar]
    ])
