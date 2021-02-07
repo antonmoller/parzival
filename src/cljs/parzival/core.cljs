@@ -27,5 +27,7 @@
   (stylefy/tag "body" style/app-styles)
   (re-frame/dispatch-sync [::events/initialize-db])
   (dev-setup)
+  (js/Worker. "/js/compiled/pdf.worker.js")
   (mount-root))
+
 

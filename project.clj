@@ -2,7 +2,7 @@
   :dependencies [[org.clojure/clojure "1.10.1"]
                  [org.clojure/clojurescript "1.10.773"
                   :exclusions [com.google.javascript/closure-compiler-unshaded
-                               org.clojure/google-closure-library
+                               ; org.clojure/google-closure-library
                                org.clojure/google-closure-library-third-party]]
                  [thheller/shadow-cljs "2.11.7"]
                  [reagent "0.10.0"]
@@ -29,9 +29,15 @@
                 :builds {:app {:target :browser
                                :output-dir "resources/public/js/compiled"
                                :asset-path "/js/compiled"
-                               :modules {:app {:init-fn parzival.core/init
-                                               :preloads [devtools.preload
-                                                          day8.re-frame-10x.preload]}}
+                               :compiler-options {:output-feature-set :es6}
+                               :modules {:shared {:entries []}
+                                                  ; :preloads [devtools.preload
+                                                  ;            day8.re-frame-10x.preload]}
+                                         :app {:init-fn parzival.core/init
+                                               :depends-on #{:shared}}
+                                         :pdf.worker {:init-fn parzival.worker/init
+                                                      :depends-on #{:shared}
+                                                      :web-worker true}}
                                :dev {:compiler-options {:closure-defines {re-frame.trace.trace-enabled? true
                                                                           day8.re-frame.tracing.trace-enabled? true}}}
                                :release {:build-options
