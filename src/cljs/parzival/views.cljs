@@ -27,9 +27,9 @@
   []
   [:div (use-style app-wrapper-style)
    ; [search]
-   ; [settings]
    [app-toolbar]
    [left-sidebar]
    [main-content]
    [right-sidebar]
+   ; [settings]
    ])

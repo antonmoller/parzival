@@ -7,5 +7,8 @@
    :right-sidebar/width 32
    :settings/open false
    :search/open false
-   :theme/dark true})
+   :theme/dark true
+   :pdf {:document nil
+         :active-page nil}
+   :loading/progress 0})
 

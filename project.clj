@@ -29,7 +29,8 @@
                 :builds {:app {:target :browser
                                :output-dir "resources/public/js/compiled"
                                :asset-path "/js/compiled"
-                               :compiler-options {:output-feature-set :es6}
+                               :compiler-options {:output-feature-set :es8
+                                                  :infer-externs :auto}
                                :modules {:shared {:entries []}
                                                   ; :preloads [devtools.preload
                                                   ;            day8.re-frame-10x.preload]}

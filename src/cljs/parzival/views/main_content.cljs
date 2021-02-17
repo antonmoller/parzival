@@ -1,9 +1,7 @@
 (ns parzival.views.main-content
   (:require
-            ["pdfjs-dist" :as pdfjs]
-            [goog.object :as obj]
-            [parzival.pdf]
-            [re-frame.core :refer [dispatch]]
+            [re-frame.core :refer [dispatch subscribe]]
+            [goog.dom :as dom]
             [stylefy.core :as stylefy :refer [use-style]]))
 
 ;;; Styles
@@ -12,62 +10,64 @@
   {:grid-area "main-content"
    :display "flex"
    :flex "1 1 100%"
-   :justify-content "stretch"
-   :align-items "flex-start"
-   :overflow-y "auto"
-   :padding-top "2.5rem" ; TODO: Change the padding stuff
-   :padding-left "2.5rem"
-   :padding-right "2.5rem"
-   :margin "40px"})
+   ; :padding-left "100px"
+   ; :align-items "stretch"
+   ; :justify-content "stretch"
+   ; :margin "40px"
+   ; :overflow-y "auto"
+   ; :padding-top "2.5rem" ; TODO: Change the padding stuff
+   ; :padding-left "2.5rem"
+   ; :padding-right "2.5rem"
+   ; :margin-left "40px"
+   ; :margin "40px"
+   })
 
 (def pdf-container-style
-  {:height "500px"
-   :width "300px"
-   :border "1px solid blue"})
+  {:overflow-y "auto"
+   :height "100vh"
+   :display "flex"
+   :flex-direction "column"
+   :box-sizing "border-box" ; TODO: Kind of ugly since it will make the pdf slightly off-center
+   :padding-left "69px"
+   :margin "0 auto"
+   ; ::stylefy/vendors ["webkit"]
+   ; ::stylefy/mode [["::-webkit-scrollbar" {:width "20px"}]]
+   })
+
+(def canvas-style
+  {:box-sizing "border-box"
+   :padding-bottom "10px"})
+
+;;; Helpers
 
 ;;; Components
 
-; (defn main-content
-;   []
-;   (let [worker (js/Worker. "/js/compiled/worker.js")
-;         url    "http://proceedings.mlr.press/v70/shi17a/shi17a.pdf"
-;         pdf    (atom nil)]
-;     (obj/set (obj/getValueByKeys pdfjs "GlobalWorkerOptions") "workerSrc" "/js/compiled/worker.js")
-;     (println (obj/getValueByKeys pdfjs "GlobalWorkerOptions" "workerSrc"))
-;     ; (println (pdfjs/getDocument url))
-;     ; (-> (pdfjs/getDocument url)
-;     ;     (.then #(reset! pdf %)))
-;     (println pdfjs)
-;     (-> (js/Promise. (pdfjs/getDocument url))
-;         (.then #(reset! pdf %)))
-;     ; (pdfjs/getDocument url)
-;     ; (println pdfjs/getDocument)
-;     ; (-> (pdfjs/getDocument url)
-;     ;     (.then #(reset! pdf %)))
-;     ; (pdfjs/getDocument url)
-;     ; (-> (pdfjs/getDocument url)
-;     ;     (.then #(println %)));#(reset! pdf %))
-;     (fn []
-;       [:div (use-style main-content-style)
-;        [:div (use-style pdf-container-style)]])))
-                                             
+; [:div#pdf-container (use-style pdf-container-style)
+;  [:div
+;   [:canvas]]
+
+; (defn pdf-container
+;   {[:div#pdf-container (use-style pdf-container-style)
+;     [:canvas#canvas-0 (use-style canvas-style)]
+;     [:canvas#canvas-1 (use-style canvas-style)]
+;     [:canvas#canvas-2 (use-style canvas-style)]
+;     [:canvas#canvas-3 (use-style canvas-style)]
+;     [:canvas#canvas-4 (use-style canvas-style)]]})
+
 (defn main-content
   []
+  (let [pdf? (subscribe [:pdf?])
+        ;prog (subscribe [:loading/progress])
+        ; url "https://raw.githubusercontent.com/mozilla/pdf.js/ba2edeae/examples/learning/helloworld.pdf"
+        ; pdf-container (dom/getDocument)
+        url "https://arxiv.org/pdf/2006.06676v2.pdf"
+        ]
     (fn []
-      (obj/set (obj/getValueByKeys pdfjs "GlobalWorkerOptions") "workerSrc" "/js/compiled/pdf.worker.js")
-      (js/console.log pdfjs)
-      (pdfjs/getDocument "https://arxiv.org/pdf/2006.06676v2.pdf")
-      ; (js/console.log (pdfjs/getDocument url))
+      (dispatch [:pdf/load url])
+      (when @pdf?
+        (dispatch [:pdf/render 10]))
        [:div (use-style main-content-style)
-        [:div (use-style pdf-container-style)]]))
-      
-; (defn main-content
-;   []
-;   (fn []
-;     (obj/set (obj/getValueByKeys pdfjs "GlobalWorkerOptions") "workerSrc" "/js/compiled/pdf-worker.js")
-;     (js/console.log pdfjs)
-;     (js/console.log (pdfjs/getDocument))
-;     ; (dispatch [:pdf/load])
-;      [:div (use-style main-content-style)
-;       [:div (use-style pdf-container-style)]]))
+        [:div#canvas-container (use-style pdf-container-style)]])))
 
+
+;TODO: REnder first pages correctly

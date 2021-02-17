@@ -37,3 +37,23 @@
  :theme/dark
  (fn [db _]
    (:theme/dark db)))
+
+(re-frame/reg-sub
+  :pdf/document
+  (fn [db _]
+    (:pdf/document db)))
+
+(re-frame/reg-sub
+  :pdf/page
+  (fn [db _]
+    (:pdf/page db)))
+
+(re-frame/reg-sub
+  :loading/progress
+  (fn [db _]
+    (:loading/progress db)))
+
+(re-frame/reg-sub
+  :pdf?
+  (fn [db _]
+    (some? (get-in db [:pdf :document]))))

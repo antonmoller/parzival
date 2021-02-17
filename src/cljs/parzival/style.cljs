@@ -34,6 +34,13 @@
   ;  :left-sidebar-color      "#2C2C2C"
   ;  :body-text-color         "#4333F38"})
 
+(def DEPTH-SHADOWS
+  {:4                  "0px 1.6px 3.6px rgba(0, 0, 0, 0.13), 0px 0.3px 0.9px rgba(0, 0, 0, 0.1)"
+    :8                  "0px 3.2px 7.2px rgba(0, 0, 0, 0.13), 0px 0.6px 1.8px rgba(0, 0, 0, 0.1)"
+    :16                 "0px 6.4px 14.4px rgba(0, 0, 0, 0.13), 0px 1.2px 3.6px rgba(0, 0, 0, 0.1)"
+    :64                 "0px 24px 60px rgba(0, 0, 0, 0.15), 0px 5px 12px rgba(0, 0, 0, 0.1)"})
+
+
 (def OPACITIES
   {:opacity-lower  0.10
    :opacity-low    0.25
