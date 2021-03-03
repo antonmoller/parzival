@@ -39,6 +39,8 @@
                                          :pdf.worker {:init-fn parzival.worker/init
                                                       :depends-on #{:shared}
                                                       :web-worker true}}
+                                         ; :pdf.viewer {:init-fn parzival.pdf/init
+                                         ;              :depends-on #{:shared}}}
                                :dev {:compiler-options {:closure-defines {re-frame.trace.trace-enabled? true
                                                                           day8.re-frame.tracing.trace-enabled? true}}}
                                :release {:build-options

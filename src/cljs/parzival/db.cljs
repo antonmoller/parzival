@@ -8,7 +8,8 @@
    :settings/open false
    :search/open false
    :theme/dark true
-   :pdf {:document nil
-         :active-page nil}
+   :pdf nil
+   :pdf/viewer nil
+   :pdf/highlights {}; {:page [[{:left :top :width :height :color}]]}
    :loading/progress 0})
 

@@ -8,28 +8,28 @@
 
 (def main-content-style
   {:grid-area "main-content"
-   :display "flex"
-   :flex "1 1 100%"
-   ; :padding-left "100px"
-   ; :align-items "stretch"
-   ; :justify-content "stretch"
-   ; :margin "40px"
-   ; :overflow-y "auto"
-   ; :padding-top "2.5rem" ; TODO: Change the padding stuff
-   ; :padding-left "2.5rem"
-   ; :padding-right "2.5rem"
-   ; :margin-left "40px"
-   ; :margin "40px"
+   :position "static"
+   ; :display "flex"
+   ; :flex "1 1 100%"
+   :margin-top "2.5rem"
+   :margin-left "4rem"
    })
 
 (def pdf-container-style
-  {:overflow-y "auto"
+  {:overflow "auto"
    :height "100vh"
-   :display "flex"
-   :flex-direction "column"
-   :box-sizing "border-box" ; TODO: Kind of ugly since it will make the pdf slightly off-center
-   :padding-left "69px"
-   :margin "0 auto"
+   ; :width "100vw"
+   ; :display "flex"
+   ; :flex-direction "column"
+   :position "absolute"
+   ; :margin-top "2.5rem"
+   ; :margin-left "10rem"
+   ; :top "50%"
+   ; :left "50%"
+   ; :transform "translate(-50%, -50%)"
+   ; :transform "translateX(-50%)"
+   ; :margin-left "auto"
+   ; :margin-right "auto"
    ; ::stylefy/vendors ["webkit"]
    ; ::stylefy/mode [["::-webkit-scrollbar" {:width "20px"}]]
    })
@@ -38,21 +38,7 @@
   {:box-sizing "border-box"
    :padding-bottom "10px"})
 
-;;; Helpers
-
 ;;; Components
-
-; [:div#pdf-container (use-style pdf-container-style)
-;  [:div
-;   [:canvas]]
-
-; (defn pdf-container
-;   {[:div#pdf-container (use-style pdf-container-style)
-;     [:canvas#canvas-0 (use-style canvas-style)]
-;     [:canvas#canvas-1 (use-style canvas-style)]
-;     [:canvas#canvas-2 (use-style canvas-style)]
-;     [:canvas#canvas-3 (use-style canvas-style)]
-;     [:canvas#canvas-4 (use-style canvas-style)]]})
 
 (defn main-content
   []
@@ -65,9 +51,10 @@
     (fn []
       (dispatch [:pdf/load url])
       (when @pdf?
-        (dispatch [:pdf/render 10]))
-       [:div (use-style main-content-style)
-        [:div#canvas-container (use-style pdf-container-style)]])))
+        (dispatch [:pdf/view]))
+       [:div#main-content (use-style main-content-style)
+        [:div#viewerContainer (use-style pdf-container-style)
+         [:div#viewer.pdfViewer {:on-mouse-up (fn [] (dispatch [:highlight]))}]]])))
 
 
 ;TODO: REnder first pages correctly

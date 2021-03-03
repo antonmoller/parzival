@@ -56,4 +56,9 @@
 (re-frame/reg-sub
   :pdf?
   (fn [db _]
-    (some? (get-in db [:pdf :document]))))
+    (some? (get db :pdf))))
+
+(re-frame/reg-sub
+  :pdf/viewer
+  (fn [db _]
+    (get db :pdf/viewer)))
