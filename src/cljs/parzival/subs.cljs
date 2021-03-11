@@ -58,7 +58,3 @@
   (fn [db _]
     (some? (get db :pdf))))
 
-(re-frame/reg-sub
-  :pdf/viewer
-  (fn [db _]
-    (get db :pdf/viewer)))

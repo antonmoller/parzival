@@ -10,6 +10,6 @@
    :theme/dark true
    :pdf nil
    :pdf/viewer nil
-   :pdf/highlights {}; {:page [[{:left :top :width :height :color}]]}
+   :pdf/highlights {}
    :loading/progress 0})
 

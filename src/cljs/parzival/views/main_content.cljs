@@ -38,6 +38,12 @@
   {:box-sizing "border-box"
    :padding-bottom "10px"})
 
+;;; Utils
+
+(defn highlighter
+  [highlights]
+  (dispatch [:render/highlight highlights]))
+
 ;;; Components
 
 (defn main-content
@@ -54,7 +60,6 @@
         (dispatch [:pdf/view]))
        [:div#main-content (use-style main-content-style)
         [:div#viewerContainer (use-style pdf-container-style)
-         [:div#viewer.pdfViewer {:on-mouse-up (fn [] (dispatch [:highlight]))}]]])))
+         [:div#viewer.pdfViewer {:on-mouse-up (fn [] (dispatch [:highlight]))}
+          ]]])))
 
-
-;TODO: REnder first pages correctly
