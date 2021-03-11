@@ -3,7 +3,7 @@
             [re-frame.core :refer [subscribe]]
             ["@material-ui/icons" :as mui-icons]
             [parzival.views.buttons :refer [button]]
-            [parzival.style :refer [color OPACITIES]]
+            [parzival.style :refer [color OPACITIES ZINDICES]]
             [reagent.core :as r]
             [stylefy.core :as stylefy :refer [use-style use-sub-style]]))
 
@@ -11,13 +11,15 @@
 
 (def left-sidebar-style
   {:grid-area "left-sidebar"
-   :place-self "stretch stretch"
+   :position "fixed"
+   :width 0
    :overflow-x "hidden"
-   :height "fixed" ; what does this do? It works but I don't know why.
    :oveflow-y "none"
-   ; :overflow-y "auto"
+   :height "100%"
+   :display "flex"
+   :flex-direction "column"
    :background-color (color :left-sidebar-color)
-   :transition "all 0.2s ease" ; try 0.3s wtf???
+   :transition "all 0.3s ease" 
    ::stylefy/manual [[:&.is-open {:width "16rem"}]
                      [:&.is-closed {:width "0"}]]})
 
@@ -80,39 +82,30 @@
    :height "auto"
    :row-gap "1rem"})
 
-
-(defn menu
-  []
-  [:<>
-    [:div (use-style menu-item-style)
-     [:> mui-icons/AccountBox (use-style icon-style)] 
-     [:span "ACCOUNT"]
-     [:> mui-icons/ExpandMore]]
-    [:div (use-style menu-item-style)
-     [:> mui-icons/Reorder (use-style icon-style)] 
-     [:span "ALL DOCUMENTS"]]
-    [:div (use-style menu-item-style)
-     [:> mui-icons/Subtitles (use-style icon-style)] 
-     [:span "ALL FLASHCARDS"]]
-    [:div (use-style divider-style)]])
-
-(defn shortcut-list
-  []
-  [:ol (use-style shortcut-list-style)
-   [:h2 (use-sub-style shortcut-list-style :heading) 
-    [:> mui-icons/Star {:style {:font-size "16px" :padding-right "0.5rem"}}]
-    [:span "SHORTCUTS"]]
-    [:li [:div (use-style shortcut-style) [:span "testing"]]]
-    [:li [:div (use-style shortcut-style) [:span "testing"]]]
-    [:li [:div (use-style shortcut-style) [:span "testing"]]]])
-  
 (defn left-sidebar
   []
   (let [open? (subscribe [:left-sidebar/open])]
         [:div (use-style left-sidebar-style {:class (if @open? "is-open" "is-closed")})
          [:div (use-style left-sidebar-content-style)
-          [menu]
-          [shortcut-list]
+          [:div
+           [:div (use-style menu-item-style)
+            [:> mui-icons/AccountBox (use-style icon-style)] 
+            [:span "ACCOUNT"]
+            [:> mui-icons/ExpandMore]]
+           [:div (use-style menu-item-style)
+            [:> mui-icons/Reorder (use-style icon-style)] 
+            [:span "ALL DOCUMENTS"]]
+           [:div (use-style menu-item-style)
+            [:> mui-icons/Subtitles (use-style icon-style)] 
+            [:span "ALL FLASHCARDS"]]
+           [:div (use-style divider-style)]]
+           [:ol (use-style shortcut-list-style)
+             [:h2 (use-sub-style shortcut-list-style :heading) 
+              [:> mui-icons/Star {:style {:font-size "16px" :padding-right "0.5rem"}}]
+              [:span "SHORTCUTS"]]
+              [:li [:div (use-style shortcut-style) [:span "testing"]]]
+              [:li [:div (use-style shortcut-style) [:span "testing"]]]
+              [:li [:div (use-style shortcut-style) [:span "testing"]]]]
           [:div (use-style button-container-style)
             [button {:primary true} [:<> [:span "Start Learning"] [:> mui-icons/ChevronRight]]]
             [button [:<> [:span "Start Reviewing"] [:> mui-icons/ChevronRight]]]]]]))
