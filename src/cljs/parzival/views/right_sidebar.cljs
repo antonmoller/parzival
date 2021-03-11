@@ -34,6 +34,7 @@
 (def sidebar-content-style
   {:display "flex"
    :flex "1 1 32vw"
+   :position "absolute"
    :flex-direction "column"
    :margin-left "0"
    :oveflow-y "auto"
