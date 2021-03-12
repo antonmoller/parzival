@@ -12,8 +12,9 @@
   {:display "flex"
    :flex-direction "row"
    :align-items "center"
-   :position "fixed"
-   :top 0
+   ; :position "fixed"
+   :position "absolute"
+   ; :top 0
    :z-index (:zindex-dropdown ZINDICES)
    :padding "0.25rem 0.75rem"
    ::stylefy/manual [[:svg {:font-size "20px"}]]})

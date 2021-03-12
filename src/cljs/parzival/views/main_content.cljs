@@ -9,20 +9,13 @@
 
 (def main-content-style
   {:grid-area "main-content"
-   :position "relative"
-   :height "100vh"
-   :width "100%"})
+   :display "flex"
+   :justify-content "center"})
 
 (def pdf-container-style
   {:position "absolute"
    :height "100%"
-   :overflow "auto"
-   :z-index (:zindex-dropdown ZINDICES)
-   :left "50%"
-   :transform "translateX(-50%)"
-   ; ::stylefy/vendors ["webkit"]
-   ; ::stylefy/mode [["::-webkit-scrollbar" {:width "20px"}]]
-   })
+   :overflow-y "auto"})
 
 ;;; Components
 
@@ -34,7 +27,7 @@
       (dispatch [:pdf/load url])
       (when @pdf?
         (dispatch [:pdf/view]))
-       [:div#main-content (use-style main-content-style)
+       [:div (use-style main-content-style)
         [:div#viewerContainer (use-style pdf-container-style)
          [:div#viewer.pdfViewer {:on-mouse-up (fn [] (dispatch [:highlight]))}]]])))
 

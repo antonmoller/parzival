@@ -8,17 +8,19 @@
             [stylefy.core :as stylefy :refer [use-style use-sub-style]]))
 
 ;;; Styles
-
+;TODO
 (def left-sidebar-style
   {:grid-area "left-sidebar"
-   :position "fixed"
+   :user-select "none"
+   ; :position "fixed"
    :width 0
    :overflow-x "hidden"
-   :oveflow-y "none"
+   :overflow-y "hidden"
    :height "100%"
    :display "flex"
    :flex-direction "column"
    :background-color (color :left-sidebar-color)
+   :background-clip "padding-box"
    :transition "all 0.3s ease" 
    ::stylefy/manual [[:&.is-open {:width "16rem"}]
                      [:&.is-closed {:width "0"}]]})
@@ -103,6 +105,25 @@
              [:h2 (use-sub-style shortcut-list-style :heading) 
               [:> mui-icons/Star {:style {:font-size "16px" :padding-right "0.5rem"}}]
               [:span "SHORTCUTS"]]
+              [:li [:div (use-style shortcut-style) [:span "testing"]]]
+              [:li [:div (use-style shortcut-style) [:span "testing"]]]
+              [:li [:div (use-style shortcut-style) [:span "testing"]]]
+              [:li [:div (use-style shortcut-style) [:span "testing"]]]
+              [:li [:div (use-style shortcut-style) [:span "testing"]]]
+              [:li [:div (use-style shortcut-style) [:span "testing"]]]
+              [:li [:div (use-style shortcut-style) [:span "testing"]]]
+              [:li [:div (use-style shortcut-style) [:span "testing"]]]
+              [:li [:div (use-style shortcut-style) [:span "testing"]]]
+              [:li [:div (use-style shortcut-style) [:span "testing"]]]
+              [:li [:div (use-style shortcut-style) [:span "testing"]]]
+              [:li [:div (use-style shortcut-style) [:span "testing"]]]
+              [:li [:div (use-style shortcut-style) [:span "testing"]]]
+              [:li [:div (use-style shortcut-style) [:span "testing"]]]
+              [:li [:div (use-style shortcut-style) [:span "testing"]]]
+              [:li [:div (use-style shortcut-style) [:span "testing"]]]
+              [:li [:div (use-style shortcut-style) [:span "testing"]]]
+              [:li [:div (use-style shortcut-style) [:span "testing"]]]
+              [:li [:div (use-style shortcut-style) [:span "testing"]]]
               [:li [:div (use-style shortcut-style) [:span "testing"]]]
               [:li [:div (use-style shortcut-style) [:span "testing"]]]
               [:li [:div (use-style shortcut-style) [:span "testing"]]]]
