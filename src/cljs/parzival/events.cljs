@@ -8,8 +8,7 @@
    [goog.object :as obj]
    [cljs.core.async :refer [go go-loop <! timeout]]
    [cljs.core.async.interop :refer [<p!]]
-   [day8.re-frame.tracing :refer-macros [fn-traced]]
-   ))
+   [day8.re-frame.tracing :refer-macros [fn-traced]]))
 
 (obj/set (obj/getValueByKeys pdfjs "GlobalWorkerOptions") "workerSrc" "/js/compiled/pdf.worker.js")
 
@@ -84,55 +83,62 @@
                     :on-success [:pdf/load-success]
                     :on-failure [:pdf/load-failure]}}))
 
-(defn render-highlight 
-  [highlight text-layer viewport]
-  (let [color (:color highlight)
-        parent (.createElement js/document "div")]
-    (.setAttribute parent "style" "cursor: pointer; positon: absolute;")
-    (.append text-layer parent)
-    (doseq [rect (:coordinates highlight)]
-      (let [[b0 b1 b2 b3] ^js (.convertToViewportRectangle viewport rect)
-            child         (.createElement js/document "div")]
-        (.setAttribute child "style" (str "position: absolute; background-color: " color
-                                          "; left: " (min b0 b2) "px; top: " (min b1 b3) "px;"
-                                          "width: " (Math/abs (- b0 b2)) "px; height: " (Math/abs (- b1 b3)) "px;"))
-        (.append parent child)))))
+(defn highlight-node
+  [color node start-offset end-offset]
+  (let [old-child (obj/get node "firstChild")
+        new-child (.createElement js/document "span")]
+    (.setAttribute new-child "class" "highlight selected")
+    (.setAttribute new-child "style" (str "border-radius: initial; 
+                                           cursor: pointer;
+                                           background-color: " color ";"))
+    (doto (js/Range.)
+      (obj/set "commonAncestorContainer" old-child)
+      (.setStart old-child start-offset)
+      (.setEnd old-child (if (nil? end-offset)
+                           (obj/get old-child "length")
+                           end-offset))
+      (.surroundContents new-child))))
+
+(defn render-highlight
+  [{:keys [color start-idx end-idx start-offset end-offset]} text-layer]
+    (doseq [node (range start-idx (inc end-idx))]
+        (highlight-node color 
+                        (aget text-layer node) 
+                        (if (= node start-idx) start-offset 0) 
+                        (if (= node end-idx) end-offset nil))))
 
 (reg-event-fx
   :render/page
-  (fn [{:keys [db]} [_ page-no text-layer viewport]]
-    (run! #(render-highlight (get % 1) text-layer viewport) (get-in db [:pdf/highlights page-no]))))
+  (fn [{:keys [db]} [_ page-idx text-layer]]
+    (run! #(render-highlight (second %) text-layer) 
+          (get-in db [:pdf/highlights (dec page-idx)]))))
                
-(defn calc-coord
-  [rect page-rect viewport]
-  (.concat ^js (.convertToPdfPoint viewport (- (obj/get rect "left")   (obj/get page-rect "x"))
-                                            (- (obj/get rect "top")    (obj/get page-rect "y")))
-           ^js (.convertToPdfPoint viewport (- (obj/get rect "right")  (obj/get page-rect "x"))
-                                            (- (obj/get rect "bottom") (obj/get page-rect "y")))))
-  
-(defn get-coords
-  [idx rect page-rect viewport no-rects]
-  (if (or (< no-rects 4) (even? idx) (== idx 0) (== idx (dec no-rects)))
-      (calc-coord rect page-rect viewport)))
-
+;TODO: Check if start page and end page are the same
+;TODO: Don't allow double highlights
+;TODO: Highlighting over something merges the highlights
+; This means there will only be one highlight node within a div
 (reg-event-fx
   :highlight
   (fn [{:keys [db]} _]
     (let [selection (.getSelection js/document)] 
       (when (not (obj/get selection "isCollapsed"))
-        (let [page-container (obj/getValueByKeys selection "anchorNode" "parentNode" "parentNode" "parentNode")
-              page-id        (dec (.getAttribute page-container "data-page-number"))
-              page           (.getPageView (get db :pdf/viewer) page-id)
-              rects          (.getClientRects (.getRangeAt selection 0))
-              viewport       (obj/get page "viewport")
-              page-rect      (aget (.getClientRects (obj/get page "canvas")) 0)
-              highlight      {:color "rgb(0,255,0)"
-                              :coordinates (keep-indexed #(get-coords %1 %2 page-rect viewport (obj/get rects "length")) rects)}]
+        (let [start-node     (obj/getValueByKeys selection "anchorNode" "parentNode")
+              end-node       (obj/getValueByKeys selection "focusNode" "parentNode")
+              text-layer     (obj/get start-node "parentNode")
+              page-id        (-> (obj/get text-layer "parentNode")
+                                 (.getAttribute "data-page-number")
+                                 (dec))
+              children       (.from js/Array (obj/get text-layer "children"))
+              highlight      {:color        "rgb(0,100,0)" 
+                              :start-idx    (.indexOf children start-node)
+                              :end-idx      (.indexOf children end-node)
+                              :start-offset (obj/get selection "anchorOffset")
+                              :end-offset   (obj/get selection "focusOffset")}]
           (.empty selection)
           {:db (if-let [page-highlights (get-in db [:pdf/highlights page-id])]
                  (update-in db [:pdf/highlights page-id] assoc (count page-highlights) highlight)
                  (assoc-in db [:pdf/highlights page-id 0] highlight))
-           :fx [(render-highlight highlight (aget (.getElementsByClassName page-container "textLayer") 0) viewport)]})))))
+           :fx [(render-highlight highlight children)]})))))
 
 (reg-event-fx
  :pdf/view
@@ -145,13 +151,12 @@
         pdf-viewer (pdfjs-viewer/PDFViewer. (js-obj "container" container 
                                                     "eventBus" event-bus 
                                                     "linkService" link-service
-                                                    ;"findController" find-controller
+                                                    ; "findController" find-controller
                                                     "textLayerMode" 2))]
   (.setViewer link-service pdf-viewer)
   (.setDocument pdf-viewer pdf)
   (.setDocument link-service pdf nil)
-  (.on event-bus "pagerendered" #(dispatch [:render/page 
-                                            (dec (obj/get % "pageNumber"))
-                                            (obj/getValueByKeys % "source" "textLayer" "textLayerDiv")
-                                            (obj/getValueByKeys % "source" "viewport")]))
+  (.on event-bus "textlayerrendered" 
+                 #(dispatch [:render/page (obj/get % "pageNumber")
+                                          (obj/getValueByKeys % "source" "textDivs")]))
   {:db (assoc db :pdf/viewer pdf-viewer)})))

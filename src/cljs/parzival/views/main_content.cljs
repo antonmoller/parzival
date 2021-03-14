@@ -14,8 +14,20 @@
 
 (def pdf-container-style
   {:position "absolute"
+   :z-index (:zindex-dropdown ZINDICES)
    :height "100%"
-   :overflow-y "auto"})
+   :overflow-y "auto"
+   ::stylefy/vendors ["webkit"]
+   ::stylefy/mode [["::-webkit-scrollbar" {;:background-color "none"
+                                           :border-left "1px solid grey"
+                                           :border-right "1px solid grey"
+                                           :width "40px"}]
+                   ["::-webkit-scrollbar-thumb" {:background-color "blue"
+                                                 :border-left "1px solid grey"
+                                                 :border-right "1px solid grey"
+                                                 ; :height "10px"
+                                                 }]]
+   })
 
 ;;; Components
 
