@@ -34,7 +34,9 @@
 (defn main-content
   []
   (let [pdf? (subscribe [:pdf?])
-        url "https://arxiv.org/pdf/2006.06676v2.pdf"]
+        url "https://arxiv.org/pdf/2006.06676v2.pdf"
+        ; url "http://ltu.diva-portal.org/smash/get/diva2:1512634/FULLTEXT01.pdf"
+        ]
     (fn []
       (dispatch [:pdf/load url])
       (when @pdf?
