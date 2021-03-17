@@ -83,89 +83,6 @@
                     :on-success [:pdf/load-success]
                     :on-failure [:pdf/load-failure]}}))
 
-(defn text-length
-  [node]
-  (js/console.log node)
-  (case (obj/get node "nodeName")
-    "#text" (obj/get node "length")
-    "SPAN"  (obj/getValueByKeys node "firstChild" "length")))
-
-; ; This only needs to be done on a start-node or a end-node or one that is both
-; ; This is because no nodes can overlap. This is handeled by the highlight function
-(defn find-node
-  [start-node start-offset]
-  (if (nil? start-offset)
-    [start-node nil]
-    (loop [node start-node
-           offset start-offset]
-      (if (>= 0 (- offset (text-length node)))
-        [node offset]
-        (recur (obj/get node "nextSibling") (- offset (text-length node)))))))
-
-; Walk the list of child nodes, once the correct text-node is found split do the range thing
-; The offsets will probably need modification
-;TODO: Calculate new start-offset and end-offset
-(defn highlight-node
-  [color node parent-s parent-e]
-  (let [[old-child start-offset] (find-node (obj/get node "firstChild") parent-s) ; The child node we want to highlight
-        [_ end-offset] (find-node (obj/get node "firstChild") parent-e)
-        new-child (.createElement js/document "span")]
-    (.setAttribute new-child "class" "highlight selected")
-    (.setAttribute new-child "style" (str "border-radius: initial; 
-                                           cursor: pointer;
-                                           background-color: " color ";"))
-    (doto (js/Range.)
-      (obj/set "commonAncestorContainer" old-child)
-      (.setStart old-child (if (nil? start-offset) ;TODO: Offset wrong
-                             0
-                             start-offset))
-      (.setEnd old-child (if (nil? end-offset)  ;TODO: Offset wrong
-                           (obj/get old-child "length")
-                           end-offset))
-      (.surroundContents new-child))))
-
-(defn render-highlight
-  [{:keys [color start-idx end-idx start-offset end-offset]} text-layer]
-    (doseq [node (range start-idx (inc end-idx))]
-        (highlight-node color 
-                        (aget text-layer node) 
-                        (if (= node start-idx) start-offset nil) 
-                        (if (= node end-idx) end-offset nil))))
-
-(reg-event-fx
-  :render/page
-  (fn [{:keys [db]} [_ page-idx text-layer]]
-    (run! #(render-highlight (second %) text-layer) 
-          (get-in db [:pdf/highlights page-idx]))))
-
-(defn merge-if-overlapping
-  [m k v]
-  (let [h (get m :new-highlight)]
-    (if (or (and (< (:start-idx h) (:end-idx v)) (< (:start-idx v) (:end-idx h))) ;TODO refractor into function with x and y
-            (and (== (:start-idx h) (:end-idx v)) (<= (:start-offset h) (:end-offset v)))
-            (and (== (:start-idx v) (:end-idx h)) (<= (:start-offset v) (:end-offset h))))
-      (let [start        (if (<= (:start-idx h) (:start-idx v)) [(:start-idx h) (:start-offset h)] [(:start-idx v) (:start-offset v)]) 
-            end          (if (>= (:end-idx h) (:end-idx v)) [(:end-idx h) (:end-offset h)] [(:end-idx v) (:end-offset v)])
-            start-offset (if (== (:start-idx h) (:start-idx v)) (min (:start-offset h) (:start-offset v)) (second start))
-            end-offset   (if (== (:end-idx h) (:end-idx v)) (max (:end-offset h) (:end-offset v)) (second end))]
-        (assoc m :new-highlight
-               {:color (:color h)
-                :start-idx (first start)
-                :end-idx (first end)
-                :start-offset start-offset 
-                :end-offset end-offset})
-        (assoc m :delete conj v))
-      (assoc-in m [:new-map k] v))))
-
-(defn merge-overlapping
-  [new-highlight page-highlights]
-  (if (nil? page-highlights)
-    {:new-map {(str (:start-idx new-highlight) "-" (:start-offset new-highlight)) new-highlight}
-     :new-highlight new-highlight 
-     :delete '()}
-     (reduce-kv merge-if-overlapping 
-                {:new-map {} :new-highlight new-highlight :delete '()} 
-                page-highlights)))
 
 ; walk upward until the next parent name is a DIV
 (defn get-parent
@@ -175,21 +92,102 @@
       node
       (recur (obj/get node "parentNode")))))
 
-; walk the parent children until the node is reached and then add offset
+(defn text-length
+  [node]
+  (case (obj/get node "nodeName")
+    "#text" (obj/get node "length")
+    "SPAN"  (obj/getValueByKeys node "firstChild" "length")))
+
+; (defn render-dev
+;   [{:keys [color start-idx end-idx start-offset end-offset]} text-layer]
+;     (doseq [node (range start-idx (inc end-idx))]
+      
+; (reg-event-fx
+;   :render/page
+;   (fn [{:keys [db]} [_ page-idx text-layer]]
+;     (run! #(render-highlight (second %) text-layer) 
+;           (get-in db [:pdf/highlights page-idx]))))
+
+(defn same-node
+  [x y] ; y will always be a text node
+  (let [node (if (= (obj/get x "nodeName") "SPAN") (obj/get x "firstChild") x)]
+    (.isSameNode node y)))
+
 (defn get-offset
-  [start-node end-node]
-  (loop [node start-node
-         new-offset 0]
-    (if (.isSameNode node end-node)
-      new-offset
-      (recur (obj/get node "nextSibling") (+ new-offset (text-length node))))))
-               
-;FIXME: The index should be the start index and start offset as a string "index-offset"
-;TODO: Check if start page and end page are the same
-;TODO: Highlighting over something merges the highlights
-;TODO: redraw or draw if no overlapping
-;FIXME FIXME FIXME The problem now is that I need to remove delete before rendering and probably more
-;Highlighting delimiting character
+  [aux row-container end-node]
+  (loop [node (obj/get row-container "firstChild")
+         res aux]
+    (if (same-node node end-node)
+      res
+      (recur (obj/get node "nextSibling") (+ res (text-length node))))))
+
+(defn highlight?
+  [node]
+  (= (obj/get node "nodeName") "SPAN"))
+
+(defn find-node
+  [row offset]
+  (loop [node (obj/get row "firstChild")
+         relative-offset offset]
+    (if (>= 0 (- relative-offset (text-length node)))
+      [node relative-offset]
+      (recur (obj/get node "nextSibling") (- relative-offset (text-length node))))))
+
+(defn render-row
+  [color id row start end]
+  (let [[old-child start-offset] (if (some? start) (find-node row start) [(obj/get row "firstChild") 0])
+        [_ end-offset] (if (some? end) 
+                         (find-node row end) 
+                         [nil (obj/get old-child "length")]) ;FIXME: Something is very wrong here
+        new-child (.createElement js/document "span")]
+    (.setAttribute new-child "class" "highlight")
+    (.setAttribute new-child "style" (str "border-radius: 0; 
+                                           cursor: pointer;
+                                           background-color: " color ";"))
+    (.setAttribute new-child "name" id)
+    (doto (js/Range.)
+      (obj/set "commonAncestorContainer" old-child)
+      (.setStart old-child start-offset)
+      (.setEnd old-child end-offset)
+      (.surroundContents new-child))))
+
+; bounding highlights fucks things up:w
+
+(defn render-dev
+  [{:keys [color start-idx end-idx start-offset end-offset]} id text-layer]
+    (doseq [node (range start-idx (inc end-idx))]
+      (render-row color
+                  id
+                  (aget text-layer node)
+                  (if (= node start-idx) start-offset nil)
+                  (if (= node end-idx) end-offset nil))))
+
+
+; (defn row-overlapping
+;   [aux start-node end-node]
+;   (loop [node start-node
+;          res aux]
+;     (if (or (nil? node) (same-node node end-node))
+;       res
+;       (recur (obj/get node "nextSibling") ()
+
+
+; (defn find-overlapping
+;   [start-parent end-parent start-node end-node]
+;   (loop [row start-parent
+;          to-merge #{}]
+;     (if (.isSameNode row (obj/get end-parent "nextSibling"))
+;       to-merge
+;       (recur (obj/get end-parent "nextSibling")
+;              (row-overlapping to-merge
+;                               row
+;                               (if (.isSameNode row start-parent) 
+;                                 start-node 
+;                                 (obj/get row "firstChild"))
+;                               (if (.isSameNode row end-parent) 
+;                                 start-parent 
+;                                 (obj/get row "lastChild")))))))
+
 (reg-event-fx
   :highlight
   (fn [{:keys [db]} _]
@@ -198,26 +196,35 @@
         (let [start-node   (obj/getValueByKeys selection "anchorNode")
               end-node     (obj/getValueByKeys selection "focusNode")
               start-parent (get-parent start-node)
-              end-parent    (get-parent end-node)
-              start-offset (+ (obj/get selection "anchorOffset")
-                              (get-offset (obj/get start-parent "firstChild") start-node))
-              end-offset   (+ (obj/get selection "focusOffset")
-                              (get-offset (obj/get end-parent "firstChild") end-node))
+              end-parent   (get-parent end-node)
               text-layer   (obj/get start-parent "parentNode")
               page-id      (-> (obj/get text-layer "parentNode")
                                (.getAttribute "data-page-number")
                                (dec))
               children     (.from js/Array (obj/get text-layer "children"))
-              {:keys [new-map new-highlight delete]}   (merge-overlapping {:color "rgb(0, 100, 0)"
-                                                                           :start-idx (.indexOf children start-parent)
-                                                                           :end-idx (.indexOf children end-parent)
-                                                                           :start-offset start-offset
-                                                                           :end-offset end-offset}
-                                                                           (get-in db [:pdf/highlights page-id]))]
-         (.empty selection)
-          {:db (assoc-in db [:pdf/highlights page-id] 
-                         (assoc new-map (str (:start-idx new-highlight) "-" (:start-offset new-highlight)) new-highlight))
-           :fx [(render-highlight new-highlight children)]} ;add remove-highlights
+              highlight    {:color        "rgb(0,100,0)"
+                            :start-idx    (.indexOf children start-parent)
+                            :end-idx      (.indexOf children end-parent)
+                            :start-offset (get-offset (obj/get selection "anchorOffset") start-parent start-node)
+                            :end-offset   (get-offset (obj/get selection "focusOffset") end-parent end-node)}
+              ]
+          ; (js/console.log start-offset end-offset)
+          ; (js/console.log start-node)
+          ; (js/console.log end-node)
+          (js/console.log selection)
+          (js/console.log (.getRangeAt selection 0))
+          (js/console.log highlight)
+          (js/console.log (render-dev highlight (str (:start-idx highlight) "-" (:start-offset highlight)) children))
+          ; (js/console.log (find-intersect start-parent end-parent start-node end-node))
+          ; (render-dev highlight children)
+          ; (.empty selection)
+
+;          {:db (assoc-in db [:pdf/highlights page-id] 
+;                         (assoc new-map (str (:start-idx new-highlight) "-" (:start-offset new-highlight)) new-highlight))
+;           :fx [(render-highlight new-highlight children)]} ;add remove-highlights
+;          )))))
+
+
           )))))
 
 (reg-event-fx
@@ -236,7 +243,7 @@
   (.setViewer link-service pdf-viewer)
   (.setDocument pdf-viewer pdf)
   (.setDocument link-service pdf nil)
-  (.on event-bus "textlayerrendered" 
-                 #(dispatch [:render/page (dec (obj/get % "pageNumber"))
-                                          (obj/getValueByKeys % "source" "textDivs")]))
+  ; (.on event-bus "textlayerrendered" 
+  ;                #(dispatch [:render/page (dec (obj/get % "pageNumber"))
+  ;                                         (obj/getValueByKeys % "source" "textDivs")]))
   {:db (assoc db :pdf/viewer pdf-viewer)})))

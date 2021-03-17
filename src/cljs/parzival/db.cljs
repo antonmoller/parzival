@@ -14,4 +14,4 @@
    :loading/progress 0})
 
 
-; {page-id {highlight-id {:color "green" :start-pos [left top offset] :end-pos [left top offset]}}}
+; {page-id {highlight-id {:color "green" :start-idx :start-offset :end-idx :end-offset}}}
