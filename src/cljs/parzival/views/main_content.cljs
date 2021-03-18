@@ -43,5 +43,5 @@
         (dispatch [:pdf/view]))
        [:div (use-style main-content-style)
         [:div#viewerContainer (use-style pdf-container-style)
-         [:div#viewer.pdfViewer {:on-mouse-up (fn [] (dispatch [:highlight]))}]]])))
+         [:div#viewer.pdfViewer {:on-mouse-up (fn [] (dispatch [:highlight "rgb(0,100,0)"]))}]]])))
 

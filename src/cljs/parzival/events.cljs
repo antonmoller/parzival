@@ -108,12 +108,12 @@
   [f aux start-node end-node]
   (loop [[node skip-children :as it] [start-node false]
          res aux]
-    (if (.isSameNode node end-node) ;FIXME End condition instead?
-      res
+    (if (.isSameNode node end-node) 
+      (f res node)
       (recur (next-node it)
              (f res node)))))
 
-; walk upward until the next parent name is a DIV
+; walk upward until we reach the text-layer
 (defn get-row
   [start-node]
   (loop [node start-node]
@@ -121,26 +121,16 @@
       node
       (recur (obj/get node "parentNode")))))
 
-
-;#(.isSameNode %1 end-node)
 (defn get-offset
   [aux row end-node]
-  (reduce-dom (fn [res node] 
+  (- (reduce-dom (fn [res node] ;don't count the end-nodes length
                 (if (= (obj/get node "nodeName") "#text") 
                   (+ res (obj/get node "length")) 
                   res))
               aux 
               (obj/get row "firstChild") 
-              end-node))
-
-(defn reduce-ha
-  [f aux start-node end-node]
-  (loop [[node skip-children :as it] [start-node false]
-         res aux]
-    (if (.isSameNode node end-node)
-      (f res node)
-      (recur (next-node it)
-             (f res node)))))
+              end-node)
+     (obj/get end-node "length")))
 
 (defn highlight-node
   [node start-offset end-offset color id]
@@ -160,7 +150,7 @@
 ; add span nodes that has a name to a to-merge and return this
 (defn highlight-and-overlapping
   [start-node end-node start-offset end-offset color id]
-  (reduce-ha (fn [res node]
+  (reduce-dom (fn [res node]
                 (if (= (obj/get node "nodeName") "#text")
                   (do
                     (highlight-node node 
@@ -179,65 +169,33 @@
 
 (reg-event-fx
   :highlight
-  (fn [{:keys [db]} _]
+  (fn [{:keys [db]} [_ color]]
     (let [selection (.getSelection js/document)] 
       (when-not (obj/get selection "isCollapsed")
-        (let [range-obj (.getRangeAt selection 0)
+        (let [range-obj    (.getRangeAt selection 0)
               start-node   (obj/getValueByKeys range-obj "startContainer")
               end-node     (obj/getValueByKeys range-obj "endContainer")
-              start-row (get-row start-node)
-              end-row   (get-row end-node)
+              start-row    (get-row start-node)
+              end-row      (get-row end-node)
               text-layer   (obj/get start-row "parentNode")
               children     (.from js/Array (obj/get text-layer "children"))
               page-id      (-> (obj/get text-layer "parentNode")
                                (.getAttribute "data-page-number")
                                (dec))
-              ; fragment (.cloneContents range-obj)
-              highlight    {:color        "rgb(0,100,0)"
+              highlight    {:color        color
                             :start-idx    (.indexOf children start-row)
                             :end-idx      (.indexOf children end-row)
                             :start-offset (get-offset (obj/get range-obj "startOffset") start-row start-node)
                             :end-offset   (get-offset (obj/get range-obj "endOffset") end-row end-node)}]
 
           (js/console.log highlight)
-          ; (js/console.log fragment)
           (js/console.log (highlight-and-overlapping start-node 
                                                      end-node 
                                                      (obj/get range-obj "startOffset") 
                                                      (obj/get range-obj "endOffset")
-                                                     "rgb(0,100,0)"
+                                                     color
                                                      "testing"))
-          (.empty selection)
-
-          ; (.setAttribute span "class" "highlight")
-          ; (js/console.log start-node end-node)
-          ; (js/console.log (obj/get selection "anchorOffset") (obj/get selection "focusOffset"))
-          ; (js/console.log (obj/get start-node "offsetLeft") (obj/get end-node "offsetRight"))
-          ; (js/console.log fragment)
-          ; (js/console.log (obj/get fragment "childNodes"))
-          ; (.forEach (.querySelectorAll text-layer "span[name='test']") (fn [v k l] (.setAttribute v "class" "highlight")))
-          ; (.forEach (obj/get fragment "childNodes") (fn [v k l] 
-          ; (.forEach (obj/get fragment "childNodes") (fn [v k l] 
-          ; (.forEach (.getElementsByTagName text-layer "span") (fn [v k l] (.setAttribute v "class" "highlight")))
-
-
-          ; (.forEach (obj/get fragment "childNodes") (fn [v k l] 
-          ;                                             (let [style (obj/get v "style")]
-          ;                                               (obj/set style "padding" 0)
-          ;                                               (obj/set style "background-clip" "content-box")
-          ;                                               (obj/set style "transform" "none")
-          ;                                             ; (.setAttribute v "background-clip" "content-box")
-          ;                                             (.setAttribute v "class" "highlight")
-          ;                                               )))
-          ; ; (js/console.log (obj/getValueByKeys fragment "lastChild" "nextSibling"))
-          ; (js/console.log fragment)
-          ; (.surroundContents rang span)
-          ; (js/console.log (.deleteContents rang))
-          ; (js/console.log (.appendChild text-layer fragment))
-          ; (.insertBefore text-layer fragment)
-
-
-          )))))
+          (.empty selection))))))
 
 (reg-event-fx
  :pdf/view
