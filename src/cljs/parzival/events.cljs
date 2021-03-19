@@ -98,20 +98,29 @@
 ;       (recur (obj/get node "nextSibling") (- relative-offset (text-length node))))))
 
 (defn next-node
-  [[node skip-children]]
-  (cond
-    (and (some? (obj/get node "firstChild")) (not skip-children)) [(obj/get node "firstChild") false]
-    (some? (obj/get node "nextSibling")) [(obj/get node "nextSibling") false]
-    :else [(obj/get node "parentNode") true]))
+  [node]
+  (if (some? (obj/get node "nextSibling"))
+    (obj/get node "nextSibling")
+      (obj/getValueByKeys node "parentNode" "nextSibling" "firstChild")))
 
-(defn reduce-dom
+(defn reduce-down
   [f aux start-node end-node]
-  (loop [[node skip-children :as it] [start-node false]
+  (loop [node start-node
          res aux]
-    (if (.isSameNode node end-node) 
+    (js/console.log node)
+    ; (js/console.log 
+    (if (.isSameNode node end-node)
       (f res node)
-      (recur (next-node it)
+      (recur (next-node node) 
              (f res node)))))
+
+(defn walk
+  [start-node end-node]
+  (loop [node start-node]
+    (js/console.log node)
+    (if (.isSameNode node end-node)
+      (js/console.log "end")
+      (recur (next-node node)))))
 
 ; walk upward until we reach the text-layer
 (defn get-row
@@ -121,62 +130,81 @@
       node
       (recur (obj/get node "parentNode")))))
 
+(defn text-length
+  [node]
+  (if (= (obj/get node "nodeName") "SPAN")
+    (obj/getValueByKeys node "firstChild" "length")
+    (obj/get node "length")))
+
 (defn get-offset
   [aux row end-node]
-  (- (reduce-dom (fn [res node] ;don't count the end-nodes length
-                (if (= (obj/get node "nodeName") "#text") 
-                  (+ res (obj/get node "length")) 
-                  res))
-              aux 
-              (obj/get row "firstChild") 
-              end-node)
-     (obj/get end-node "length")))
+  (-> (reduce-down (fn [res node] 
+                     (+ res (text-length node)))
+                   aux 
+                   (obj/get row "firstChild") 
+                   end-node)
+      (- (text-length end-node))))
 
 (defn highlight-node
   [node start-offset end-offset color id]
+  ; (js/console.log "highlight ---> " node) ; FIXME
   (let [highlight    (.createElement js/document "span")]
     (.setAttribute highlight "class" "highlight")
     (.setAttribute highlight "style" (str "border-radius: 0;
                                            cursor: pointer;
                                            background-color: " color ";"))
     (.setAttribute highlight "name" id)
+    (.appendChild (obj/get node "parentNode") highlight)
     (doto (js/Range.)
       (obj/get "commonAncestorContainer" node)
       (.setStart node start-offset)
       (.setEnd node end-offset)
       (.surroundContents highlight))))
 
-; walk and surround each text-node with a highlight
-; add span nodes that has a name to a to-merge and return this
+; ; walk and surround each text-node with a highlight
+; ; add span nodes that has a name to a to-merge and return this
+; ; TODO: remove span container if already highlighted i.e. deeply nested spans are bad
+; ; Better yet, just change the id and the color of this one and move on to the next
+; ; Check if the class of the span is "highlight" if so do the above. This will mean that no nodes
+; ; will overlap
 (defn highlight-and-overlapping
   [start-node end-node start-offset end-offset color id]
-  (reduce-dom (fn [res node]
-                (if (= (obj/get node "nodeName") "#text")
+  (reduce-down (fn [res node]
+                 ; (js/console.log node) ;FIXME
+                 (if (= (obj/get node "nodeName") "SPAN")
+                  (let [name-id (.getAttribute node "name")]
+                    (.setAttribute node "name" id)
+                    (conj res name-id))
                   (do
-                    (highlight-node node 
-                                    (if (.isSameNode node start-node) start-offset 0) 
-                                    (if (.isSameNode node end-node) end-offset (obj/get node "length")) 
-                                    color
+                    (highlight-node node
+                                    (if (.isSameNode node start-node) start-offset 0)
+                                    (if (.isSameNode node end-node) end-offset (text-length node))
+                                    color 
                                     id)
-                    res)
-                    (if-let [nam (.getAttribute node "name")]
-                      (conj res (.getAttribute node "name"))
-                      res)))
-                #{}
-                start-node
-                end-node))
+                    res)))
+               #{}
+               start-node
+               end-node))
 
+(defn bounding-container
+  [row node]
+  (if (.isSameNode (obj/get node "parentNode") row)
+                               node
+                               (obj/get node "parentNode")))
 
+;FIXME something wrong with the indexing???
 (reg-event-fx
   :highlight
   (fn [{:keys [db]} [_ color]]
     (let [selection (.getSelection js/document)] 
       (when-not (obj/get selection "isCollapsed")
         (let [range-obj    (.getRangeAt selection 0)
-              start-node   (obj/getValueByKeys range-obj "startContainer")
-              end-node     (obj/getValueByKeys range-obj "endContainer")
-              start-row    (get-row start-node)
-              end-row      (get-row end-node)
+              start        (obj/get range-obj "startContainer")
+              end          (obj/get range-obj "endContainer")
+              start-row    (get-row start)
+              end-row      (get-row end)
+              start-node   (bounding-container start-row start)
+              end-node     (bounding-container end-row end)
               text-layer   (obj/get start-row "parentNode")
               children     (.from js/Array (obj/get text-layer "children"))
               page-id      (-> (obj/get text-layer "parentNode")
@@ -186,16 +214,20 @@
                             :start-idx    (.indexOf children start-row)
                             :end-idx      (.indexOf children end-row)
                             :start-offset (get-offset (obj/get range-obj "startOffset") start-row start-node)
-                            :end-offset   (get-offset (obj/get range-obj "endOffset") end-row end-node)}]
-
+                            :end-offset   (get-offset (obj/get range-obj "endOffset") end-row end-node)}
+              ]
           (js/console.log highlight)
-          (js/console.log (highlight-and-overlapping start-node 
-                                                     end-node 
-                                                     (obj/get range-obj "startOffset") 
-                                                     (obj/get range-obj "endOffset")
-                                                     color
-                                                     "testing"))
-          (.empty selection))))))
+          ; (js/console.log start-node end-node)
+          ; (walk start-node end-node)
+          (js/console.log (highlight-and-overlapping 
+                            start-node 
+                            end-node 
+                            (obj/get range-obj "startOffset")
+                            (obj/get range-obj "endOffset")
+                            color
+                            "testing"))
+          (.empty selection)
+          )))))
 
 (reg-event-fx
  :pdf/view
