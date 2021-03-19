@@ -99,15 +99,17 @@
 
 (defn next-node
   [node]
+  (js/console.log "A === " node) ;FIXME Wrong here?
   (if (some? (obj/get node "nextSibling"))
     (obj/get node "nextSibling")
-      (obj/getValueByKeys node "parentNode" "nextSibling" "firstChild")))
+    (do
+      (js/console.log (obj/getValueByKeys node "parentNode" "nextSibling" "childNodes"))
+      (obj/getValueByKeys node "parentNode" "nextSibling" "firstChild"))))
 
 (defn reduce-down
   [f aux start-node end-node]
   (loop [node start-node
          res aux]
-    (js/console.log node)
     ; (js/console.log 
     (if (.isSameNode node end-node)
       (f res node)
@@ -117,7 +119,7 @@
 (defn walk
   [start-node end-node]
   (loop [node start-node]
-    (js/console.log node)
+    ; (js/console.log "content = " (obj/get node "textContent"))
     (if (.isSameNode node end-node)
       (js/console.log "end")
       (recur (next-node node)))))
@@ -145,16 +147,17 @@
                    end-node)
       (- (text-length end-node))))
 
+(defn split-string
+
 (defn highlight-node
   [node start-offset end-offset color id]
-  ; (js/console.log "highlight ---> " node) ; FIXME
+  ; (js/console.log "highlight ---> " node) ; FIXME where a
   (let [highlight    (.createElement js/document "span")]
     (.setAttribute highlight "class" "highlight")
     (.setAttribute highlight "style" (str "border-radius: 0;
                                            cursor: pointer;
                                            background-color: " color ";"))
     (.setAttribute highlight "name" id)
-    (.appendChild (obj/get node "parentNode") highlight)
     (doto (js/Range.)
       (obj/get "commonAncestorContainer" node)
       (.setStart node start-offset)
@@ -175,13 +178,17 @@
                   (let [name-id (.getAttribute node "name")]
                     (.setAttribute node "name" id)
                     (conj res name-id))
+                  (if (not= (obj/get node "length") 0) ; FIXME THIS should not be needed. Where are the zero length text coming from? Off by one offset?
                   (do
+                    (js/console.log (text-length node))
                     (highlight-node node
                                     (if (.isSameNode node start-node) start-offset 0)
                                     (if (.isSameNode node end-node) end-offset (text-length node))
                                     color 
                                     id)
-                    res)))
+                    res)
+                  res
+                  )))
                #{}
                start-node
                end-node))
@@ -217,8 +224,9 @@
                             :end-offset   (get-offset (obj/get range-obj "endOffset") end-row end-node)}
               ]
           (js/console.log highlight)
-          ; (js/console.log start-node end-node)
-          ; (walk start-node end-node)
+          (js/console.log (.toString selection))
+          (js/console.log start-node end-node)
+          (walk start-node end-node)
           (js/console.log (highlight-and-overlapping 
                             start-node 
                             end-node 
