@@ -204,10 +204,6 @@
                             :start-offset (get-offset (obj/get range-obj "startOffset") start-row start-node)
                             :end-offset   (get-offset (obj/get range-obj "endOffset") end-row end-node)}
               ]
-          ; (js/console.log highlight)
-          (js/console.log (.toString selection))
-          (js/console.log start-node end-node)
-          ; (walk start-node end-node)
           (js/console.log (highlight-and-overlapping 
                             start-node 
                             end-node 
