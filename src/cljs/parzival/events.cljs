@@ -83,155 +83,6 @@
                     :on-success [:pdf/load-success]
                     :on-failure [:pdf/load-failure]}}))
 
-; (reg-event-fx
-;   :render/page
-;   (fn [{:keys [db]} [_ page-idx text-layer]]
-;     (run! #(render-highlight (second %) text-layer) 
-;           (get-in db [:pdf/highlights page-idx]))))
-
-
-; (defn next-node
-;   [node]
-;   (if (some? (obj/get node "nextSibling"))
-;     (obj/get node "nextSibling")
-;     (obj/getValueByKeys node "parentNode" "nextSibling" "firstChild")))
-
-; (defn reduce-down
-;   [f aux start-node end-node]
-;   (loop [node start-node
-;          res aux]
-;     (if (.isSameNode node end-node)
-;       (f res node)
-;       (recur (next-node node) 
-;              (f res node)))))
-
-; (defn apply-fn
-;   [f start-node end-node]
-;   (loop [node start-node]
-;     (if (.isSameNode node end-node)
-;       (f node)
-;       (do
-;         (f node)
-;         (recur (next-node node))))))
-
-;     ; (when (not (.isSameNode node end-node))
-;     ;   (recur (next-node node)))))
-
-; (defn text-length
-;   [node]
-;   (if (= (obj/get node "nodeName") "SPAN")
-;     (obj/getValueByKeys node "firstChild" "length")
-;     (obj/get node "length")))
-
-; (defn get-offset
-;   [aux row end-node]
-;   (reduce-down (fn [res node] 
-;                  (+ res (text-length node)))
-;                aux 
-;                (obj/get row "firstChild") 
-;                end-node))
-
-; (defn highlight-node
-;   [node color id]
-;   (let [highlight (.createElement js/document "span")]
-;     (.setAttribute highlight "class" "highlight")
-;     (.setAttribute highlight "name" id)
-;     ; (.setAttribute highlight "style" (str "border-radius: 0; ;FIXME: Custom style
-;     ;                              cursor: pointer;
-;     ;                              background-color: " color ";"))
-;     (.after node highlight)
-;     (.appendChild highlight node)))
-
-; (defn highlight-selection
-;   [start-node end-node color id]
-;   (apply-fn #(highlight-node % color id) start-node end-node))
-
-; (defn get-overlapping
-;   [start-node end-node]
-;   (reduce-down (fn [res node]
-;                  (if (= (obj/get node "nodeName") "SPAN")
-;                    (conj res (.getAttribute node "name"))
-;                    res))
-;                #{}
-;                start-node
-;                end-node))
-
-; (defn split-node
-;   [node start-offset end-offset]
-;   (if (= (obj/getValueByKeys node "parentNode""parentNode" "nodeName") "DIV") 
-;     (cond
-;       (and (some? start-offset) (== 0 start-offset)) node
-;       (some? start-offset) (.splitText node start-offset)
-;       (some? end-offset) (-> (.splitText node end-offset)
-;                              (obj/get "previousSibling")))
-;     (obj/get node "parentNode"))) ; Already wrapped so return surrounding node
-
-; (defn bounding-container
-;   [node start-offset end-offset]
-;   (cond
-;     (some? start-offset) (split-node node start-offset nil)
-;     (some? end-offset) (if (== end-offset 0)
-;                          (obj/getValueByKeys node "previousSibling" "lastChild") 
-;                          (split-node node nil end-offset))))
-
-; (defn get-node
-;   [row start-offset end-offset cmp-fn split?]
-;   (js/console.log start-offset)
-;   (loop [node (obj/get row "firstChild")
-;          offset (if (some? start-offset) start-offset end-offset)]
-;     (js/console.log node)
-;     (js/console.log offset)
-;     (if (cmp-fn 0 (- offset (text-length node)))
-;       (if split?
-;         (bounding-container node
-;                             (if (some? start-offset) offset nil)
-;                             (if (some? end-offset) offset nil))
-;         node)
-;       (recur (obj/get node "nextSibling") (- offset (text-length node))))))
-
-; (defn merge-highlight
-;   [[page {:keys [color a0 a1 b0 b1]} highlight] k]
-;     (let [{:keys [_ y0 y1 x0 x1]} (get page k)
-;           start (if (<= a0 y0) [a0 b0] [y0 x0])
-;           end   (if (<= a1 y1) [a1 b1] [y1 x1])]
-;       [(dissoc page k)
-;        {:start-id (first start)
-;         :end-id (first end)
-;         :start-offset (if (== a0 y0) (min b0 x0) (second start))
-;         :end-offset (if (== a1 y1) (min b1 x1) (second end))
-;         :color color}]))
-
-; (defn create-key
-;   [page-id highlight]
-;   (str "highlight-" page-id "-" 
-;        (:start-id highlight) "-"
-;        (:end-id highlight) "-"
-;        (:start-offset highlight) "-"
-;        (:end-offset highlight)))
-
-; (defn bound-container
-;   [node]
-;   (if (= (obj/get node "parentNode" "parentNode" "nodeName") "DIV")
-;     node
-;     (obj/get "parentNode")))
-
-
-
-(defn next-node
-  [node]
-  (if (some? (obj/get node "nextSibling"))
-    (obj/get node "nextSibling")
-    (obj/getValueByKeys node "parentNode" "nextSibling" "firstChild")))
-
-(defn reduce-down
-  [start-node end-node start-offset end-offset range-obj]
-  (.setStart range-obj start-node start-offset)
-  (loop [node (next-node start-node)]
-    (if (.isSameNode node end-node)
-      (.setEnd range-obj end-node end-offset)
-      (do
-        (.selectNodeContents range-obj (obj/get node "parentNode"))
-        (recur (next-node node))))))
 
 (defn text
   [node]
@@ -248,14 +99,21 @@
            ^js (.convertToPdfPoint viewport (- (obj/get rect "right") (obj/get page-rect "x"))
                                             (- (obj/get rect "bottom")  (obj/get page-rect "y")))))
 
+(defn get-end
+  [range-obj]
+  (let [end (obj/get range-obj "endContainer")]
+    (if (= (obj/get end "nodeName") "SPAN")
+      [(obj/get end "previousSibling") 
+       (obj/getValueByKeys end "previousSibling" "lastChild" "length")]
+      [(obj/get end "parentNode")
+       (obj/get range-obj "endOffset")])))
 
 (defn get-highlight
   [range-obj page-rect viewport color]
-  (let [start-row (obj/getValueByKeys range-obj "startContainer" "parentNode")
-        end-row   (obj/getValueByKeys range-obj "endContainer" "parentNode")
-        start-offset (obj/get range-obj "startOffset")
-        end-offset   (obj/get range-obj "endOffset")
-        r         (js/Range.)]
+  (let [start-row            (obj/getValueByKeys range-obj "startContainer" "parentNode")
+        start-offset         (obj/get range-obj "startOffset")
+        [end-row end-offset] (get-end range-obj)
+        r                    (js/Range.)]
     (loop [row start-row
            coords []]
       (if (or (nil? row) (.isSameNode row (obj/get end-row "nextSibling")))
@@ -270,8 +128,10 @@
 
 (defn render-highlight
   [{:keys [color coords]} viewport text-layer]
-  (let [parent (.createElement js/document "div")]
-    (.setAttribute parent "style" "cursor: pointer; position: absolute;")
+  (let [fragment (js/DocumentFragment.)
+        parent (.createElement js/document "div")]
+    (.setAttribute parent "style" "cursor: pointer; position: absolute; mix-blend-mode: multiply;")
+    (.append fragment parent)
     (doseq [rect coords]
       (let [[b0 b1 b2 b3] ^js (.convertToViewportRectangle viewport rect)
             child (.createElement js/document "div")]
@@ -280,13 +140,16 @@
                                           "px; width: " (Math/abs (- b0 b2)) 
                                           "px; height: " (Math/abs (- b1 b3)) "px;"))
         (.append parent child)))
-    (.append text-layer parent)))
+    (.append text-layer fragment)))
 
+(reg-event-fx
+  :render/page
+  (fn [{:keys [db]} [_ page-id text-layer]]
+    (let [viewport (-> (get db :pdf/viewer)
+                       (.getPageView page-id)
+                       (obj/get "viewport"))]
+      (run! #(render-highlight (second %) viewport text-layer) (get-in db [:pdf/highlights page-id])))))
 
-
-
-;TODO: {:color :coords {:x :y :w :h}}
-;TODO: zero end-offset bug
 (reg-event-fx
   :highlight
   (fn [{:keys [db]} [_ color _ id]]
@@ -302,28 +165,10 @@
               highlight (get-highlight range-obj page-rect viewport color)]
           (render-highlight highlight viewport text-layer)
           (.collapse range-obj)
-          ; (loop [node start]
-          ;   (js/console.log node)
-          ;   (.setStart r node (if (.isSameNode node start) (obj/get range-obj "startOffset") 0))
-          ;   (.setEnd r node (if (.isSameNode node end) (obj/get range-obj "endOffset") (obj/get node "length")))
-          ;   (js/console.log (.getBoundingClientRect r))
-          ;   (if (not (.isSameNode node end))
-          ;     (recur (next-node node))))
-
-          ; (js/console.log (loop [node start]
-          ;   (js/console.log node)
-          ;   (if (.isSameNode node end)
-          ;     node
-          ;     (obj/get node "nextSibling"))))
-
-          ; (js/console.log (reduce-down (obj/get range-obj "startContainer")
-          ;                              (obj/get range-obj "endContainer")
-          ;                              (obj/get range-obj "startOffset")
-          ;                              (obj/get range-obj "endOffset")
-          ;                              new-range))
-          ; (js/console.log (.getClientRects new-range))
-          
-          )))))
+          {:db (if-let [page-highlights (get-in db [:pdf/highlights page-id])]
+                 (update-in db [:pdf/highlights page-id] assoc (count page-highlights) highlight)
+                 (assoc-in db [:pdf/highlights page-id 0] highlight))
+           :fx [(render-highlight highlight viewport text-layer)]})))))
 
 (reg-event-fx
  :pdf/view
@@ -341,7 +186,7 @@
   (.setViewer link-service pdf-viewer)
   (.setDocument pdf-viewer pdf)
   (.setDocument link-service pdf nil)
-  ; (.on event-bus "textlayerrendered" 
-  ;                #(dispatch [:render/page (dec (obj/get % "pageNumber"))
-  ;                                         (obj/getValueByKeys % "source" "textDivs")]))
+  (.on event-bus "textlayerrendered" 
+                 #(dispatch [:render/page (dec (obj/get % "pageNumber"))
+                                          (obj/getValueByKeys % "source" "textLayerDiv")]))
   {:db (assoc db :pdf/viewer pdf-viewer)})))
