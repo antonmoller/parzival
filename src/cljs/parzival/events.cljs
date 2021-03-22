@@ -90,6 +90,133 @@
 ;           (get-in db [:pdf/highlights page-idx]))))
 
 
+; (defn next-node
+;   [node]
+;   (if (some? (obj/get node "nextSibling"))
+;     (obj/get node "nextSibling")
+;     (obj/getValueByKeys node "parentNode" "nextSibling" "firstChild")))
+
+; (defn reduce-down
+;   [f aux start-node end-node]
+;   (loop [node start-node
+;          res aux]
+;     (if (.isSameNode node end-node)
+;       (f res node)
+;       (recur (next-node node) 
+;              (f res node)))))
+
+; (defn apply-fn
+;   [f start-node end-node]
+;   (loop [node start-node]
+;     (if (.isSameNode node end-node)
+;       (f node)
+;       (do
+;         (f node)
+;         (recur (next-node node))))))
+
+;     ; (when (not (.isSameNode node end-node))
+;     ;   (recur (next-node node)))))
+
+; (defn text-length
+;   [node]
+;   (if (= (obj/get node "nodeName") "SPAN")
+;     (obj/getValueByKeys node "firstChild" "length")
+;     (obj/get node "length")))
+
+; (defn get-offset
+;   [aux row end-node]
+;   (reduce-down (fn [res node] 
+;                  (+ res (text-length node)))
+;                aux 
+;                (obj/get row "firstChild") 
+;                end-node))
+
+; (defn highlight-node
+;   [node color id]
+;   (let [highlight (.createElement js/document "span")]
+;     (.setAttribute highlight "class" "highlight")
+;     (.setAttribute highlight "name" id)
+;     ; (.setAttribute highlight "style" (str "border-radius: 0; ;FIXME: Custom style
+;     ;                              cursor: pointer;
+;     ;                              background-color: " color ";"))
+;     (.after node highlight)
+;     (.appendChild highlight node)))
+
+; (defn highlight-selection
+;   [start-node end-node color id]
+;   (apply-fn #(highlight-node % color id) start-node end-node))
+
+; (defn get-overlapping
+;   [start-node end-node]
+;   (reduce-down (fn [res node]
+;                  (if (= (obj/get node "nodeName") "SPAN")
+;                    (conj res (.getAttribute node "name"))
+;                    res))
+;                #{}
+;                start-node
+;                end-node))
+
+; (defn split-node
+;   [node start-offset end-offset]
+;   (if (= (obj/getValueByKeys node "parentNode""parentNode" "nodeName") "DIV") 
+;     (cond
+;       (and (some? start-offset) (== 0 start-offset)) node
+;       (some? start-offset) (.splitText node start-offset)
+;       (some? end-offset) (-> (.splitText node end-offset)
+;                              (obj/get "previousSibling")))
+;     (obj/get node "parentNode"))) ; Already wrapped so return surrounding node
+
+; (defn bounding-container
+;   [node start-offset end-offset]
+;   (cond
+;     (some? start-offset) (split-node node start-offset nil)
+;     (some? end-offset) (if (== end-offset 0)
+;                          (obj/getValueByKeys node "previousSibling" "lastChild") 
+;                          (split-node node nil end-offset))))
+
+; (defn get-node
+;   [row start-offset end-offset cmp-fn split?]
+;   (js/console.log start-offset)
+;   (loop [node (obj/get row "firstChild")
+;          offset (if (some? start-offset) start-offset end-offset)]
+;     (js/console.log node)
+;     (js/console.log offset)
+;     (if (cmp-fn 0 (- offset (text-length node)))
+;       (if split?
+;         (bounding-container node
+;                             (if (some? start-offset) offset nil)
+;                             (if (some? end-offset) offset nil))
+;         node)
+;       (recur (obj/get node "nextSibling") (- offset (text-length node))))))
+
+; (defn merge-highlight
+;   [[page {:keys [color a0 a1 b0 b1]} highlight] k]
+;     (let [{:keys [_ y0 y1 x0 x1]} (get page k)
+;           start (if (<= a0 y0) [a0 b0] [y0 x0])
+;           end   (if (<= a1 y1) [a1 b1] [y1 x1])]
+;       [(dissoc page k)
+;        {:start-id (first start)
+;         :end-id (first end)
+;         :start-offset (if (== a0 y0) (min b0 x0) (second start))
+;         :end-offset (if (== a1 y1) (min b1 x1) (second end))
+;         :color color}]))
+
+; (defn create-key
+;   [page-id highlight]
+;   (str "highlight-" page-id "-" 
+;        (:start-id highlight) "-"
+;        (:end-id highlight) "-"
+;        (:start-offset highlight) "-"
+;        (:end-offset highlight)))
+
+; (defn bound-container
+;   [node]
+;   (if (= (obj/get node "parentNode" "parentNode" "nodeName") "DIV")
+;     node
+;     (obj/get "parentNode")))
+
+
+
 (defn next-node
   [node]
   (if (some? (obj/get node "nextSibling"))
@@ -97,172 +224,105 @@
     (obj/getValueByKeys node "parentNode" "nextSibling" "firstChild")))
 
 (defn reduce-down
-  [f aux start-node end-node]
-  (loop [node start-node
-         res aux]
+  [start-node end-node start-offset end-offset range-obj]
+  (.setStart range-obj start-node start-offset)
+  (loop [node (next-node start-node)]
     (if (.isSameNode node end-node)
-      (f res node)
-      (recur (next-node node) 
-             (f res node)))))
-
-(defn apply-fn
-  [f start-node end-node]
-  (loop [node start-node]
-    (if (.isSameNode node end-node)
-      (f node)
+      (.setEnd range-obj end-node end-offset)
       (do
-        (f node)
+        (.selectNodeContents range-obj (obj/get node "parentNode"))
         (recur (next-node node))))))
 
-    ; (when (not (.isSameNode node end-node))
-    ;   (recur (next-node node)))))
-
-(defn text-length
+(defn text
   [node]
-  (if (= (obj/get node "nodeName") "SPAN")
-    (obj/getValueByKeys node "firstChild" "length")
-    (obj/get node "length")))
+  (obj/get node "firstChild"))
 
-(defn get-offset
-  [aux row end-node]
-  (reduce-down (fn [res node] 
-                 (+ res (text-length node)))
-               aux 
-               (obj/get row "firstChild") 
-               end-node))
-
-(defn highlight-node
-  [node color id]
-  (let [highlight (.createElement js/document "span")]
-    (.setAttribute highlight "class" "highlight")
-    (.setAttribute highlight "name" id)
-    ; (.setAttribute highlight "style" (str "border-radius: 0; ;FIXME: Custom style
-    ;                              cursor: pointer;
-    ;                              background-color: " color ";"))
-    (.after node highlight)
-    (.appendChild highlight node)))
-
-(defn highlight-selection
-  [start-node end-node color id]
-  (apply-fn #(highlight-node % color id) start-node end-node))
-
-(defn get-overlapping
-  [start-node end-node]
-  (reduce-down (fn [res node]
-                 (if (= (obj/get node "nodeName") "SPAN")
-                   (conj res (.getAttribute node "name"))
-                   res))
-               #{}
-               start-node
-               end-node))
-
-(defn split-node
-  [node start-offset end-offset]
-  (if (= (obj/getValueByKeys node "parentNode""parentNode" "nodeName") "DIV") 
-    (cond
-      (and (some? start-offset) (== 0 start-offset)) node
-      (some? start-offset) (.splitText node start-offset)
-      (some? end-offset) (-> (.splitText node end-offset)
-                             (obj/get "previousSibling")))
-    (obj/get node "parentNode"))) ; Already wrapped so return surrounding node
-
-(defn bounding-container
-  [node start-offset end-offset]
-  (cond
-    (some? start-offset) (split-node node start-offset nil)
-    (some? end-offset) (if (== end-offset 0)
-                         (obj/getValueByKeys node "previousSibling" "lastChild") 
-                         (split-node node nil end-offset))))
-
-(defn get-node
-  [row start-offset end-offset cmp-fn split?]
-  (js/console.log start-offset)
-  (loop [node (obj/get row "firstChild")
-         offset (if (some? start-offset) start-offset end-offset)]
-    (js/console.log node)
-    (js/console.log offset)
-    (if (cmp-fn 0 (- offset (text-length node)))
-      (if split?
-        (bounding-container node
-                            (if (some? start-offset) offset nil)
-                            (if (some? end-offset) offset nil))
-        node)
-      (recur (obj/get node "nextSibling") (- offset (text-length node))))))
-
-(defn merge-highlight
-  [[page {:keys [color a0 a1 b0 b1]} highlight] k]
-    (let [{:keys [_ y0 y1 x0 x1]} (get page k)
-          start (if (<= a0 y0) [a0 b0] [y0 x0])
-          end   (if (<= a1 y1) [a1 b1] [y1 x1])]
-      [(dissoc page k)
-       {:start-id (first start)
-        :end-id (first end)
-        :start-offset (if (== a0 y0) (min b0 x0) (second start))
-        :end-offset (if (== a1 y1) (min b1 x1) (second end))
-        :color color}]))
-
-(defn create-key
-  [page-id highlight]
-  (str "highlight-" page-id "-" 
-       (:start-id highlight) "-"
-       (:end-id highlight) "-"
-       (:start-offset highlight) "-"
-       (:end-offset highlight)))
-
-(defn bound-container
+(defn length
   [node]
-  (if (= (obj/get node "parentNode" "parentNode" "nodeName") "DIV")
-    node
-    (obj/get "parentNode")))
+  (obj/getValueByKeys node "firstChild" "length"))
+
+(defn calc-coord
+  [rect page-rect viewport]
+  (.concat ^js (.convertToPdfPoint viewport (- (obj/get rect "left") (obj/get page-rect "x"))
+                                            (- (obj/get rect "top")  (obj/get page-rect "y")))
+           ^js (.convertToPdfPoint viewport (- (obj/get rect "right") (obj/get page-rect "x"))
+                                            (- (obj/get rect "bottom")  (obj/get page-rect "y")))))
 
 
+(defn get-highlight
+  [range-obj page-rect viewport color]
+  (let [start-row (obj/getValueByKeys range-obj "startContainer" "parentNode")
+        end-row   (obj/getValueByKeys range-obj "endContainer" "parentNode")
+        start-offset (obj/get range-obj "startOffset")
+        end-offset   (obj/get range-obj "endOffset")
+        r         (js/Range.)]
+    (loop [row start-row
+           coords []]
+      (if (or (nil? row) (.isSameNode row (obj/get end-row "nextSibling")))
+        {:color color :coords coords}
+        (do 
+          (.setStart r (text row) (if (.isSameNode row start-row) start-offset 0))
+          (.setEnd r (text row) (if (.isSameNode row end-row) end-offset (length row)))
+          (recur (obj/get row "nextSibling")
+                 (conj coords
+                       (-> (.getBoundingClientRect r)
+                           (calc-coord page-rect viewport)))))))))
+
+(defn render-highlight
+  [{:keys [color coords]} viewport text-layer]
+  (let [parent (.createElement js/document "div")]
+    (.setAttribute parent "style" "cursor: pointer; position: absolute;")
+    (doseq [rect coords]
+      (let [[b0 b1 b2 b3] ^js (.convertToViewportRectangle viewport rect)
+            child (.createElement js/document "div")]
+        (.setAttribute child "style" (str "position: absolute; background-color: " color
+                                          "; left: " (min b0 b2) "px; top: " (min b1 b3) 
+                                          "px; width: " (Math/abs (- b0 b2)) 
+                                          "px; height: " (Math/abs (- b1 b3)) "px;"))
+        (.append parent child)))
+    (.append text-layer parent)))
+
+
+
+
+;TODO: {:color :coords {:x :y :w :h}}
+;TODO: zero end-offset bug
 (reg-event-fx
   :highlight
   (fn [{:keys [db]} [_ color _ id]]
-    (let [selection (.getSelection js/document)] 
-      (when-not (obj/get selection "isCollapsed")
-        (let [range-obj    (.getRangeAt selection 0)
-              start-node   (bounding-container (obj/get range-obj "startContainer") 
-                                               (obj/get range-obj "startOffset") 
-                                               nil)
-              end-node     (bounding-container (obj/get range-obj "endContainer") 
-                                               nil 
-                                               (obj/get range-obj "endOffset"))
-              start-row   (obj/get start-node "parentNode")
-              end-row   (obj/get end-node "parentNode")
-              text-layer  (obj/getValueByKeys start-node "parentNode" "parentNode")
-              rows    (.from js/Array (obj/get text-layer "children"))
-              page-id   (-> (obj/get text-layer "parentNode")
-                            (.getAttribute "data-page-number")
-                            (dec))
-              highlight {:color color
-                         :start-id (.indexOf rows start-row)
-                         :end-id (.indexOf rows end-row)
-                         :start-offset (get-offset (- (text-length start-node)) start-row start-node)
-                         :end-offset (get-offset 0 end-row end-node)}
-              [new-page new-highlight] (->> (get-overlapping start-node end-node)
-                                            (reduce merge-highlight [(get-in db [:pdf/highlights page-id]) highlight]))]
-          (.empty selection)
-          ; (js/console.log
-          ;   (if (and (== (:start-id highlight) (:start-id new-highlight)) (== (:start-offset highlight) (:start-offset new-highlight)))
-          ;     start-node
-          ;     (get-node (aget rows (:start-id new-highlight)) (:start-offset new-highlight) nil)))
-          ; (js/console.log
-          ;   (if (and (== (:end-id highlight) (:end-id new-highlight)) (== (:end-offset highlight) (:end-offset new-highlight)))
-          ;     end-node 
-          ;     (get-node (aget rows (:end-id new-highlight)) nil (:end-offset new-highlight))))
-          ; (js/console.log start-node)
-          ; (js/console.log end-node)
-          ; (js/console.log (get-node (aget rows (:start-id new-highlight)) (:start-offset new-highlight) nil > false))
-          ; (js/console.log (get-node (aget rows (:end-id new-highlight)) nil (:end-offset new-highlight) >= false))
+    (let [range-obj (.getRangeAt (.getSelection js/document) 0)] 
+      (when-not (obj/get range-obj "collapsed")
+        (let [text-layer (obj/getValueByKeys range-obj "startContainer" "parentNode" "parentNode")
+              page-id (-> (obj/get text-layer "parentNode")
+                          (.getAttribute "data-page-number")
+                          (dec))
+              page    (.getPageView (get db :pdf/viewer) page-id)
+              viewport (obj/get page "viewport")
+              page-rect (aget (.getClientRects (obj/get page "canvas")) 0)
+              highlight (get-highlight range-obj page-rect viewport color)]
+          (render-highlight highlight viewport text-layer)
+          (.collapse range-obj)
+          ; (loop [node start]
+          ;   (js/console.log node)
+          ;   (.setStart r node (if (.isSameNode node start) (obj/get range-obj "startOffset") 0))
+          ;   (.setEnd r node (if (.isSameNode node end) (obj/get range-obj "endOffset") (obj/get node "length")))
+          ;   (js/console.log (.getBoundingClientRect r))
+          ;   (if (not (.isSameNode node end))
+          ;     (recur (next-node node))))
 
-          {:db (->> (assoc new-page (create-key page-id new-highlight) new-highlight)
-                    (assoc-in db [:pdf/highlights page-id]))
-           :fx [(highlight-selection (get-node (aget rows (:start-id new-highlight)) (:start-offset new-highlight) nil > false)
-                                     (get-node (aget rows (:end-id new-highlight)) nil (:end-offset new-highlight)  >= false)
-                           color 
-                           id)]}
-          ; (js/console.log (reduce merge-highlight highlight to-merge))
+          ; (js/console.log (loop [node start]
+          ;   (js/console.log node)
+          ;   (if (.isSameNode node end)
+          ;     node
+          ;     (obj/get node "nextSibling"))))
+
+          ; (js/console.log (reduce-down (obj/get range-obj "startContainer")
+          ;                              (obj/get range-obj "endContainer")
+          ;                              (obj/get range-obj "startOffset")
+          ;                              (obj/get range-obj "endOffset")
+          ;                              new-range))
+          ; (js/console.log (.getClientRects new-range))
+          
           )))))
 
 (reg-event-fx
