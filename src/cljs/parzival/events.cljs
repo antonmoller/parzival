@@ -144,7 +144,6 @@
 
 (defn highlight-selection
   [start-node end-node color id]
-  (js/console.log start-node end-node color id)
   (apply-fn #(highlight-node % color id) start-node end-node))
 
 (defn get-overlapping
@@ -176,13 +175,18 @@
                          (split-node node nil end-offset))))
 
 (defn get-node
-  [row start-offset end-offset]
+  [row start-offset end-offset cmp-fn split?]
+  (js/console.log start-offset)
   (loop [node (obj/get row "firstChild")
          offset (if (some? start-offset) start-offset end-offset)]
-    (if (>= 0 (- offset (text-length node)))
-      (bounding-container node
-                          (if (some? start-offset) offset nil)
-                          (if (some? end-offset) offset nil))
+    (js/console.log node)
+    (js/console.log offset)
+    (if (cmp-fn 0 (- offset (text-length node)))
+      (if split?
+        (bounding-container node
+                            (if (some? start-offset) offset nil)
+                            (if (some? end-offset) offset nil))
+        node)
       (recur (obj/get node "nextSibling") (- offset (text-length node))))))
 
 (defn merge-highlight
@@ -204,6 +208,13 @@
        (:end-id highlight) "-"
        (:start-offset highlight) "-"
        (:end-offset highlight)))
+
+(defn bound-container
+  [node]
+  (if (= (obj/get node "parentNode" "parentNode" "nodeName") "DIV")
+    node
+    (obj/get "parentNode")))
+
 
 (reg-event-fx
   :highlight
@@ -232,16 +243,25 @@
               [new-page new-highlight] (->> (get-overlapping start-node end-node)
                                             (reduce merge-highlight [(get-in db [:pdf/highlights page-id]) highlight]))]
           (.empty selection)
-          (js/console.log
-            (get-node (aget rows (:start-id new-highlight)) (:start-offset new-highlight) nil))
-          (js/console.log
-            (get-node (aget rows (:end-id new-highlight)) nil (:end-offset new-highlight)))
-          ; {:db (->> (assoc new-page (create-key page-id new-highlight) new-highlight)
-          ;           (assoc-in db [:pdf/highlights page-id]))
-          ;  :fx [(highlight-selection (get-node (aget rows (:start-id new-highlight)) (:start-offset new-highlight) nil)
-          ;                            (get-node (aget rows (:end-id new-highlight)) nil (:end-offset new-highlight))
-          ;                  color 
-          ;                  id)]}
+          ; (js/console.log
+          ;   (if (and (== (:start-id highlight) (:start-id new-highlight)) (== (:start-offset highlight) (:start-offset new-highlight)))
+          ;     start-node
+          ;     (get-node (aget rows (:start-id new-highlight)) (:start-offset new-highlight) nil)))
+          ; (js/console.log
+          ;   (if (and (== (:end-id highlight) (:end-id new-highlight)) (== (:end-offset highlight) (:end-offset new-highlight)))
+          ;     end-node 
+          ;     (get-node (aget rows (:end-id new-highlight)) nil (:end-offset new-highlight))))
+          ; (js/console.log start-node)
+          ; (js/console.log end-node)
+          ; (js/console.log (get-node (aget rows (:start-id new-highlight)) (:start-offset new-highlight) nil > false))
+          ; (js/console.log (get-node (aget rows (:end-id new-highlight)) nil (:end-offset new-highlight) >= false))
+
+          {:db (->> (assoc new-page (create-key page-id new-highlight) new-highlight)
+                    (assoc-in db [:pdf/highlights page-id]))
+           :fx [(highlight-selection (get-node (aget rows (:start-id new-highlight)) (:start-offset new-highlight) nil > false)
+                                     (get-node (aget rows (:end-id new-highlight)) nil (:end-offset new-highlight)  >= false)
+                           color 
+                           id)]}
           ; (js/console.log (reduce merge-highlight highlight to-merge))
           )))))
 
