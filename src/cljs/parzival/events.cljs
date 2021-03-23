@@ -130,8 +130,8 @@
   [{:keys [color coords]} viewport text-layer]
   (let [fragment (js/DocumentFragment.)
         parent (.createElement js/document "div")]
-    (.setAttribute parent "style" "cursor: pointer; position: absolute; mix-blend-mode: multiply;")
-    (.append fragment parent)
+    (.setAttribute parent "style" "cursor: pointer; position: absolute;")
+    (.append text-layer parent)
     (doseq [rect coords]
       (let [[b0 b1 b2 b3] ^js (.convertToViewportRectangle viewport rect)
             child (.createElement js/document "div")]
@@ -139,8 +139,8 @@
                                           "; left: " (min b0 b2) "px; top: " (min b1 b3) 
                                           "px; width: " (Math/abs (- b0 b2)) 
                                           "px; height: " (Math/abs (- b1 b3)) "px;"))
-        (.append parent child)))
-    (.append text-layer fragment)))
+        (.append fragment child)))
+    (.append parent fragment)))
 
 (reg-event-fx
   :render/page
@@ -163,7 +163,6 @@
               viewport (obj/get page "viewport")
               page-rect (aget (.getClientRects (obj/get page "canvas")) 0)
               highlight (get-highlight range-obj page-rect viewport color)]
-          (render-highlight highlight viewport text-layer)
           (.collapse range-obj)
           {:db (if-let [page-highlights (get-in db [:pdf/highlights page-id])]
                  (update-in db [:pdf/highlights page-id] assoc (count page-highlights) highlight)
@@ -190,3 +189,69 @@
                  #(dispatch [:render/page (dec (obj/get % "pageNumber"))
                                           (obj/getValueByKeys % "source" "textLayerDiv")]))
   {:db (assoc db :pdf/viewer pdf-viewer)})))
+
+
+; (reg-event-fx
+;   :resize
+;   (let [handle-mousemove (fn [e])
+;         handle-mouseup   (fn [])]
+;     (.addEventListener js/document "mousemove" handle-mousemove)
+;     (.addEventListener js/document "mouseup" handle-mouseup)
+
+        
+
+; ;; Pagemarks
+(reg-event-fx 
+  :pagemark
+  (fn [{:keys [db]} _] 
+    (let [text-layer (-> (get db :pdf/viewer)
+                         (.getPageView 0)
+                         (obj/getValueByKeys "textLayer" "textLayerDiv"))
+          fragment (js/DocumentFragment.)
+          outer (.createElement js/document "div")
+          inner (.createElement js/document "div")
+
+          ; parent (.createElement js/document "div")
+          ; left   (.createElement js/document "div")
+          ; right  (.createElement js/document "div")
+          ; top    (.createElement js/document "div")
+          ; bottom (.createElement js/document "div")
+          ]
+      (js/console.log text-layer)
+      (.setAttribute outer "style" "position: absolute; left 0; top: 0;")
+       (.setAttribute inner "style" "cursor: ew-resize; border: 4px solid blue;
+                                     width: 4px; height: 600px; width: 500px;")
+      (.append fragment outer)
+      (.append outer inner)
+      (.append text-layer fragment)
+      ; (.append fragment parent)
+       ; (.setAttribute left "style" "cursor: ew-resize; position: absolute;
+       ;                             left: 0; top: 0; width: 4px; height: 600px;
+       ;                             background-color: rgba(0,0,255,1);")
+       ; (.setAttribute right "style" "cursor: ew-resize; position: absolute;
+       ;                             left: 600px; top: 0; width: 4px; height: 600px;
+       ;                             background-color: rgba(0,0,255,1);")
+       ; (.setAttribute top "style" "cursor: ns-resize; position: absolute;
+       ;                             left: 4px; top: 0; width: 596px; height: 4px;
+       ;                             background-color: rgba(0,0,255,1);")
+       ; (.setAttribute bottom "style" "cursor: ns-resize; position: absolute;
+       ;                             left: 4px; top: 596px; width: 596px; height: 4px;
+       ;                             background-color: rgba(0,0,255,1);")
+       ; (.append parent left)
+       ; (.append parent right)
+       ; (.append parent top)
+       ; (.append parent bottom)
+       ; (.append text-layer fragment)
+
+
+
+
+
+      )))
+
+
+
+
+
+
+

@@ -20,7 +20,8 @@
   right: 0;
   bottom: 0;
   overflow: hidden;
-  opacity: 0.2;
+  /* opacity: 0.2; FIXME */
+  /* opacity: 1; */
   line-height: 1;
 }
 
@@ -54,13 +55,16 @@
 .textLayer .highlight.selected {
   background-color: rgba(0, 100, 0, 1);
 }
-
+/* FIXME */
 .textLayer ::-moz-selection {
-  background: rgba(0, 0, 255, 1);
+  /* background: rgba(0, 0, 255, 1); */
+  background: rgba(0, 0, 255, 0.2);
 }
 
+/* FIXME */
 .textLayer ::selection {
-  background: rgba(0, 0, 255, 1);
+  /* background: rgba(0, 0, 255, 1); */
+  background: rgba(0, 0, 255, 0.2);
 }
 
 .textLayer .endOfContent {
