@@ -83,7 +83,6 @@
                     :on-success [:pdf/load-success]
                     :on-failure [:pdf/load-failure]}}))
 
-
 (defn text
   [node]
   (obj/get node "firstChild"))
@@ -93,7 +92,7 @@
   (obj/getValueByKeys node "firstChild" "length"))
 
 (defn calc-coord
-  [rect page-rect viewport]
+  [viewport page-rect rect]
   (.concat ^js (.convertToPdfPoint viewport (- (obj/get rect "left") (obj/get page-rect "x"))
                                             (- (obj/get rect "top")  (obj/get page-rect "y")))
            ^js (.convertToPdfPoint viewport (- (obj/get rect "right") (obj/get page-rect "x"))
@@ -108,32 +107,23 @@
       [(obj/get end "parentNode")
        (obj/get range-obj "endOffset")])))
 
-(defn get-highlight
-  [range-obj page-rect viewport color]
-  (let [start-row            (obj/getValueByKeys range-obj "startContainer" "parentNode")
-        start-offset         (obj/get range-obj "startOffset")
-        [end-row end-offset] (get-end range-obj)
-        r                    (js/Range.)]
-    (loop [row start-row
-           coords []]
-      (if (or (nil? row) (.isSameNode row (obj/get end-row "nextSibling")))
-        {:color color :coords coords}
-        (do 
-          (.setStart r (text row) (if (.isSameNode row start-row) start-offset 0))
-          (.setEnd r (text row) (if (.isSameNode row end-row) end-offset (length row)))
-          (recur (obj/get row "nextSibling")
-                 (conj coords
-                       (-> (.getBoundingClientRect r)
-                           (calc-coord page-rect viewport)))))))))
-
 (defn render-highlight
-  [{:keys [color coords]} viewport text-layer]
-  (let [fragment (js/DocumentFragment.)
-        parent (.createElement js/document "div")]
+  [{:keys [color start-id end-id start-offset end-offset]} page]
+  (let [text-layer (obj/getValueByKeys page "textLayer" "textLayerDiv")
+        rows (obj/get text-layer "children")
+        fragment (js/DocumentFragment.)
+        parent (.createElement js/document "div")
+        viewport (obj/get page "viewport")
+        page-rect (aget (.getClientRects (obj/get page "canvas")) 0)
+        r (js/Range.)]
     (.setAttribute parent "style" "cursor: pointer; position: absolute;")
     (.append text-layer parent)
-    (doseq [rect coords]
-      (let [[b0 b1 b2 b3] ^js (.convertToViewportRectangle viewport rect)
+    (doseq [i (range start-id (inc end-id))]
+      (.setStart r (text (.item rows i)) (if (== i start-id) start-offset 0))
+      (.setEnd r (text (.item rows i)) (if (== i end-id) end-offset (length (.item rows i))))
+      (let [ [b0 b1 b2 b3] (->> (.getBoundingClientRect r)
+                                (calc-coord viewport page-rect)
+                                ^js (.convertToViewportRectangle viewport))
             child (.createElement js/document "div")]
         (.setAttribute child "style" (str "position: absolute; background-color: " color
                                           "; left: " (min b0 b2) "px; top: " (min b1 b3) 
@@ -144,11 +134,9 @@
 
 (reg-event-fx
   :render/page
-  (fn [{:keys [db]} [_ page-id text-layer]]
-    (let [viewport (-> (get db :pdf/viewer)
-                       (.getPageView page-id)
-                       (obj/get "viewport"))]
-      (run! #(render-highlight (second %) viewport text-layer) (get-in db [:pdf/highlights page-id])))))
+  (fn [{:keys [db]} [_ page-id]]
+    (let [page (.getPageView (get db :pdf/viewer) page-id)]
+      (run! #(render-highlight (second %) page) (get-in db [:pdf/highlights page-id])))))
 
 (reg-event-fx
   :highlight
@@ -160,14 +148,18 @@
                           (.getAttribute "data-page-number")
                           (dec))
               page    (.getPageView (get db :pdf/viewer) page-id)
-              viewport (obj/get page "viewport")
-              page-rect (aget (.getClientRects (obj/get page "canvas")) 0)
-              highlight (get-highlight range-obj page-rect viewport color)]
+              text-rows (.from js/Array (obj/get text-layer "children"))
+              [end end-offset] (get-end range-obj)
+              highlight {:color color
+                         :start-id (.indexOf text-rows (obj/getValueByKeys range-obj "startContainer" "parentNode"))
+                         :end-id (.indexOf text-rows end)
+                         :start-offset (obj/get range-obj "startOffset")
+                         :end-offset end-offset}]
           (.collapse range-obj)
           {:db (if-let [page-highlights (get-in db [:pdf/highlights page-id])]
                  (update-in db [:pdf/highlights page-id] assoc (count page-highlights) highlight)
                  (assoc-in db [:pdf/highlights page-id 0] highlight))
-           :fx [(render-highlight highlight viewport text-layer)]})))))
+           :fx [(render-highlight highlight page)]})))))
 
 (reg-event-fx
  :pdf/view
@@ -186,8 +178,7 @@
   (.setDocument pdf-viewer pdf)
   (.setDocument link-service pdf nil)
   (.on event-bus "textlayerrendered" 
-                 #(dispatch [:render/page (dec (obj/get % "pageNumber"))
-                                          (obj/getValueByKeys % "source" "textLayerDiv")]))
+                 #(dispatch [:render/page (dec (obj/get % "pageNumber"))]))
   {:db (assoc db :pdf/viewer pdf-viewer)})))
 
 
