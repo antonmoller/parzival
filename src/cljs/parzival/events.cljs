@@ -117,7 +117,7 @@
         page-rect (aget (.getClientRects (obj/get page "canvas")) 0)
         r (js/Range.)]
     (.setAttribute parent "style" "cursor: pointer; position: absolute;")
-    (.append text-layer parent)
+    (.append fragment parent)
     (doseq [i (range start-id (inc end-id))]
       (.setStart r (text (.item rows i)) (if (== i start-id) start-offset 0))
       (.setEnd r (text (.item rows i)) (if (== i end-id) end-offset (length (.item rows i))))
@@ -129,8 +129,8 @@
                                           "; left: " (min b0 b2) "px; top: " (min b1 b3) 
                                           "px; width: " (Math/abs (- b0 b2)) 
                                           "px; height: " (Math/abs (- b1 b3)) "px;"))
-        (.append fragment child)))
-    (.append parent fragment)))
+        (.append parent child)))
+    (.append text-layer fragment)))
 
 (reg-event-fx
   :render/page
