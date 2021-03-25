@@ -190,49 +190,91 @@
 ;     (.addEventListener js/document "mouseup" handle-mouseup)
 
         
+(defn pagemark-vertical-resize
+  [])
+
+; (defn pagemark-horizontal-resize
+;   []
+;   (let [handle-mousemove (fn [e]
+;                            (.. e preventDefault)
+;                            (let [x (.-clientX e)
+;                                  inner-w js/window.innerWidth
+;                                  new-width (-> (- inner-w x)
+;                                                (/ inner-w)
+;                                                (* 100))]
+;                              (.setAttribute
+;   (.addEventListener "mousemove" handle-mousemove)
+;   (.addEventListener "mouseup" handle-mouseup)
+
+  ;;FIXME: In handle-mouseup
+  ;(.removeEventListener "mousemove" handle-mousemove)p
+  ;(.removeEventListener "mouseup" handle-mouseup)
+  ;)
+
+(defn horizontal-resize
+  [element event]
+  (let [style (obj/get element "style")
+        handle-mousemove (fn [e]
+                           (.. e preventDefault)
+                           (let [x (- (.-clientX e) 374)]
+                             (obj/set style "width" (str x "px"))))
+        handle-mouseup (fn [e] 
+                         (.removeEventListener js/document "mousemove" handle-mousemove))]
+    (.addEventListener js/document "mousemove" handle-mousemove)
+    (.addEventListener js/document "mouseup" handle-mouseup (js-obj "once" true))
+    (js/console.log element)
+    (js/console.log event)))
+
 
 ; ;; Pagemarks
+; FIXME: Element should not be selectable
 (reg-event-fx 
   :pagemark
   (fn [{:keys [db]} _] 
-    (let [text-layer (-> (get db :pdf/viewer)
-                         (.getPageView 0)
-                         (obj/getValueByKeys "textLayer" "textLayerDiv"))
-          fragment (js/DocumentFragment.)
-          outer (.createElement js/document "div")
-          inner (.createElement js/document "div")
+    (let [page (-> (get db :pdf/viewer)
+                   (.getPageView 0))
 
-          ; parent (.createElement js/document "div")
-          ; left   (.createElement js/document "div")
-          ; right  (.createElement js/document "div")
-          ; top    (.createElement js/document "div")
-          ; bottom (.createElement js/document "div")
+          text-layer (obj/getValueByKeys page "textLayer" "textLayerDiv")
+          parent (.createElement js/document "div")
+          left   (.createElement js/document "div")
+          right  (.createElement js/document "div")
+          top    (.createElement js/document "div")
+          bottom (.createElement js/document "div")
           ]
-      (js/console.log text-layer)
-      (.setAttribute outer "style" "position: absolute; left 0; top: 0;")
-       (.setAttribute inner "style" "cursor: ew-resize; border: 4px solid blue;
-                                     width: 4px; height: 600px; width: 500px;")
-      (.append fragment outer)
-      (.append outer inner)
-      (.append text-layer fragment)
-      ; (.append fragment parent)
-       ; (.setAttribute left "style" "cursor: ew-resize; position: absolute;
-       ;                             left: 0; top: 0; width: 4px; height: 600px;
-       ;                             background-color: rgba(0,0,255,1);")
-       ; (.setAttribute right "style" "cursor: ew-resize; position: absolute;
-       ;                             left: 600px; top: 0; width: 4px; height: 600px;
-       ;                             background-color: rgba(0,0,255,1);")
-       ; (.setAttribute top "style" "cursor: ns-resize; position: absolute;
-       ;                             left: 4px; top: 0; width: 596px; height: 4px;
-       ;                             background-color: rgba(0,0,255,1);")
-       ; (.setAttribute bottom "style" "cursor: ns-resize; position: absolute;
-       ;                             left: 4px; top: 596px; width: 596px; height: 4px;
-       ;                             background-color: rgba(0,0,255,1);")
-       ; (.append parent left)
-       ; (.append parent right)
-       ; (.append parent top)
-       ; (.append parent bottom)
-       ; (.append text-layer fragment)
+      (js/console.log (.-clientX page))
+      (.setAttribute parent "style" "position: absolute; left 0; top: 0;
+                                     height: 700px; width: 500px;
+                                     max-width: 816px; min-width: 20px;
+                                     pointer-events: none;")
+      (.setAttribute left "style" "cursor: ew-resize; position: absolute; left: 0; top: 0;
+                                   z-index: 9;
+                                   width: 4px; height: 100%;
+                                   pointer-events: auto;
+                                   background-color: rgba(0,0,255,1);")
+      (.setAttribute right "style" "cursor: ew-resize; position: absolute; right: 0; top: 0;
+                                   z-index: 9;
+                                   width: 4px; height: 100%;
+                                   pointer-events: auto;
+                                   background-color: rgba(0,0,255,1);")
+      ; (.setAttribute right "onmousedown" pagemark-horizontal-resize)
+      ; (js/console.log (.getAttribute right "onmousedown"))
+      (.addEventListener left "mousedown" (fn [e] (if (= (obj/get e "button") 0)
+                                                     (horizontal-resize parent e))))
+      (.addEventListener right "mousedown" (fn [e] (if (= (obj/get e "button") 0)
+                                                     (horizontal-resize parent e))))
+
+
+      (.setAttribute top "style" "cursor: ns-resize; position: absolute; left: 0; top: 0;
+                                   width: 100%; height: 4px;
+                                   background-color: rgba(0,0,255,1);")
+      (.setAttribute bottom "style" "cursor: ns-resize; position: absolute; left: 0; bottom: 0;
+                                     width: 100%; height: 4px;
+                                     background-color: rgba(0,0,255,1);")
+      (.append parent left)
+      (.append parent right)
+      (.append parent top)
+      (.append parent bottom)
+      (.append text-layer parent)
 
 
 
