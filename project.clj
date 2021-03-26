@@ -9,6 +9,7 @@
                  [re-frame "1.1.2"]
                  [day8.re-frame/tracing "0.6.0"]
                  [garden "1.3.10"]
+                 [devcards "0.2.7"]
                  [stylefy "2.2.1"]]
 
   :plugins [[lein-shadow "0.3.1"]
@@ -31,11 +32,12 @@
                                :asset-path "/js/compiled"
                                :compiler-options {:output-feature-set :es8
                                                   :infer-externs :auto}
-                               :modules {:shared {:entries []}
-                                                  ; :preloads [devtools.preload
-                                                  ;            day8.re-frame-10x.preload]}
+                               :modules {:shared {:entries []
+                                                  :preloads [devtools.preload]}
+                                                             ; day8.re-frame-10x.preload]}
                                          :app {:init-fn parzival.core/init
-                                               :depends-on #{:shared}}
+                                               :depends-on #{:shared}
+                                               :preloads [day8.re-frame-10x.preload]}
                                          :pdf.worker {:init-fn parzival.worker/init
                                                       :depends-on #{:shared}
                                                       :web-worker true}}
@@ -48,8 +50,22 @@
                                           {day8.re-frame.tracing day8.re-frame.tracing-stubs}}}
 
                                :devtools {:http-root "resources/public"
-                                          :http-port 8280
-                                          }}}}
+                                          :http-port 8280 }}
+
+                         :devcards {:asset-path "js/devcards"
+                                    :modules {:shared {:entries []}
+                                              :main {:init-fn parzival.devcards/main
+                                                     :depends-on #{:shared}}
+                                              :pdf.worker {:init-fn parzival.worker/init
+                                                           :depends-on #{:shared}
+                                                           :web-worker true}}
+                                    :compiler-options {:devcards true
+                                                       :output-feature-set :es8}
+                                    :js-options {:resolve {"devcards-marked" {:target :npm :require "marked"}
+                                                           "devcards-syntax-highlighter" {:target :npm :require "highlight.js"}}}
+                                    :output-dir "resources/public/js/devcards"
+                                    :target :browser}
+                         }}
   
   :shell {:commands {"karma" {:windows         ["cmd" "/c" "karma"]
                               :default-command "karma"}
@@ -61,7 +77,7 @@
                             ["shell" "echo" "\"DEPRECATED: Please use lein watch instead.\""]
                             ["watch"]]
             "watch"        ["with-profile" "dev" "do"
-                            ["shadow" "watch" "app" "browser-test" "karma-test"]]
+                            ["shadow" "watch" "app" "devcards" "browser-test" "karma-test"]]
 
             "prod"         ["do"
                             ["shell" "echo" "\"DEPRECATED: Please use lein release instead.\""]
