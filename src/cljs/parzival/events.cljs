@@ -241,7 +241,8 @@
           top    (.createElement js/document "div")
           bottom (.createElement js/document "div")
           ]
-      (js/console.log (.-clientX page))
+      (js/console.log (aget (.getClientRects (obj/get page "canvas")) 0))
+
       (.setAttribute parent "style" "position: absolute; left 0; top: 0;
                                      height: 700px; width: 500px;
                                      max-width: 816px; min-width: 20px;
@@ -258,8 +259,8 @@
                                    background-color: rgba(0,0,255,1);")
       ; (.setAttribute right "onmousedown" pagemark-horizontal-resize)
       ; (js/console.log (.getAttribute right "onmousedown"))
-      (.addEventListener left "mousedown" (fn [e] (if (= (obj/get e "button") 0)
-                                                     (horizontal-resize parent e))))
+      ; (.addEventListener left "mousedown" (fn [e] (if (= (obj/get e "button") 0)
+      ;                                                (horizontal-resize parent e))))
       (.addEventListener right "mousedown" (fn [e] (if (= (obj/get e "button") 0)
                                                      (horizontal-resize parent e))))
 

@@ -9,7 +9,8 @@
   [button {:primary true :on-click #(dispatch [:right-sidebar/toggle])} "Toggle"])
 
 (defcard-rg Right-Sidebar
-  [right-sidebar]
+  [:div {:style {:display "flex" :height "60vh" :justify-content "flex-end"}}
+    [right-sidebar]]
   {:padding false})
 
 
