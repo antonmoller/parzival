@@ -52,20 +52,19 @@
                                :devtools {:http-root "resources/public"
                                           :http-port 8280 }}
 
-                         :devcards {:asset-path "js/devcards"
+                         :devcards {:target :browser
+                                    :output-dir "resources/public/js/devcards"
+                                    :asset-path "js/devcards"
+                                    :compiler-options {:devcards true
+                                                       :output-feature-set :es8}
                                     :modules {:shared {:entries []}
                                               :main {:init-fn parzival.devcards/main
                                                      :depends-on #{:shared}}
                                               :pdf.worker {:init-fn parzival.worker/init
                                                            :depends-on #{:shared}
                                                            :web-worker true}}
-                                    :compiler-options {:devcards true
-                                                       :output-feature-set :es8}
                                     :js-options {:resolve {"devcards-marked" {:target :npm :require "marked"}
-                                                           "devcards-syntax-highlighter" {:target :npm :require "highlight.js"}}}
-                                    :output-dir "resources/public/js/devcards"
-                                    :target :browser}
-                         }}
+                                                           "devcards-syntax-highlighter" {:target :npm :require "highlight.js"}}}}}}
   
   :shell {:commands {"karma" {:windows         ["cmd" "/c" "karma"]
                               :default-command "karma"}
