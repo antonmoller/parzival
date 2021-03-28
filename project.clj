@@ -60,9 +60,9 @@
                                                        :closure-defines {re-frame.trace.trace-enabled? true}
                                                        :output-feature-set :es-next}
                                     :modules {:shared {:entries []}
-                                               :renderer {:init-fn parzival.core/init
+                                              :renderer {:init-fn parzival.core/init
                                                           :depends-on #{:shared}}
-                                               :pdf.worker {:init-fn parzival.worker/init
+                                              :pdf.worker {:init-fn parzival.worker/init
                                                             :depends-on #{:shared}
                                                             :web-worker true}}
                                     :dev {:compiler-options {:closure-defines {re-frame.trace.trace-enabled? true
