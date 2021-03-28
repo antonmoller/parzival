@@ -17,7 +17,23 @@
       parzival is a JavaScript app. Please enable JavaScript to continue.
     </noscript>
     <div id="app"></div>
-    <script src="js/compiled/shared.js"></script>
-    <script src="js/compiled/app.js"></script>
+    <script>
+	    function isElectron() {
+		    var userAgent = navigator.userAgent.toLowerCase();
+		    return userAgent.indexOf("electron/") > -1
+	    }
+    </script>
+    <script>
+	    var electron - isElectron();
+            var src = "";
+            if (electron) {
+		    src = "js/compiled/renderer.js";
+	    } else {
+		    src = "js/compiled/app.js";
+	    }
+            var script = document.createElement("script");
+            script.setAttribute("src", src);
+            document.getElementsByTagName("head")[0].appendChild(script);
+    </script>
   </body>
 </html>

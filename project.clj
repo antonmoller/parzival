@@ -52,6 +52,29 @@
                                :devtools {:http-root "resources/public"
                                           :http-port 8280 }}
 
+                         :renderer {:target :browser
+                                    :output-dir "resources/public/js/compiled"
+                                    :asset-path "/js/compiled"
+                                    :compiler-options {:closure-warnings {:global-this :off}
+                                                       :infer-externs :auto
+                                                       :closure-defines {re-frame.trace.trace-enabled? true}
+                                                       :output-feature-set :es-next}
+                                    :modules {:shared {:entries []}
+                                               :renderer {:init-fn parzival.core/init
+                                                          :depends-on #{:shared}}
+                                               :pdf.worker {:init-fn parzival.worker/init
+                                                            :depends-on #{:shared}
+                                                            :web-worker true}}
+                                    :dev {:compiler-options {:closure-defines {re-frame.trace.trace-enabled? true
+                                                                               day8.re-frame.tracing.trace-enabled? true}}}
+                                    :devtools {:preloads [devtools.preload
+                                                          day8.re-frame-10x.preload]}}
+
+                         :main {:target :node-script
+                                :output-to "resources/main.js"
+                                :main parzival.main.core/main
+                                :compiler-options {:output-feature-set :es-next}}
+
                          :devcards {:target :browser
                                     :output-dir "resources/public/js/devcards"
                                     :asset-path "js/devcards"
@@ -76,7 +99,7 @@
                             ["shell" "echo" "\"DEPRECATED: Please use lein watch instead.\""]
                             ["watch"]]
             "watch"        ["with-profile" "dev" "do"
-                            ["shadow" "watch" "app" "devcards" "browser-test" "karma-test"]]
+                            ["shadow" "watch" "app" "renderer" "main" "devcards" "browser-test" "karma-test"]]
 
             "prod"         ["do"
                             ["shell" "echo" "\"DEPRECATED: Please use lein release instead.\""]
@@ -100,6 +123,7 @@
   {:dev
    {:dependencies [[binaryage/devtools "1.0.2"]
                    [day8.re-frame/re-frame-10x "0.7.0"]
+                   [day8.re-frame/tracing "0.5.3"]
                    [cider/cider-nrepl "0.25.1"]]
     :source-paths ["dev"]}
 
