@@ -1,6 +1,6 @@
 (ns parzival.main.core
   (:require
-            ["electron" :refer [app BrowserWindow ipcMain shell]]))
+            ["electron" :refer [app BrowserWindow shell]]))
 
 (def main-window (atom nil))
 
