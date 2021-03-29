@@ -6,6 +6,7 @@
    [parzival.events :as events]
    [parzival.views :as views]
    [parzival.config :as config]
+   [parzival.router :as router]
    [stylefy.core :as stylefy]))
 
 
@@ -17,6 +18,7 @@
 (defn ^:dev/after-load mount-root 
   []
   (re-frame/clear-subscription-cache!)
+  (router/init-routes!)
   (let [root-el (.getElementById js/document "app")]
     (rdom/unmount-component-at-node root-el)
     (rdom/render [views/main-panel] root-el)))

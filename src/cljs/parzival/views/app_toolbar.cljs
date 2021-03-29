@@ -44,7 +44,8 @@
       [:header (use-style right-toolbar-style)
        [button {:on-click #(dispatch [:search/toggle])} 
         [:> mui-icons/Search]]
-       [button {:on-click #(dispatch [:settings/toggle])} 
+       [button {:on-click #((dispatch [:settings/toggle])
+                            (dispatch [:navigate :settings]))} 
         [:> mui-icons/Settings]] 
        [button {:on-click #(dispatch [:right-sidebar/toggle])} 
         [:> mui-icons/VerticalSplit]]]]))

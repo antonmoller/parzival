@@ -2,6 +2,7 @@
 
 (defonce default-db
   {:name "re-frame"
+   :current-route :home
    :left-sidebar/open true
    :right-sidebar/open false
    :right-sidebar/width 32
