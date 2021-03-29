@@ -26,7 +26,6 @@
 
 
   :shadow-cljs {:nrepl {:port 8777}
-                
                 :builds {:app {:target :browser
                                :output-dir "resources/public/js/compiled"
                                :asset-path "/js/compiled"
