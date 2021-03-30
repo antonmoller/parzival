@@ -31,6 +31,11 @@
           :justify-content "flex-end"
           :right 0}))
 
+(def save-state-style
+  {:padding-right "0.625rem"
+   :padding-top "0.375rem"
+   :color "green"})
+
 ;;; Components
 
 (defn app-toolbar
@@ -42,8 +47,12 @@
         [button {:on-click #(dispatch [:left-sidebar/toggle])}
          [:> mui-icons/Menu]]]
       [:header (use-style right-toolbar-style)
+       [:div (use-style save-state-style)
+        [:> mui-icons/FiberManualRecord]]
        [button {:on-click #(dispatch [:search/toggle])} 
         [:> mui-icons/Search]]
+       [button
+        [:> mui-icons/StarBorder]]
        [button {:on-click #((dispatch [:settings/toggle])
                             (dispatch [:navigate :settings]))} 
         [:> mui-icons/Settings]] 

@@ -5,5 +5,6 @@
    [devcards.core :refer [defcard-rg]]))
 
 (defcard-rg Document-Table
-  [document-table]
+[:div {:style {:display "flex" :justify-content "center"}}
+  [document-table]]
   {:padding false})
