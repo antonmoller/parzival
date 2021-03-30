@@ -1,7 +1,9 @@
 (ns parzival.devcards
   (:require
-            [devcards.core]
+            [parzival.devcards.table]
             [parzival.devcards.right-sidebar]
+            [parzival.devcards.modal]
+            [devcards.core]
             [parzival.events :as events]
             [parzival.subs]
             [parzival.style :as style]

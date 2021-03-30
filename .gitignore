@@ -3,6 +3,9 @@
 /resources/main.js
 /resources/public/js/compiled/
 /target/
+.calva/
+.lsp/
+src/cljs/parzival/.clj-kondo/
 /*-init.clj
 /*.log
 

@@ -90,11 +90,11 @@
         [:div (use-style left-sidebar-style {:class (if @open? "is-open" "is-closed")})
          [:div (use-style left-sidebar-content-style)
           [:div
-           [:div (use-style menu-item-style)
-            [:> mui-icons/AccountBox (use-style icon-style)] 
-            [:span "ACCOUNT"]
-            [:> mui-icons/ExpandMore]]
-           [:div (use-style menu-item-style)
+          ;  [:div (use-style menu-item-style)
+          ;   [:> mui-icons/AccountBox (use-style icon-style)] 
+          ;   [:span "ACCOUNT"]
+          ;   [:> mui-icons/ExpandMore]] TODO: Add this in the cloud hosted version
+           [:div (use-style menu-item-style)  
             [:> mui-icons/Reorder (use-style icon-style)] 
             [:span "ALL DOCUMENTS"]]
            [:div (use-style menu-item-style)
