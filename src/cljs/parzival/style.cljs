@@ -72,7 +72,41 @@
    :font-family "Roboto, sans-serif"
    :color (color :body-text-color)
    :font-size "16px"
-   :line-height "1.5"})
+   :line-height "1.5"
+   ::stylefy/manual  [[:a {:color (color :link-color)}]
+                      [:h1 :h2 :h3 :h4 :h5 :h6 {:margin      "0.2em 0"
+                                                :line-height "1.3"
+                                                :color       (color :header-text-color)}]
+                      [:h1 {:font-size      "3.125em"
+                            :font-weight    600
+                            :letter-spacing "-0.03em"}]
+                      [:h2 {:font-size      "2.375em"
+                            :font-weight    500
+                            :letter-spacing "-0.03em"}]
+                      [:h3 {:font-size      "1.75em"
+                            :font-weight    500
+                            :letter-spacing "-0.02em"}]
+                      [:h4 {:font-size "1.3125em"}]
+                      [:h5 {:font-size      "0.75em"
+                            :font-weight    500
+                            :line-height    "1em"
+                            :letter-spacing "0.08em"
+                            :text-transform "uppercase"}]
+                      [:.MuiSvgIcon-root {:font-size "1.5rem"}]
+                      [:input {:font-family "inherit"}]
+                      [:kbd {:text-transform "uppercase"
+                             :font-family    "inherit"
+                             :font-size      "0.85em"
+                             :letter-spacing "0.05em"
+                             :font-weight    600
+                             :display        "inline-flex"
+                             :background     (color :body-text-color :opacity-lower)
+                             :border-radius  "0.25rem"
+                             :padding        "0.25em 0.5em"}]
+                      [:img {:max-width "100%"
+                             :height    "auto"}]
+                      [":focus" {:outline-width 0}]
+                      [":focus-visible" {:outline-width "1px"}]]})
 
 (def app-styles
   {:overflow "hidden"
