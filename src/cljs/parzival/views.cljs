@@ -44,10 +44,10 @@
     (fn []
       [:div (use-style app-wrapper-style)
       ; [search]
+      [settings]
       [app-toolbar]
       [left-sidebar]
       [:div (use-style main-content-style)
        [match-panel @route-name]]
       [right-sidebar]
-      ; [settings]
       ])))

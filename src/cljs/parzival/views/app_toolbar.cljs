@@ -2,7 +2,7 @@
   (:require
     ["@material-ui/icons" :as mui-icons]
     [re-frame.core :refer [subscribe dispatch]]
-    [parzival.style :refer [ZINDICES color]]
+    [parzival.style :refer [ZINDICES]]
     [parzival.views.buttons :refer [button]]
     [stylefy.core :as stylefy :refer [use-style]]))
 
@@ -41,10 +41,11 @@
 
 (defn app-toolbar
   []
-  (let [left-open?  (subscribe [:left-sidebar/open])
-        right-open? (subscribe [:right-sidebar/open])
-        route-name  (subscribe [:current-route/name])]
-        (js/console.log @route-name)
+  (let [left-open?     (subscribe [:left-sidebar/open])
+        right-open?    (subscribe [:right-sidebar/open])
+        search-open?   (subscribe [:search/open])
+        settings-open? (subscribe [:settings/open])
+        route-name     (subscribe [:current-route/name])]
     [:<>
       [:header (use-style left-toolbar-style)
         [button {:on-click #(dispatch [:left-sidebar/toggle])
@@ -59,11 +60,13 @@
         [:header (use-style right-toolbar-style)
        [:div (use-style save-state-style)
         [:> mui-icons/FiberManualRecord]]
-       [button {:on-click #(dispatch [:search/toggle])} 
+       [button {:on-click #(dispatch [:search/toggle])
+                :active @search-open?} 
         [:> mui-icons/Search]]
        [button
         [:> mui-icons/StarBorder]]
-       [button {:on-click #(dispatch [:settings/toggle])} 
+       [button {:on-click #(dispatch [:settings/toggle])
+                :active @settings-open?} 
         [:> mui-icons/Settings]] 
        [button {:on-click #(dispatch [:right-sidebar/toggle])
                 :active @right-open?} 

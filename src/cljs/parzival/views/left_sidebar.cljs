@@ -49,7 +49,9 @@
  :flex "0 0 auto"
  :opacity (:opacity-med OPACITIES)
  :line-height "1"
- :font-size "16px"})
+ :font-size "16px"
+ ::stylefy/manual [[:svg {:font-size "16px"
+                          :margin-right "0.5rem"}]]})
 
 (def shortcut-style
   {:color (color :body-text-color)
@@ -72,7 +74,7 @@
         [:div (use-style left-sidebar-style {:class (if @open? "is-open" "is-closed")})
          [:div (use-style left-sidebar-content-style)
            [:h2 (use-style headline-style) 
-            [:> mui-icons/Star {:style {:font-size "16px" :padding-right "0.5rem"}}]
+            [:> mui-icons/Star]
             [:span "SHORTCUTS"]]
            [:ol (use-style shortcut-list-style)
               [:li [:div (use-style shortcut-style) [:span "testing"]]]

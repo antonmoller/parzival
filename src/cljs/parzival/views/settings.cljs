@@ -20,7 +20,7 @@
    :padding-bottom "2.5rem"
    :width "10rem"
    :height "200px"
-   :border "1px solid red"
+  ;  :border "1px solid red"
    :background-color (color :left-sidebar-color)})
 
 (def menu-item-style
