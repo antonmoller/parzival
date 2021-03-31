@@ -15,6 +15,7 @@
    ; :position "fixed"
    :position "absolute"
    ; :top 0
+   :grid-gap "0.25rem"
    :z-index (:zindex-dropdown ZINDICES)
    :padding "0.25rem 0.75rem"
    ::stylefy/manual [[:svg {:font-size "20px"}]]})
@@ -40,21 +41,30 @@
 
 (defn app-toolbar
   []
-  (let [left-open? (subscribe [:left-sidebar/open])
-        right-open? (subscribe [:right-sidebar/open])]
+  (let [left-open?  (subscribe [:left-sidebar/open])
+        right-open? (subscribe [:right-sidebar/open])
+        route-name  (subscribe [:current-route/name])]
+        (js/console.log @route-name)
     [:<>
       [:header (use-style left-toolbar-style)
-        [button {:on-click #(dispatch [:left-sidebar/toggle])}
-         [:> mui-icons/Menu]]]
-      [:header (use-style right-toolbar-style)
+        [button {:on-click #(dispatch [:left-sidebar/toggle])
+                 :active @left-open?}
+         [:> mui-icons/Menu]]
+        [button {:on-click #(dispatch [:navigate :documents])
+                 :active (= @route-name :documents)}
+          [:> mui-icons/FileCopy]]
+        [button {:on-click #(dispatch [:navigate :pdf])
+                 :active (= @route-name :pdf)}
+         [:> mui-icons/InsertDriveFile]]]
+        [:header (use-style right-toolbar-style)
        [:div (use-style save-state-style)
         [:> mui-icons/FiberManualRecord]]
        [button {:on-click #(dispatch [:search/toggle])} 
         [:> mui-icons/Search]]
        [button
         [:> mui-icons/StarBorder]]
-       [button {:on-click #((dispatch [:settings/toggle])
-                            (dispatch [:navigate :settings]))} 
+       [button {:on-click #(dispatch [:settings/toggle])} 
         [:> mui-icons/Settings]] 
-       [button {:on-click #(dispatch [:right-sidebar/toggle])} 
+       [button {:on-click #(dispatch [:right-sidebar/toggle])
+                :active @right-open?} 
         [:> mui-icons/VerticalSplit]]]]))

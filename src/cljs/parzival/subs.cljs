@@ -58,3 +58,7 @@
   (fn [db _]
     (some? (get db :pdf))))
 
+(re-frame/reg-sub
+  :current-route
+  (fn [db _]
+    (get db :current-route)))

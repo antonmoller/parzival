@@ -13,6 +13,11 @@
   (fn [db]
     (-> db :current-route)))
 
+(rf/reg-sub
+  :current-route/name
+  (fn [db]
+    (-> db :current-route :data :name)))
+
 ;;; Events
 
 (rf/reg-event-fx
@@ -38,7 +43,8 @@
 (def routes
   ["/"
    ["" {:name :home}]
-   ["settings" {:name :settings}]])
+   ["documents" {:name :documents}]
+   ["pdf" {:name :pdf}]])
 
 (def router
   (rfe/router

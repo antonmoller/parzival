@@ -4,10 +4,11 @@
    [parzival.views.settings :refer [settings]]
    [parzival.views.search :refer [search]]
    [parzival.views.app-toolbar :refer [app-toolbar]]
-   [parzival.views.main-content :refer [main-content]]
+   [parzival.views.pdf :refer [pdf]]
+   [parzival.views.document-table :refer [document-table]]
    [parzival.views.left-sidebar :refer [left-sidebar]]
    [stylefy.core :as stylefy :refer [use-style]]
-   [re-frame.core :as re-frame]
+   [re-frame.core :as rf :refer [subscribe]]
    [parzival.subs :as subs]))
 
 ;; Styles
@@ -21,15 +22,32 @@
    :grid-template-rows "auto 1fr"
    :height "100vh"})
 
+(def main-content-style
+  {:grid-area "main-content"
+   :display "flex"
+   :justify-content "center"})
+
 ;; Components
+
+; (defn main-panel)
+(defn match-panel
+  [route-name]
+   (case route-name
+      :documents document-table
+      :pdf       pdf
+      [:div]))
+
 
 (defn main-panel 
   []
-  [:div (use-style app-wrapper-style)
-   ; [search]
-   [app-toolbar]
-   [left-sidebar]
-   [main-content]
-   [right-sidebar]
-   ; [settings]
-   ])
+  (let [route-name (subscribe [:current-route/name])]
+    (fn []
+      [:div (use-style app-wrapper-style)
+      ; [search]
+      [app-toolbar]
+      [left-sidebar]
+      [:div (use-style main-content-style)
+       [match-panel @route-name]]
+      [right-sidebar]
+      ; [settings]
+      ])))

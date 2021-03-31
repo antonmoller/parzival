@@ -1,14 +1,15 @@
 (ns parzival.devcards
   (:require
             [parzival.devcards.table]
+            [parzival.devcards.app-toolbar]
+            [parzival.devcards.left-sidebar]
             [parzival.devcards.right-sidebar]
             [parzival.devcards.modal]
             [devcards.core]
             [parzival.events :as events]
             [parzival.subs]
             [parzival.style :as style]
-            [re-frame.core :refer [dispatch-sync]]
-            [stylefy.core :as stylefy]))
+            [re-frame.core :refer [dispatch-sync]]))
 
 (defn ^:export main
   []

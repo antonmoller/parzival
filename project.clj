@@ -8,7 +8,6 @@
                  [reagent "0.10.0"]
                  [re-frame "1.1.2"]
                  [day8.re-frame/tracing "0.6.0"]
-                 [garden "1.3.10"]
                  [devcards "0.2.7"]
                  [metosin/reitit "0.5.12"]
                  [stylefy "2.2.1"]]

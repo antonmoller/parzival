@@ -1,6 +1,5 @@
 (ns parzival.devcards.table
   (:require
-   [parzival.views.table :refer [table]]
    [parzival.views.document-table :refer [document-table]]
    [devcards.core :refer [defcard-rg]]))
 

@@ -1,17 +1,11 @@
-(ns parzival.views.main-content
+(ns parzival.views.pdf
   (:require
             [re-frame.core :refer [dispatch subscribe]]
-            [goog.dom :as dom]
             [goog.object :as obj]
             [parzival.style :refer [ZINDICES]]
             [stylefy.core :as stylefy :refer [use-style]]))
 
 ;;; Styles
-
-(def main-content-style
-  {:grid-area "main-content"
-   :display "flex"
-   :justify-content "center"})
 
 (def pdf-container-style
   {:position "absolute"
@@ -32,7 +26,7 @@
 
 ;;; Components
 
-(defn main-content
+(defn pdf
   []
   (let [pdf? (subscribe [:pdf?])
         url "https://arxiv.org/pdf/2006.06676v2.pdf"
@@ -42,12 +36,9 @@
       (dispatch [:pdf/load url])
       (when @pdf?
         (dispatch [:pdf/view]))
-       [:div (use-style main-content-style)
-        [:div#viewerContainer (use-style pdf-container-style) ;TODO: Check if left mouse button is pressed
-         [:div#viewer.pdfViewer {:on-mouse-up (fn [] (dispatch [:highlight "rgba(0,100,0,0.2)"
-                                                                :id "testing"]))
-                                 :on-mouse-down (fn [e] (if (= (obj/get e "button") 2)
-                                                          (dispatch [:pagemark])))
-                                 
-                                 }]]])))
+      [:div#viewerContainer (use-style pdf-container-style) ;TODO: Check if left mouse button is pressed
+        [:div#viewer.pdfViewer {:on-mouse-up (fn [] (dispatch [:highlight "rgba(0,100,0,0.2)"
+                                                              :id "testing"]))
+                                :on-mouse-down (fn [e] (if (= (obj/get e "button") 2)
+                                                        (dispatch [:pagemark])))}]])))
 
