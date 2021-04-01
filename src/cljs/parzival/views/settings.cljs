@@ -2,7 +2,8 @@
   (:require
             [parzival.views.modal :refer [modal]]
             [parzival.style :refer [color]]
-            ["@material-ui/icons" :as mui-icons]
+            ["@material-ui/icons/AccountCircle" :default AccountCircle]
+            ["@material-ui/icons/Brightness6" :default Brightness6]
             [re-frame.core :refer [subscribe]]
             [stylefy.core :as stylefy :refer [use-style]]))
 
@@ -45,10 +46,10 @@
      [:div {:style {:display "flex"}}
       [:div (use-style sidebar-style)
        [:div (use-style item-style) 
-       [:> mui-icons/AccountCircle]
+       [:> AccountCircle]
         [:span "Account"]]
        [:div (use-style item-style) 
-        [:> mui-icons/Brightness6]
+        [:> Brightness6]
         [:span "Appearance"]]]
       [:div (use-style content-style)
        [:div "testing"]

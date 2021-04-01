@@ -11,7 +11,7 @@
   {:display "flex"
    :flex-direction "column"
    :width "600px"
-   :height "150px"})
+   :height "130px"})
 
 (def input-style
   {:background-color "inherit"

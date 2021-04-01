@@ -1,7 +1,8 @@
 (ns parzival.views.left-sidebar
   (:require
             [re-frame.core :refer [subscribe]]
-            ["@material-ui/icons" :as mui-icons]
+            ["@material-ui/icons/Star" :default Star]
+            ["@material-ui/icons/ChevronRight" :default ChevronRight]
             [parzival.views.buttons :refer [button]]
             [parzival.style :refer [color OPACITIES]]
             [stylefy.core :as stylefy :refer [use-style use-sub-style]]))
@@ -74,7 +75,7 @@
         [:div (use-style left-sidebar-style {:class (if @open? "is-open" "is-closed")})
          [:div (use-style left-sidebar-content-style)
            [:h2 (use-style headline-style) 
-            [:> mui-icons/Star]
+            [:> Star]
             [:span "SHORTCUTS"]]
            [:ol (use-style shortcut-list-style)
               [:li [:div (use-style shortcut-style) [:span "testing"]]]
@@ -105,5 +106,5 @@
               [:li [:div (use-style shortcut-style) [:span "testing"]]]
               [:li [:div (use-style shortcut-style) [:span "testing"]]]]
           [:div (use-style button-container-style)
-            [button {:primary true} [:<> [:span "Start Learning"] [:> mui-icons/ChevronRight]]]
-            [button [:<> [:span "Start Reviewing"] [:> mui-icons/ChevronRight]]]]]]))
+            [button {:primary true} [:<> [:span "Start Learning"] [:> ChevronRight]]]
+            [button [:<> [:span "Start Reviewing"] [:> ChevronRight]]]]]]))

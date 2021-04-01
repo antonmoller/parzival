@@ -1,6 +1,13 @@
 (ns parzival.views.app-toolbar
   (:require
-    ["@material-ui/icons" :as mui-icons]
+    ["@material-ui/icons/Menu" :default Menu]
+    ["@material-ui/icons/FileCopy" :default FileCopy]
+    ["@material-ui/icons/FiberManualRecord" :default FiberManualRecord]
+    ["@material-ui/icons/InsertDriveFile" :default InsertDriveFile]
+    ["@material-ui/icons/Search" :default Search]
+    ["@material-ui/icons/StarBorder" :default StarBorder]
+    ["@material-ui/icons/Settings" :default Settings]
+    ["@material-ui/icons/VerticalSplit" :default VerticalSplit]
     [re-frame.core :refer [subscribe dispatch]]
     [parzival.style :refer [ZINDICES]]
     [parzival.views.buttons :refer [button]]
@@ -50,24 +57,24 @@
       [:header (use-style left-toolbar-style)
         [button {:on-click #(dispatch [:left-sidebar/toggle])
                  :active @left-open?}
-         [:> mui-icons/Menu]]
+         [:> Menu]]
         [button {:on-click #(dispatch [:navigate :documents])
                  :active (= @route-name :documents)}
-          [:> mui-icons/FileCopy]]
+          [:> FileCopy]]
         [button {:on-click #(dispatch [:navigate :pdf])
                  :active (= @route-name :pdf)}
-         [:> mui-icons/InsertDriveFile]]]
+         [:> InsertDriveFile]]]
         [:header (use-style right-toolbar-style)
        [:div (use-style save-state-style)
-        [:> mui-icons/FiberManualRecord]]
+        [:> FiberManualRecord]]
        [button {:on-click #(dispatch [:search/toggle])
                 :active @search-open?} 
-        [:> mui-icons/Search]]
+        [:> Search]]
        [button
-        [:> mui-icons/StarBorder]]
+        [:> StarBorder]]
        [button {:on-click #(dispatch [:settings/toggle])
                 :active @settings-open?} 
-        [:> mui-icons/Settings]] 
+        [:> Settings]] 
        [button {:on-click #(dispatch [:right-sidebar/toggle])
                 :active @right-open?} 
-        [:> mui-icons/VerticalSplit]]]]))
+        [:> VerticalSplit]]]]))
