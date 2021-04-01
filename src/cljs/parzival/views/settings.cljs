@@ -6,41 +6,47 @@
             [re-frame.core :refer [subscribe]]
             [stylefy.core :as stylefy :refer [use-style]]))
 
-(def wrapper
-  {:display "flex"
-   :flex-direction "row"
-   :box-sizing "border-box"
-   :width "400px"
-   :height "200px"})
-
-(def container-1-style
-  {:display "flex"
-   :flex-direction "column"
-   :padding-top "2.5rem"
-   :padding-bottom "2.5rem"
-   :width "10rem"
-   :height "200px"
-  ;  :border "1px solid red"
+(def sidebar-style 
+  {:width "12rem"
+   :height "40rem"
+   :padding "2.5rem 0rem 2.5rem 1rem"
    :background-color (color :left-sidebar-color)})
 
-(def menu-item-style
-  {:display "flex"
-   ; :flex "0 0 auto"
-   ; :font-size "16px"
-   ; :font-weight "bold"
-   :cursor "pointer"
-   :padding-top "0.25rem"
-   :padding-left "0.5rem"
-   ::stylefy/mode [[:hover {:background (color :body-text-color :opacity-lower)}]]})
-   
+(def item-style
+  {:cursor "pointer"
+   :font-size "16px"
+   :font-weight "500"
+   :color (color :body-text-color)
+   :display "flex"
+   :flex "0 0 auto"
+   :line-height "1"
+   :padding "0.25rem 0"
+   ::stylefy/manual [[:svg {:font-size "16px"
+                            :margin-right "0.5rem"}]]
+   ::stylefy/mode [[:hover {:background-color (color :body-text-color :opacity-lower)}]]})
 
+(def content-style
+ {:display "flex"
+  :flex-direction "column"
+  :padding "2.5rem"
+  :background-color (color :background-plus-1-color)
+  :width "30rem"
+  :height "100%"})
+   
 (defn settings
   []
   (let [open? (subscribe [:settings/open])]
    (fn []
     (when @open?
-     [modal :settings/toggle [:div (use-style wrapper)
-                              [:div (use-style container-1-style)
-                               [:div (use-style menu-item-style)
-                                [:span "ACCOUNT"]]]
-                              [:div (use-style container-1-style)]]]))))
+     [modal :settings/toggle 
+     [:div {:style {:display "flex"}}
+      [:div (use-style sidebar-style)
+       [:div (use-style item-style) 
+       [:> mui-icons/AccountCircle]
+        [:span "Account"]]
+       [:div (use-style item-style) 
+        [:> mui-icons/Brightness6]
+        [:span "Appearance"]]]
+      [:div (use-style content-style)
+       [:div "testing"]
+       [:div "testing 2"]]]]))))
