@@ -140,7 +140,7 @@
   []
   (stylefy/init)
   (stylefy/tag "html" base-styles)
-  (stylefy/tag "*" {:box-sizing "border-box"}) ;TODO
+  ; (stylefy/tag "*" {:box-sizing "border-box"}) ;TODO
   (let [permute-light (permute-color-opacities THEME-LIGHT)
         permute-dark  (permute-color-opacities THEME-DARK)]
     (stylefy/tag ":root" (merge permute-light
