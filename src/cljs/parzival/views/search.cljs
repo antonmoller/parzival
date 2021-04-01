@@ -9,4 +9,5 @@
   (let [open? (subscribe [:search/open])]
     (fn []
       (when @open?
-        [modal :search/toggle]))))
+        [modal :search/toggle
+         [:div "testing"]]))))

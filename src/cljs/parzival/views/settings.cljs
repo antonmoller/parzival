@@ -6,6 +6,8 @@
             [re-frame.core :refer [subscribe]]
             [stylefy.core :as stylefy :refer [use-style]]))
 
+;;; Styles
+
 (def sidebar-style 
   {:width "12rem"
    :height "40rem"
@@ -29,9 +31,10 @@
  {:display "flex"
   :flex-direction "column"
   :padding "2.5rem"
-  :background-color (color :background-plus-1-color)
   :width "30rem"
   :height "100%"})
+
+;;; Components
    
 (defn settings
   []
