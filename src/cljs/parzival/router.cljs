@@ -37,7 +37,6 @@
           controllers (rfc/apply-controllers (:controllers old-match) new-match)]
       (assoc db :current-route (assoc new-match :controllers controllers)))))
 
-
 ;;; Routes
 
 (def routes
@@ -63,9 +62,3 @@
     router
     on-navigate
     {:use-fragment true}))
-
-
-   
-              
-
-

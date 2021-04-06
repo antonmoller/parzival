@@ -1,14 +1,14 @@
 (ns parzival.core
   (:require
    [reagent.dom :as rdom]
-   [re-frame.core :as re-frame]
+   [re-frame.core :as rf]
    [parzival.style :as style]
    [parzival.events :as events]
+   [parzival.pdf :as pdf]
    [parzival.views :as views]
    [parzival.config :as config]
    [parzival.router :as router]
    [stylefy.core :as stylefy]))
-
 
 (defn dev-setup 
   []
@@ -17,7 +17,7 @@
 
 (defn ^:dev/after-load mount-root 
   []
-  (re-frame/clear-subscription-cache!)
+  (rf/clear-subscription-cache!)
   (router/init-routes!)
   (let [root-el (.getElementById js/document "app")]
     (rdom/unmount-component-at-node root-el)
@@ -27,7 +27,7 @@
   []
   (style/init)
   (stylefy/tag "body" style/app-styles)
-  (re-frame/dispatch-sync [::events/initialize-db])
+  (rf/dispatch-sync [::events/initialize-db])
   (dev-setup)
   (js/Worker. "/js/compiled/pdf.worker.js")
   (mount-root))
