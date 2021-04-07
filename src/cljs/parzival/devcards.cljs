@@ -5,6 +5,7 @@
             [parzival.devcards.app-toolbar]
             [parzival.devcards.left-sidebar]
             [parzival.devcards.right-sidebar]
+            [parzival.devcards.tooltip]
             [parzival.devcards.modal]
             [devcards.core]
             [parzival.events :as events]
