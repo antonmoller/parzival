@@ -1,6 +1,7 @@
 (ns parzival.devcards.modal
   (:require
    [parzival.views.settings :refer [settings]]
+   [parzival.views.menu :refer [menu]]
    [parzival.views.search :refer [search]]
    [parzival.views.buttons :refer [button]]
    [re-frame.core :refer [dispatch]]
@@ -16,3 +17,6 @@
 
 (defcard-rg Search
   [search])
+
+(defcard-rg Menu
+  [menu])

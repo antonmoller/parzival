@@ -1,8 +1,7 @@
 (ns parzival.views.tooltip
   (:require
    [parzival.style :refer [color ZINDICES DEPTH-SHADOWS]]
-   [stylefy.core :as stylefy :refer [use-style use-sub-style]]
-   ))
+   [stylefy.core :as stylefy :refer [use-style use-sub-style]]))
 
 ;;; Styles
 
@@ -17,12 +16,9 @@
                                 :color (color :body-text-color)
                                 :text-align "center"
                                 :border-radius "0.25rem"
-                                :padding "5px 0"
                                 :position "absolute"
                                 :z-index (:zindex-tooltip ZINDICES)
-                                :top "100%"
-                                :left "50%"
-                                :margin-left "-80px"
+                                :left "-45px" ;; FIXME: Center under the container
                                 ::stylefy/mode {:after {:content "''"
                                                         :position "absolute"
                                                         :bottom "100%"
