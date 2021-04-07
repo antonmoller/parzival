@@ -4,6 +4,8 @@
    [stylefy.core :as stylefy :refer [use-style]]
    [parzival.style :refer [HIGHLIGHT-COLOR]]))
 
+;;; Styles
+
 (def highlight-style
   {:display "flex"
    :margin "0.25rem 0.5rem"
@@ -17,6 +19,8 @@
    :line-height "1"
    :margin-right "0.25rem"
    ::stylefy/manual {:svg {:font-size "20px"}}})
+
+;;; Components
 
 (defn highlight-toolbar
   []
