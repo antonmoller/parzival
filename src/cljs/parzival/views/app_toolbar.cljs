@@ -19,9 +19,7 @@
   {:display "flex"
    :flex-direction "row"
    :align-items "center"
-   ; :position "fixed"
-   :position "absolute"
-   ; :top 0
+   :position "fixed"
    :grid-gap "0.25rem"
    :z-index (:zindex-dropdown ZINDICES)
    :padding "0.25rem 0.75rem"

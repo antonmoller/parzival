@@ -1,7 +1,6 @@
 (ns parzival.views.menu
   (:require
-   [parzival.style :refer [color OPACITIES ZINDICES DEPTH-SHADOWS]]
-   [re-frame.core :refer [subscribe]]
+   [parzival.style :refer [color ZINDICES DEPTH-SHADOWS]]
    [stylefy.core :as stylefy :refer [use-style]]))
 
 ;;; Styles

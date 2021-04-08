@@ -8,7 +8,6 @@
    [cljs.core.async.interop :refer [<p!]]
    [day8.re-frame.tracing :refer-macros [fn-traced]]))
 
-(set! (.. pdfjs -GlobalWorkerOptions -workerSrc) "/js/compiled/pdf.worker.js")
 
 ;; Subs
 
@@ -16,6 +15,17 @@
   :pdf?
   (fn [db _]
     (some? (get db :pdf))))
+
+(rf/reg-sub
+ :highlight/open
+ (fn [db _]
+   (get db :highlight/open)))
+
+(rf/reg-sub
+ :highlight/anchor
+ (fn [db _]
+   (get db :highlight/anchor)))
+
 
 ;;; Events
 
@@ -45,6 +55,7 @@
 (reg-event-fx
   :pdf/load
   (fn [_ [_ url]]
+    (set! (.. pdfjs -GlobalWorkerOptions -workerSrc) "/js/compiled/pdf.worker.js")
     {:pdf/document {:url url
                     :on-success [:pdf/load-success]
                     :on-failure [:pdf/load-failure]}}))
@@ -106,38 +117,60 @@
     (let [page (.getPageView (get db :pdf/viewer) page-id)]
       (run! #(render-highlight (second %) page) (get-in db [:pdf/highlights page-id])))))
 
+;; (reg-event-fx
+;;   :highlight
+;;   (fn [{:keys [db]} [_ color _ id]]
+;;     (let [range-obj (.getRangeAt (.getSelection js/document) 0)] 
+;;       (when-not (.-collapsed range-obj)
+;;         (let [text-layer (.. range-obj -startContainer -parentNode -parentNode)
+;;               page-id (-> (.-parentNode text-layer)
+;;                           (.getAttribute "data-page-number")
+;;                           (dec))
+;;               page    (.getPageView (get db :pdf/viewer) page-id)
+;;               text-rows (.from js/Array (.-children text-layer))
+;;               [end end-offset] (get-end range-obj)
+;;               highlight {:color color
+;;                          :start-id (.indexOf text-rows (.. range-obj -startContainer -parentNode))
+;;                          :end-id (.indexOf text-rows end)
+;;                          :start-offset (.-startOffset range-obj)
+;;                          :end-offset end-offset}]
+;;           (.collapse range-obj)
+;;           {:db (if-let [page-highlights (get-in db [:pdf/highlights page-id])]
+;;                  (update-in db [:pdf/highlights page-id] assoc (count page-highlights) highlight)
+;;                  (assoc-in db [:pdf/highlights page-id 0] highlight))
+;;            :fx [(render-highlight highlight page)]})))))
+
+(defn valid-range?
+  []
+  (let [range-obj (.getRangeAt (.getSelection js/document) 0)]
+    (when-not (.-collapsed range-obj)
+      (let [text-layer-start (.. range-obj -startContainer -parentNode -parentNode)
+            text-layer-end   (.. range-obj -endContainer -parentNode -parentNode)]
+            (.isSameNode text-layer-start text-layer-end)))))
+           
 (reg-event-fx
-  :highlight
-  (fn [{:keys [db]} [_ color _ id]]
-    (let [range-obj (.getRangeAt (.getSelection js/document) 0)] 
-      (when-not (.-collapsed range-obj)
-        (let [text-layer (.. range-obj -startContainer -parentNode -parentNode)
-              page-id (-> (.-parentNode text-layer)
-                          (.getAttribute "data-page-number")
-                          (dec))
-              page    (.getPageView (get db :pdf/viewer) page-id)
-              text-rows (.from js/Array (.-children text-layer))
-              [end end-offset] (get-end range-obj)
-              highlight {:color color
-                         :start-id (.indexOf text-rows (.. range-obj -startContainer -parentNode))
-                         :end-id (.indexOf text-rows end)
-                         :start-offset (.-startOffset range-obj)
-                         :end-offset end-offset}]
-          (.collapse range-obj)
-          {:db (if-let [page-highlights (get-in db [:pdf/highlights page-id])]
-                 (update-in db [:pdf/highlights page-id] assoc (count page-highlights) highlight)
-                 (assoc-in db [:pdf/highlights page-id 0] highlight))
-           :fx [(render-highlight highlight page)]})))))
+ :highlight
+ (fn [{:keys [db]} _]
+   (when (valid-range?)
+     (js/console.log true))))
+
+;;          text-layer-end   (.. range-obj -startContanier -parentNode -parentNode)]
+;;      (when (and (not (.-collapsed range-obj)) (.isSameNode text-layer-start text-layer-end))
+;;        (js/console.log "HI THERE IT'S WORKING"))
+;;      ))
+;;  )
 
 (reg-event-fx
  :pdf/view
  (fn [{:keys [db]} _]
   (let [pdf (get db :pdf)
         container (.getElementById js/document "viewerContainer")
+        viewer    (.getElementById js/document "viewer")
         event-bus (pdfjs-viewer/EventBus.)
         link-service (pdfjs-viewer/PDFLinkService. (js-obj "eventBus" event-bus "externalLinkTarget" 2))
         ; find-controller (pdfjs-viewer/PDFFindController. (js-obj "eventBus" event-bus "linkService" link-service))
         pdf-viewer (pdfjs-viewer/PDFViewer. (js-obj "container" container 
+                                                    "viewer" viewer 
                                                     "eventBus" event-bus 
                                                     "linkService" link-service
                                                     ; "findController" find-controller

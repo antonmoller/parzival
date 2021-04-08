@@ -4,7 +4,7 @@
                   :exclusions [com.google.javascript/closure-compiler-unshaded
                                org.clojure/google-closure-library
                                org.clojure/google-closure-library-third-party]]
-                 [thheller/shadow-cljs "2.11.7"]
+                 [thheller/shadow-cljs "2.11.23"]
                  [reagent "0.10.0"]
                  [re-frame "1.1.2"]
                  [day8.re-frame/tracing "0.6.0"]
@@ -29,14 +29,11 @@
                 :builds {:app {:target :browser
                                :output-dir "resources/public/js/compiled"
                                :asset-path "/js/compiled"
-                               :compiler-options {:output-feature-set :es8
+                               :compiler-options {:output-feature-set :es-next
                                                   :infer-externs :auto}
-                               :modules {:shared {:entries []
-                                                  :preloads [devtools.preload]}
-                                                             ; day8.re-frame-10x.preload]}
+                               :modules {:shared {:entries []}
                                          :app {:init-fn parzival.core/init
-                                               :depends-on #{:shared}
-                                               :preloads [day8.re-frame-10x.preload]}
+                                               :depends-on #{:shared}}
                                          :pdf.worker {:init-fn parzival.worker/init
                                                       :depends-on #{:shared}
                                                       :web-worker true}}
@@ -47,9 +44,11 @@
                                :release {:build-options
                                          {:ns-aliases
                                           {day8.re-frame.tracing day8.re-frame.tracing-stubs}}}
-
                                :devtools {:http-root "resources/public"
-                                          :http-port 8280 }}
+                                          :http-port 8280 
+                                          ;; :preloads [devtools.preload
+                                                 ;;     day8.re-frame-10x.preload]
+                                          }}
 
                          :renderer {:target :browser
                                     :output-dir "resources/public/js/compiled"
@@ -98,7 +97,7 @@
                             ["shell" "echo" "\"DEPRECATED: Please use lein watch instead.\""]
                             ["watch"]]
             "watch"        ["with-profile" "dev" "do"
-                            ["shadow" "watch" "app" "renderer" "main" "devcards" "browser-test" "karma-test"]]
+                            ["shadow" "watch" "app" ]];"renderer" "main" "devcards" "browser-test" "karma-test"]]
 
             "prod"         ["do"
                             ["shell" "echo" "\"DEPRECATED: Please use lein release instead.\""]
@@ -125,9 +124,6 @@
                    [day8.re-frame/tracing "0.5.3"]
                    [cider/cider-nrepl "0.25.1"]]
     :source-paths ["dev"]}
-
    :prod {}
-   
 }
-
   :prep-tasks [])
