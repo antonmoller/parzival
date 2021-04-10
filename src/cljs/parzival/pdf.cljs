@@ -151,24 +151,20 @@
     (when-not (.-collapsed range-obj)
       (let [text-layer-start (.. range-obj -startContainer -parentNode -parentNode)
             text-layer-end   (.. range-obj -endContainer -parentNode -parentNode)
-            rect             (.getBoundingClientRect range-obj)]
+            end-node         (.-endContainer range-obj)
+            r                (js/Range.)]
             (when (.isSameNode text-layer-start text-layer-end)
-              (js/console.log rect)
-              [(str (.-left rect) "px") (str (+ (.-bottom rect) 5) "px")])))))
+              (.setStart r end-node 0)
+              (.setEnd r end-node (.-length end-node))
+              (as-> (.getBoundingClientRect r) rect
+                    [(+ (.-left rect) (/ (.-width rect) 2)) (+ (.-bottom rect) 5)]))))))
            
 (reg-event-fx
  :highlight/toolbar
  (fn [{:keys [db]} _]
    (when-let [anchor (toolbar-anchor)]
-   (js/console.log anchor)
      {:db (assoc db :highlight/anchor anchor)
       :fx [[:dispatch [:highlight/toggle]]]})))
-
-;;          text-layer-end   (.. range-obj -startContanier -parentNode -parentNode)]
-;;      (when (and (not (.-collapsed range-obj)) (.isSameNode text-layer-start text-layer-end))
-;;        (js/console.log "HI THERE IT'S WORKING"))
-;;      ))
-;;  )
 
 (reg-event-fx
  :pdf/view

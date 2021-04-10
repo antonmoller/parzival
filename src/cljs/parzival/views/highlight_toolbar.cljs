@@ -9,7 +9,7 @@
 
 (def tooltip-style
   {:visibility "hidden"
-  ;;  :max-width "10px"
+   :width "162px"
    :background-color (color :background-plus-1-color)
    :box-shadow    (str (:64 DEPTH-SHADOWS) ", 0 0 0 1px " (color :body-text-color :opacity-lower))
    :color (color :body-text-color)
@@ -17,8 +17,6 @@
    :border-radius "0.25rem"
    :position "absolute"
    :z-index (:zindex-tooltip ZINDICES)
-   :left "10px" ;; FIXME: Center under the container
-   :top "50px"
    ::stylefy/mode {:after {:content "''"
                            :position "absolute"
                            :bottom "100%"
@@ -53,8 +51,8 @@
     (fn []
       [:div (merge (use-style tooltip-style
                               {:class (if @highlight? "is-visible" "is-hidden")})
-                   {:style {:left (first @position)
-                            :top  (second @position)}})
+                   {:style {:left (str (- (first @position) 81) "px")
+                            :top  (str (second @position) "px")}})
        [:div (use-style highlight-style)
         (doall
          (for [[_ color] HIGHLIGHT-COLOR]
@@ -62,6 +60,5 @@
                          {:style {:background-color color}
                           :key (str "highlight-" color)
                           :on-click (fn [e]
-                                      (js/console.log e color)
                                       (dispatch [:highlight/toggle]))})]))
         [:> HighlightOff {:style {:cursor "pointer"}}]]])))
