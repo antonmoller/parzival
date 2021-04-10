@@ -12,7 +12,7 @@
 (def left-sidebar-style
   {:grid-area "left-sidebar"
    :user-select "none"
-   ; :position "fixed"
+  ; :position "fixed"
    :width 0
    :overflow-x "hidden"
    :overflow-y "hidden"

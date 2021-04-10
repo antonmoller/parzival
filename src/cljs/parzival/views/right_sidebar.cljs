@@ -81,29 +81,27 @@
                              (let [x (.-clientX e)
                                    inner-w js/window.innerWidth
                                    new-width (-> (- inner-w x)
-                                             (/ inner-w)
-                                             (* 100))]
+                                                 (/ inner-w)
+                                                 (* 100))]
                                (reset! width new-width))))
         handle-mouseup (fn []
                          (when @dragging?
                            (reset! dragging? false)
                            (dispatch [:right-sidebar/set-width @width])))]
     (r/create-class
-      {:display-name "right-sidebar"
-       :component-did-mount (fn []
-                              (js/document.addEventListener "mousemove" handle-mousemove)
-                              (js/document.addEventListener "mouseup" handle-mouseup))
-       :component-will-unmount (fn []
+     {:display-name "right-sidebar"
+      :component-did-mount (fn []
+                             (js/document.addEventListener "mousemove" handle-mousemove)
+                             (js/document.addEventListener "mouseup" handle-mouseup))
+      :component-will-unmount (fn []
                                 (js/document.removeEventListener "mousemove" handle-mousemove)
                                 (js/document.removeEventListener "mouseup" handle-mouseup))
-       :reagent-render (fn []
-                         [:div (merge (use-style sidebar-style 
-                                                 {:class (if @open? "is-open" "is-closed")})
-                                      {:style (cond-> {}
-                                                @dragging? (assoc :transition-duration "0s")
-                                                @open? (assoc :width (str @width "vw")))})
-                          [:div (use-style right-sidebar-dragger-style {:on-mouse-down #(reset! dragging? true)})]
-                          [:div (use-style sidebar-content-style {:class (if @open? "is-open" "is-closed")})
-                           [:div (use-style page-style {:content-editable "true"})]
-                           ]
-                          ])})))
+      :reagent-render (fn []
+                        [:div (merge (use-style sidebar-style
+                                                {:class (if @open? "is-open" "is-closed")})
+                                     {:style (cond-> {}
+                                               @dragging? (assoc :transition-duration "0s")
+                                               @open? (assoc :width (str @width "vw")))})
+                         [:div (use-style right-sidebar-dragger-style {:on-mouse-down #(reset! dragging? true)})]
+                         [:div (use-style sidebar-content-style {:class (if @open? "is-open" "is-closed")})
+                          [:div (use-style page-style {:content-editable "true"})]]])})))

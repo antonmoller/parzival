@@ -1,7 +1,6 @@
 (ns parzival.views.pdf
   (:require
             [re-frame.core :refer [dispatch subscribe]]
-            [goog.object :as obj]
             [parzival.style :refer [ZINDICES]]
             [stylefy.core :as stylefy :refer [use-style]]))
 
@@ -9,7 +8,7 @@
 
 (def pdf-container-style
   {:position "absolute"
-   :z-index (:zindex-dropdown ZINDICES)
+   :z-index (:zindex-sticky ZINDICES) ; FIXME
    :height "100%"
    :overflow-y "auto"
    ::stylefy/vendors ["webkit"]
@@ -21,8 +20,7 @@
                                                  :border-left "1px solid grey"
                                                  :border-right "1px solid grey"
                                                  ; :height "10px"
-                                                 }]]
-   })
+                                                 }]]})
 
 ;;; Components
 
@@ -37,8 +35,7 @@
       (when @pdf?
         (dispatch [:pdf/view]))
       [:div#viewerContainer (use-style pdf-container-style) ;TODO: Check if left mouse button is pressed
-        [:div#viewer.pdfViewer {:on-mouse-up (fn [] (dispatch [:highlight "rgba(0,100,0,1)"
-                                                              :id "testing"]))
-                                :on-mouse-down (fn [e] (if (= (obj/get e "button") 2)
+       [:div#viewer.pdfViewer {:on-mouse-up (fn [] (dispatch [:highlight/toolbar]))
+                               :on-mouse-down (fn [e] (if (= (.-button e) 2)
                                                         (dispatch [:pagemark])))}]])))
 

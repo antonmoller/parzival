@@ -1,6 +1,7 @@
 (ns parzival.views
   (:require
    [parzival.views.right-sidebar :refer [right-sidebar]]
+   [parzival.views.highlight-toolbar :refer [highlight-toolbar]]
    [parzival.views.settings :refer [settings]]
    [parzival.views.search :refer [search]]
    [parzival.views.app-toolbar :refer [app-toolbar]]
@@ -44,6 +45,7 @@
       [:div (use-style app-wrapper-style)
         [search]
         [settings]
+        [highlight-toolbar]
         [app-toolbar]
         [left-sidebar]
         [:div (use-style main-content-style)

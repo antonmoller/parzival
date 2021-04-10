@@ -34,6 +34,11 @@
   (fn [db [_ pdf]]
     (assoc db :pdf pdf)))
 
+(rf/reg-event-db 
+ :highlight/toggle
+ (fn [db _]
+   (update db :highlight/open not)))
+
 ;TODO: Change error handling so it's actually useful
 ; Is this called everytime :pdf is called????
 (reg-event-fx
@@ -140,19 +145,24 @@
 ;;                  (assoc-in db [:pdf/highlights page-id 0] highlight))
 ;;            :fx [(render-highlight highlight page)]})))))
 
-(defn valid-range?
+(defn toolbar-anchor
   []
   (let [range-obj (.getRangeAt (.getSelection js/document) 0)]
     (when-not (.-collapsed range-obj)
       (let [text-layer-start (.. range-obj -startContainer -parentNode -parentNode)
-            text-layer-end   (.. range-obj -endContainer -parentNode -parentNode)]
-            (.isSameNode text-layer-start text-layer-end)))))
+            text-layer-end   (.. range-obj -endContainer -parentNode -parentNode)
+            rect             (.getBoundingClientRect range-obj)]
+            (when (.isSameNode text-layer-start text-layer-end)
+              (js/console.log rect)
+              [(str (.-left rect) "px") (str (+ (.-bottom rect) 5) "px")])))))
            
 (reg-event-fx
- :highlight
+ :highlight/toolbar
  (fn [{:keys [db]} _]
-   (when (valid-range?)
-     (js/console.log true))))
+   (when-let [anchor (toolbar-anchor)]
+   (js/console.log anchor)
+     {:db (assoc db :highlight/anchor anchor)
+      :fx [[:dispatch [:highlight/toggle]]]})))
 
 ;;          text-layer-end   (.. range-obj -startContanier -parentNode -parentNode)]
 ;;      (when (and (not (.-collapsed range-obj)) (.isSameNode text-layer-start text-layer-end))

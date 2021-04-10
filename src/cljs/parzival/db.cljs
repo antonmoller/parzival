@@ -8,7 +8,7 @@
    :right-sidebar/width 32
    :settings/open false
    :search/open false
-   :highlight/open true
+   :highlight/open false
    :highlight/anchor ["200px" "200px"]
    :theme/dark true
    :pdf nil
