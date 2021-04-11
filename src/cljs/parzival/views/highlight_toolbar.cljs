@@ -4,8 +4,8 @@
    ["@material-ui/icons/HighlightOff" :default HighlightOff]
    [stylefy.core :as stylefy :refer [use-style]]
    [parzival.style :refer [HIGHLIGHT-COLOR DEPTH-SHADOWS ZINDICES color]]))
-;;; Styles
 
+;;; Styles
 
 (def tooltip-style
   {:visibility "hidden"
@@ -59,6 +59,6 @@
            [:span (merge (use-style circle-style)
                          {:style {:background-color color}
                           :key (str "highlight-" color)
-                          :on-click (fn [e]
-                                      (dispatch [:highlight/toggle]))})]))
-        [:> HighlightOff {:style {:cursor "pointer"}}]]])))
+                          :on-click #(dispatch [:highlight color])})]))
+        [:> HighlightOff {:style {:cursor "pointer"}
+                          :on-click #(dispatch [:highlight/toggle])}]]])))

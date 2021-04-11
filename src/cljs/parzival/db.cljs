@@ -9,11 +9,12 @@
    :settings/open false
    :search/open false
    :highlight/open false
-   :highlight/anchor ["200px" "200px"]
+   :highlight/anchor nil
    :theme/dark true
    :pdf nil
    :pdf/viewer nil
    :pdf/highlights {}
+   :pdf/selection nil
    :loading/progress 0})
 
 

@@ -112,7 +112,8 @@
         (.setAttribute child "style" (str "position: absolute; background-color: " color
                                           "; left: " (min b0 b2) "px; top: " (min b1 b3) 
                                           "px; width: " (Math/abs (- b0 b2)) 
-                                          "px; height: " (Math/abs (- b1 b3)) "px;"))
+                                          "px; height: " (- (Math/abs (- b1 b3)) 0.5) "px;"
+                                          "mix-blend-mode: multiply;"))
         (.append parent child)))
     (.append text-layer fragment)))
 
@@ -122,28 +123,28 @@
     (let [page (.getPageView (get db :pdf/viewer) page-id)]
       (run! #(render-highlight (second %) page) (get-in db [:pdf/highlights page-id])))))
 
-;; (reg-event-fx
-;;   :highlight
-;;   (fn [{:keys [db]} [_ color _ id]]
-;;     (let [range-obj (.getRangeAt (.getSelection js/document) 0)] 
-;;       (when-not (.-collapsed range-obj)
-;;         (let [text-layer (.. range-obj -startContainer -parentNode -parentNode)
-;;               page-id (-> (.-parentNode text-layer)
-;;                           (.getAttribute "data-page-number")
-;;                           (dec))
-;;               page    (.getPageView (get db :pdf/viewer) page-id)
-;;               text-rows (.from js/Array (.-children text-layer))
-;;               [end end-offset] (get-end range-obj)
-;;               highlight {:color color
-;;                          :start-id (.indexOf text-rows (.. range-obj -startContainer -parentNode))
-;;                          :end-id (.indexOf text-rows end)
-;;                          :start-offset (.-startOffset range-obj)
-;;                          :end-offset end-offset}]
-;;           (.collapse range-obj)
-;;           {:db (if-let [page-highlights (get-in db [:pdf/highlights page-id])]
-;;                  (update-in db [:pdf/highlights page-id] assoc (count page-highlights) highlight)
-;;                  (assoc-in db [:pdf/highlights page-id 0] highlight))
-;;            :fx [(render-highlight highlight page)]})))))
+(reg-event-fx
+  :highlight
+  (fn [{:keys [db]} [_ color]]
+    (let [range-obj (get db :pdf/selection)
+          text-layer (.. range-obj -startContainer -parentNode -parentNode)
+          page-id (-> (.-parentNode text-layer)
+                      (.getAttribute "data-page-number")
+                      (dec))
+          page    (.getPageView (get db :pdf/viewer) page-id)
+          text-rows (.from js/Array (.-children text-layer))
+          [end end-offset] (get-end range-obj)
+          highlight {:color color
+                     :start-id (.indexOf text-rows (.. range-obj -startContainer -parentNode))
+                     :end-id (.indexOf text-rows end)
+                     :start-offset (.-startOffset range-obj)
+                     :end-offset end-offset}]
+      (.collapse range-obj)
+      {:db (if-let [page-highlights (get-in db [:pdf/highlights page-id])]
+             (update-in db [:pdf/highlights page-id] assoc (count page-highlights) highlight)
+             (assoc-in db [:pdf/highlights page-id 0] highlight))
+       :fx [(render-highlight highlight page)
+            [:dispatch [:highlight/toggle]]]})))
 
 (defn toolbar-anchor
   []
@@ -157,13 +158,15 @@
               (.setStart r end-node 0)
               (.setEnd r end-node (.-length end-node))
               (as-> (.getBoundingClientRect r) rect
-                    [(+ (.-left rect) (/ (.-width rect) 2)) (+ (.-bottom rect) 5)]))))))
+                    [range-obj (+ (.-left rect) (/ (.-width rect) 2)) (+ (.-bottom rect) 5)]))))))
            
 (reg-event-fx
  :highlight/toolbar
  (fn [{:keys [db]} _]
-   (when-let [anchor (toolbar-anchor)]
-     {:db (assoc db :highlight/anchor anchor)
+   (when-let [[selection x y] (toolbar-anchor)]
+     {:db (-> db
+              (assoc :highlight/anchor [x y])
+              (assoc :pdf/selection selection))
       :fx [[:dispatch [:highlight/toggle]]]})))
 
 (reg-event-fx
