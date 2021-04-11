@@ -39,7 +39,7 @@
    :orange "rgba(235, 97, 35, 0.7)"
    :green  "rgba(101, 255, 200, 0.8)"
    :blue   "rgba(101, 156, 255, 0.8)"
-   :yellow "rgba(255, 200, 101, 0.8)"
+  ;;  :yellow "rgba(255, 200, 101, 0.8)"
    :purple "rgba(200, 101, 255, 0.6)"})
 
 (def DEPTH-SHADOWS

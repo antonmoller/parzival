@@ -9,7 +9,7 @@
 
 (def tooltip-style
   {:visibility "hidden"
-   :width "162px"
+   :width "138px"
    :background-color (color :background-plus-1-color)
    :box-shadow    (str (:64 DEPTH-SHADOWS) ", 0 0 0 1px " (color :body-text-color :opacity-lower))
    :color (color :body-text-color)
@@ -51,7 +51,7 @@
     (fn []
       [:div (merge (use-style tooltip-style
                               {:class (if @highlight? "is-visible" "is-hidden")})
-                   {:style {:left (str (- (first @position) 81) "px")
+                   {:style {:left (str (- (first @position) 69) "px")
                             :top  (str (second @position) "px")}})
        [:div (use-style highlight-style)
         (doall
