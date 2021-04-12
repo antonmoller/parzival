@@ -85,6 +85,7 @@
 
 .annotationLayer section {
   position: absolute;
+  z-index: 2; /* FIXME */
   text-align: initial;
 }
 
