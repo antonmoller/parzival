@@ -38,7 +38,7 @@
   {;;  :red    "rgba(178, 35, 49, 1)"; 0,5)"
    ;;  :yellow "rgba(255, 200, 101, 0.8)"
    :orange {:color "rgb(235, 97, 35)" :opacity 0.7}
-   :green  {:color "rgb(101, 255, 200)" :opacity 0.8}
+   :green  {:color "rgb(101, 255, 200)" :opacity 1}
    :blue   {:color "rgb(101, 156, 255)" :opacity 0.8}
    :purple {:color "rgb(200, 101, 255)" :opacity 0.6}})
 

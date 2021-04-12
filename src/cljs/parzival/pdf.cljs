@@ -104,14 +104,15 @@
 
 (reg-event-fx
  :render/page
- (fn [{:keys [db]} [_ canvas-wrapper page-id]]
-   (let [svg (.createElementNS js/document SVG-NAMESPACE "svg")]
+ (fn [{:keys [db]} [_ page]]
+   (let [highlights (get-in db [:pdf/highlights (dec (.getAttribute page "data-page-number"))])
+         page-rect (.getBoundingClientRect (.. page -firstChild -firstChild))
+         rows      (.. page -firstChild -nextSibling -children)
+         svg (.createElementNS js/document SVG-NAMESPACE "svg")]
      (.setAttribute svg "style" (str "position: absolute; inset: 0; width: 100%; height: 100%;
                                       mix-blend-mode: multiply; z-index: 1; pointer-events: none;"))
-     (.append canvas-wrapper svg)
-   )))
-    ;; (let [page (.getPageView (get db :pdf/viewer) page-id)]
-    ;;   (run! #(render-highlight (second %) page) (get-in db [:pdf/highlights page-id])))))
+     (run! #(render-highlight (second %) svg page-rect rows) highlights)
+     (.append (.-firstChild page) svg))))
 
 (reg-event-fx
  :highlight
@@ -179,9 +180,7 @@
      (.setViewer link-service pdf-viewer)
      (.setDocument pdf-viewer pdf)
      (.setDocument link-service pdf nil)
-     (.on event-bus "textlayerrendered"
-          #(dispatch [:render/page (.. % -source -textLayerDiv -previousSibling) (dec (.-pageNumber %))]))
-     )))
+     (.on event-bus "textlayerrendered" #(dispatch [:render/page (.. % -source -textLayerDiv -parentNode)])))))
 
 
 ; (reg-event-fx
