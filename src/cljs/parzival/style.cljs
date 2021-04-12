@@ -35,12 +35,12 @@
   ;  :body-text-color         "#4333F38"})
 
 (def HIGHLIGHT-COLOR
-  { ;;  :red    "rgba(178, 35, 49, 1)"; 0,5)"
-   :orange "rgba(235, 97, 35, 0.7)"
-   :green  "rgba(101, 255, 200, 0.8)"
-   :blue   "rgba(101, 156, 255, 0.8)"
-  ;;  :yellow "rgba(255, 200, 101, 0.8)"
-   :purple "rgba(200, 101, 255, 0.6)"})
+  {;;  :red    "rgba(178, 35, 49, 1)"; 0,5)"
+   ;;  :yellow "rgba(255, 200, 101, 0.8)"
+   :orange {:color "rgb(235, 97, 35)" :opacity 0.7}
+   :green  {:color "rgb(101, 255, 200)" :opacity 0.8}
+   :blue   {:color "rgb(101, 156, 255)" :opacity 0.8}
+   :purple {:color "rgb(200, 101, 255)" :opacity 0.6}})
 
 (def DEPTH-SHADOWS
   {:4                  "0px 1.6px 3.6px rgba(0, 0, 0, 0.13), 0px 0.3px 0.9px rgba(0, 0, 0, 0.1)"

@@ -84,7 +84,7 @@
        (.-endOffset range-obj)])))
 
 (defn render-highlight
-  [{:keys [color start-id end-id start-offset end-offset]} svg page-rect rows]
+  [{:keys [color opacity start-id end-id start-offset end-offset]} svg page-rect rows]
   (let [fragment (js/DocumentFragment.)
         r (js/Range.)]
     (doseq [i (range start-id (inc end-id))]
@@ -96,7 +96,9 @@
         (.setAttribute rect "y" (- (.-top coords) (.-top page-rect)))
         (.setAttribute rect "width" (.-width coords))
         (.setAttribute rect "height" (dec (.-height coords)))
-        (.setAttribute rect "style" (str "cursor: pointer; pointer-events: auto;" "fill: " color ";")
+        (.setAttribute rect "style" (str "cursor: pointer; pointer-events: auto;" 
+                                         "fill: " color ";"
+                                         "fill-opacity: " opacity ";")
         (.append fragment rect)))
     (.append svg fragment))))
 
@@ -113,7 +115,7 @@
 
 (reg-event-fx
  :highlight
- (fn [{:keys [db]} [_ color]]
+ (fn [{:keys [db]} [_ color opacity]]
    (let [range-obj (get db :pdf/selection)
          text-layer (.. range-obj -startContainer -parentNode -parentNode)
          page (.-parentNode text-layer)
@@ -124,6 +126,7 @@
          rows-arr (.from js/Array rows)
          [end end-offset] (get-end range-obj)
          highlight {:color color
+                    :opacity opacity
                     :start-id (.indexOf rows-arr (.. range-obj -startContainer -parentNode))
                     :end-id (.indexOf rows-arr end)
                     :start-offset (.-startOffset range-obj)

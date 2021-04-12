@@ -55,10 +55,10 @@
                             :top  (str (second @position) "px")}})
        [:div (use-style highlight-style)
         (doall
-         (for [[_ color] HIGHLIGHT-COLOR]
+         (for [[_ {:keys [color opacity]}] HIGHLIGHT-COLOR]
            [:span (merge (use-style circle-style)
                          {:style {:background-color color}
                           :key (str "highlight-" color)
-                          :on-click #(dispatch [:highlight color])})]))
+                          :on-click #(dispatch [:highlight color opacity])})]))
         [:> HighlightOff {:style {:cursor "pointer"}
                           :on-click #(dispatch [:highlight/toggle])}]]])))
