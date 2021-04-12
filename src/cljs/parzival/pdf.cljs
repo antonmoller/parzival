@@ -8,6 +8,7 @@
    [cljs.core.async.interop :refer [<p!]]
    [day8.re-frame.tracing :refer-macros [fn-traced]]))
 
+(def SVG-NAMESPACE "http://www.w3.org/2000/svg")
 
 ;; Subs
 
@@ -73,13 +74,6 @@
   [node]
   (.. node -firstChild -length))
 
-(defn calc-coord
-  [viewport page-rect rect]
-  (.concat ^js (.convertToPdfPoint viewport (- (.-left rect)   (.-x page-rect))
-                                   (- (.-top rect)    (.-y page-rect)))
-           ^js (.convertToPdfPoint viewport (- (.-right rect)  (.-x page-rect))
-                                   (- (.-bottom rect) (.-y page-rect)))))
-
 (defn get-end
   [range-obj]
   (let [end (.-endContainer range-obj)]
@@ -90,42 +84,30 @@
        (.-endOffset range-obj)])))
 
 (defn render-highlight
-  [{:keys [color start-id end-id start-offset end-offset]} page]
-  (let [text-layer (.. page -textLayer -textLayerDiv)
-        rows (.-children text-layer)
-        fragment (js/DocumentFragment.)
-        parent (.createElement js/document "div")
-        viewport (.-viewport page)
-        page-rect (-> (.-canvas page)
-                      (.getClientRects)
-                      (aget 0))
+  [{:keys [color start-id end-id start-offset end-offset]} svg page-rect rows]
+  (let [fragment (js/DocumentFragment.)
         r (js/Range.)]
-    (.setAttribute parent "style" "cursor: pointer; position: absolute;")
-    (.append fragment parent)
     (doseq [i (range start-id (inc end-id))]
       (.setStart r (text (.item rows i)) (if (== i start-id) start-offset 0))
       (.setEnd r (text (.item rows i)) (if (== i end-id) end-offset (length (.item rows i))))
-      (let [[b0 b1 b2 b3] (->> (.getBoundingClientRect r)
-                               (calc-coord viewport page-rect)
-                               ^js (.convertToViewportRectangle viewport))
-            child (.createElement js/document "div")]
-        (.setAttribute child "style" (str "position: absolute; background-color: " color
-                                          "; left: " (min b0 b2) "px; top: " (min b1 b3)
-                                          "px; width: " (Math/abs (- b0 b2))
-                                          "px; height: " (- (Math/abs (- b1 b3)) 0.5) "px;"
-                                          "mix-blend-mode: multiply;"))
-        (.append parent child)))
-    (.append text-layer fragment)))
+      (let [coords (.getBoundingClientRect r)
+            rect (.createElementNS js/document SVG-NAMESPACE "rect")]
+        (.setAttribute rect "x" (- (.-left coords) (.-left page-rect)))
+        (.setAttribute rect "y" (- (.-top coords) (.-top page-rect)))
+        (.setAttribute rect "width" (.-width coords))
+        (.setAttribute rect "height" (dec (.-height coords)))
+        (.setAttribute rect "style" (str "cursor: pointer; pointer-events: auto;" "fill: " color ";")
+        (.append fragment rect)))
+    (.append svg fragment))))
 
 (reg-event-fx
  :render/page
  (fn [{:keys [db]} [_ canvas-wrapper page-id]]
-   (let [svg (.createElement js/document "svg")]
+   (let [svg (.createElementNS js/document SVG-NAMESPACE "svg")]
      (.setAttribute svg "style" (str "position: absolute; inset: 0; width: 100%; height: 100%;
                                       mix-blend-mode: multiply; z-index: 1; pointer-events: none;"))
-     (.appendChild canvas-wrapper svg)
-   (js/console.log svg))
-   ))
+     (.append canvas-wrapper svg)
+   )))
     ;; (let [page (.getPageView (get db :pdf/viewer) page-id)]
     ;;   (run! #(render-highlight (second %) page) (get-in db [:pdf/highlights page-id])))))
 
@@ -134,23 +116,23 @@
  (fn [{:keys [db]} [_ color]]
    (let [range-obj (get db :pdf/selection)
          text-layer (.. range-obj -startContainer -parentNode -parentNode)
-         page-id (-> (.-parentNode text-layer)
-                     (.getAttribute "data-page-number")
-                     (dec))
-         page    (.getPageView (get db :pdf/viewer) page-id)
-         text-rows (.from js/Array (.-children text-layer))
+         page (.-parentNode text-layer)
+         page-id (dec (.getAttribute page "data-page-number"))
+         page-rect (.getBoundingClientRect (.. page -firstChild -firstChild))
+         svg       (.. page -firstChild -lastChild)
+         rows       (.-children text-layer)
+         rows-arr (.from js/Array rows)
          [end end-offset] (get-end range-obj)
          highlight {:color color
-                    :start-id (.indexOf text-rows (.. range-obj -startContainer -parentNode))
-                    :end-id (.indexOf text-rows end)
+                    :start-id (.indexOf rows-arr (.. range-obj -startContainer -parentNode))
+                    :end-id (.indexOf rows-arr end)
                     :start-offset (.-startOffset range-obj)
                     :end-offset end-offset}]
-                    (js/console.log page)
      (.collapse range-obj)
      {:db (if-let [page-highlights (get-in db [:pdf/highlights page-id])]
             (update-in db [:pdf/highlights page-id] assoc (count page-highlights) highlight)
             (assoc-in db [:pdf/highlights page-id 0] highlight))
-      :fx [(render-highlight highlight page)
+      :fx [(render-highlight highlight svg page-rect rows)
            [:dispatch [:highlight/toggle]]]})))
 
 (defn toolbar-anchor
@@ -196,7 +178,7 @@
      (.setDocument link-service pdf nil)
      (.on event-bus "textlayerrendered"
           #(dispatch [:render/page (.. % -source -textLayerDiv -previousSibling) (dec (.-pageNumber %))]))
-     {:db (assoc db :pdf/viewer pdf-viewer)})))
+     )))
 
 
 ; (reg-event-fx

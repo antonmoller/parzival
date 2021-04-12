@@ -12,7 +12,6 @@
    :highlight/anchor nil
    :theme/dark true
    :pdf nil
-   :pdf/viewer nil
    :pdf/highlights {}
    :pdf/selection nil
    :loading/progress 0})
