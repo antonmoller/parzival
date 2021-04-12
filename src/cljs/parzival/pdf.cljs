@@ -85,8 +85,13 @@
 
 (defn render-highlight
   [{:keys [color opacity start-id end-id start-offset end-offset]} svg page-rect rows]
-  (let [fragment (js/DocumentFragment.)
+  (let [group (.createElementNS js/document SVG-NAMESPACE "g")
         r (js/Range.)]
+    (.setAttribute group "style" (str "cursor: pointer; pointer-events: auto;"
+                                      "fill: " color ";"
+                                      "fill-opacity: " opacity ";"))
+    (.addEventListener group "mouseenter" #(set! (.. group -style -fill) "rgba(18,52,86,0.5)"))
+    (.addEventListener group "mouseleave" #(set! (.. group -style -fill) color))
     (doseq [i (range start-id (inc end-id))]
       (.setStart r (text (.item rows i)) (if (== i start-id) start-offset 0))
       (.setEnd r (text (.item rows i)) (if (== i end-id) end-offset (length (.item rows i))))
@@ -95,12 +100,9 @@
         (.setAttribute rect "x" (- (.-left coords) (.-left page-rect)))
         (.setAttribute rect "y" (- (.-top coords) (.-top page-rect)))
         (.setAttribute rect "width" (.-width coords))
-        (.setAttribute rect "height" (dec (.-height coords)))
-        (.setAttribute rect "style" (str "cursor: pointer; pointer-events: auto;" 
-                                         "fill: " color ";"
-                                         "fill-opacity: " opacity ";")
-        (.append fragment rect)))
-    (.append svg fragment))))
+        (.setAttribute rect "height" (.-height coords))
+        (.append group rect))
+      (.append svg group))))
 
 (reg-event-fx
  :render/page
