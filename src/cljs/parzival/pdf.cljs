@@ -89,9 +89,13 @@
         r (js/Range.)]
     (.setAttribute group "style" (str "cursor: pointer; pointer-events: auto;"
                                       "fill: " color ";"
-                                      "fill-opacity: " opacity ";"))
-    (.addEventListener group "mouseenter" #(set! (.. group -style -fill) "rgba(18,52,86,0.5)"))
-    (.addEventListener group "mouseleave" #(set! (.. group -style -fill) color))
+                                      "opacity: " opacity ";"))
+    (.addEventListener group "mouseenter" (fn []
+                                            (set! (.. group -style -fill) "rgb(18,52,86)")
+                                            (set! (.. group -style -opacity) "0.5")))
+    (.addEventListener group "mouseleave" (fn []
+                                            (set! (.. group -style -fill) color)
+                                            (set! (.. group -style -opacity) opacity)))
     (doseq [i (range start-id (inc end-id))]
       (.setStart r (text (.item rows i)) (if (== i start-id) start-offset 0))
       (.setEnd r (text (.item rows i)) (if (== i end-id) end-offset (length (.item rows i))))
