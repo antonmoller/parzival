@@ -227,8 +227,11 @@
    {:db (if (nil? rect)
           (assoc db :highlight/anchor nil)
           (as-> (.getBoundingClientRect (.getElementById js/document "viewer")) page-rect
-            (assoc db :highlight/anchor [(+ (- (.-x rect) (.-x page-rect)) (/ (.-width rect) 2))
-                                         (+ (- (.-bottom rect) (.-y page-rect)) 5)])))}))
+            (assoc db :highlight/anchor
+                   {:page-left (.-left page-rect)
+                    :page-right (.-right page-rect)
+                    :anchor-x (+ (- (.-x rect) (.-x page-rect)) (/ (.-width rect) 2))
+                    :anchor-y (+ (- (.-bottom rect) (.-y page-rect)) 5)})))}))
 
 (rf/reg-event-db
  :highlight/selected
