@@ -43,11 +43,14 @@
   (let [route-name (subscribe [:current-route/name])]
     (fn []
       [:div (use-style app-wrapper-style)
-        [search]
-        [settings]
-        [highlight-toolbar]
-        [app-toolbar]
-        [left-sidebar]
+        ;; [search]
+        ;; [settings]
+        ;; [highlight-toolbar]
+        ;; [app-toolbar]
+        ;; [left-sidebar]
         [:div (use-style main-content-style)
-        [match-panel @route-name]]
-        [right-sidebar]])))
+         [pdf]
+        ;; [match-panel @route-name]
+         ]
+        ;; [right-sidebar]
+       ])))

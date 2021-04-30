@@ -8,12 +8,11 @@
    :right-sidebar/width 32
    :settings/open false
    :search/open false
-   :highlight/open false
-   :highlight/anchor nil
+   :highlight/anchor nil ; [x y]
+   :highlight/selected nil ; [color page id] [color page id]
    :theme/dark true
    :pdf nil
-   :pdf/highlights {}
-   :pdf/selection nil
+   :pdf/highlights {} ; {:color :opacity :x0 :y0 :x1 :y1}
    :loading/progress 0})
 
 

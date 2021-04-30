@@ -1,6 +1,7 @@
 (ns parzival.views.pdf
   (:require
             [re-frame.core :refer [dispatch subscribe]]
+            [parzival.views.highlight-toolbar :refer [highlight-toolbar]]
             [parzival.style :refer [ZINDICES]]
             [stylefy.core :as stylefy :refer [use-style]]))
 
@@ -24,6 +25,7 @@
 
 ;;; Components
 
+;;; TODO: the on-click should only be active when the toolbar is not open
 (defn pdf
   []
   (let [pdf? (subscribe [:pdf?])
@@ -35,7 +37,6 @@
       (when @pdf?
         (dispatch [:pdf/view]))
       [:div#viewerContainer (use-style pdf-container-style) ;TODO: Check if left mouse button is pressed
-       [:div#viewer.pdfViewer {:on-mouse-up (fn [] (dispatch [:highlight/toolbar]))
-                               :on-mouse-down (fn [e] (if (= (.-button e) 2)
-                                                        (dispatch [:pagemark])))}]])))
+       [highlight-toolbar]
+       [:div#viewer.pdfViewer {:on-mouse-up #(dispatch [:highlight/toolbar (.-target %)])}]])))
 

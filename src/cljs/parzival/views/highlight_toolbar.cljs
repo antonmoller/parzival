@@ -1,7 +1,8 @@
 (ns parzival.views.highlight-toolbar
   (:require 
    [re-frame.core :refer [dispatch subscribe]]
-   ["@material-ui/icons/HighlightOff" :default HighlightOff]
+   ["@material-ui/icons/CancelRounded" :default CancelRounded]
+   ["@material-ui/icons/Brightness1Rounded" :default Brightness1Rounded]
    [stylefy.core :as stylefy :refer [use-style]]
    [parzival.style :refer [HIGHLIGHT-COLOR DEPTH-SHADOWS ZINDICES color]]))
 
@@ -9,14 +10,19 @@
 
 (def tooltip-style
   {:visibility "hidden"
-   :width "138px"
+   :width "120px"
+   :height "35px"
+  ;;  :height "40px"
    :background-color (color :background-plus-1-color)
    :box-shadow    (str (:64 DEPTH-SHADOWS) ", 0 0 0 1px " (color :body-text-color :opacity-lower))
    :color (color :body-text-color)
-   :text-align "center"
    :border-radius "0.25rem"
    :position "absolute"
+   :display "flex"
+   :justify-content "space-evenly"
+   :align-items "center"
    :z-index (:zindex-tooltip ZINDICES)
+   :line-height 1
    ::stylefy/mode {:after {:content "''"
                            :position "absolute"
                            :bottom "100%"
@@ -24,41 +30,43 @@
                            :margin-left "-5px"
                            :border-width "5px"
                            :border-style "solid"
-                           :border-color (str "transparent transparent " (color :background-plus-1-color) " transparent")}}
-   ::stylefy/manual [[:&.is-visible {:visibility "visible"}]
-                     [:&.is-hidden {:visibility "hidden"}]]})
+                           :border-color (str "transparent transparent " (color :background-plus-1-color) " transparent")}}})
 
-(def highlight-style
-  {:display "flex"
-   :margin "0.25rem 0.5rem"
-   :align-items "center"})
-
-(def circle-style
-  {:height "20px"
-   :width "20px"
-   :border-radius "50%"
-   :line-height "1"
-   :margin-right "0.25rem"
-   :cursor "pointer"
-   ::stylefy/manual {:svg {:font-size "20px"}}})
+(def button-style 
+  {:cursor "pointer"
+   :height "100%"
+   :width "100%"
+   :display "flex"
+   :justify-content "center"
+   :align-items "center"
+   ::stylefy/mode {:hover {:background (color :body-text-color :opacity-low)}}})
 
 ;;; Components
 
 (defn highlight-toolbar
   []
-  (let [highlight? (subscribe [:highlight/open])
-        position   (subscribe [:highlight/anchor])]
+  (let [position   (subscribe [:highlight/anchor])
+        edit?      (subscribe [:highlight/edit])]
     (fn []
-      [:div (merge (use-style tooltip-style
-                              {:class (if @highlight? "is-visible" "is-hidden")})
-                   {:style {:left (str (- (first @position) 69) "px")
-                            :top  (str (second @position) "px")}})
-       [:div (use-style highlight-style)
-        (doall
-         (for [[_ {:keys [color opacity]}] HIGHLIGHT-COLOR]
-           [:span (merge (use-style circle-style)
-                         {:style {:background-color color}
-                          :key (str "highlight-" color)
-                          :on-click #(dispatch [:highlight color opacity])})]))
-        [:> HighlightOff {:style {:cursor "pointer"}
-                          :on-click #(dispatch [:highlight/toggle])}]]])))
+      [:div (merge (use-style tooltip-style)
+                   {:key "testing"
+                    :style (if (some? @position)
+                             {:visibility "visible"
+                              :left (str (- (first @position) 60) "px")
+                              :top  (str (second @position) "px")}
+                             {:visibility "hidden"})})
+       (doall
+        (for [[_ {:keys [color opacity]}] HIGHLIGHT-COLOR]
+          (if (and (some? edit?) (= (:color @edit?) color))
+            [:div (merge (use-style button-style)
+                         {:key (str "highlight-" color)
+                          :on-click #(dispatch [:highlight/remove])})
+             [:> CancelRounded {:style {:color color}}]]
+            [:div (merge (use-style button-style)
+                         {:key (str "highlight-" color)
+                          :on-click #(if (nil? @edit?)
+                                       (dispatch [:highlight/add color opacity])
+                                       (dispatch [:highlight/edit color opacity]))})
+             [:> Brightness1Rounded  {:style {:color color
+                                              ;; :padding-bottom "0px"
+                                              }}]])))])))
