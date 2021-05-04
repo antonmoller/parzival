@@ -274,45 +274,7 @@
        (and (= (.-nodeName target) "g") (not (.isSameNode target element))) {:fx [[:dispatch [:highlight/toolbar-edit target]]]}
        (and (not= target "g") (some? selection-rect)) {:fx [[:dispatch [:highlight/selected nil]]
                                                                             [:dispatch [:highlight/toolbar-create selection-rect]]]}
-       (not= target "rect") {:fx [[:dispatch [:highlight/toolbar-close]]]}))))
-
-;;; Pagemarks
-
-(defn pagemark-vertical-resize
-  [])
-
-  ; (defn pagemark-horizontal-resize
-  ;   []
-  ;   (let [handle-mousemove (fn [e]
-  ;                            (.. e preventDefault)
-  ;                            (let [x (.-clientX e)
-  ;                                  inner-w js/window.innerWidth
-  ;                                  new-width (-> (- inner-w x)
-  ;                                                (/ inner-w)
-  ;                                                (* 100))]
-  ;                              (.setAttribute
-  ;   (.addEventListener "mousemove" handle-mousemove)
-  ;   (.addEventListener "mouseup" handle-mouseup)
-
-    ;;FIXME: In handle-mouseup
-    ;(.removeEventListener "mousemove" handle-mousemove)p
-    ;(.removeEventListener "mouseup" handle-mouseup)
-    ;)
-
-(defn horizontal-resize
-  [element event]
-  (let [style (.-style element)
-        handle-mousemove (fn [e]
-                           (.. e preventDefault)
-                           (let [x (- (.-clientX e) 374)]
-                             (set! (.-width style) (str x "px"))))
-        handle-mouseup (fn [e]
-                         (.removeEventListener js/document "mousemove" handle-mousemove))]
-    (.addEventListener js/document "mousemove" handle-mousemove)
-    (.addEventListener js/document "mouseup" handle-mouseup (js-obj "once" true))
-    (js/console.log element)
-    (js/console.log event)))
-
+       (not= target "g") {:fx [[:dispatch [:highlight/toolbar-close]]]}))))
 
 ;;; Pagemarks
 
