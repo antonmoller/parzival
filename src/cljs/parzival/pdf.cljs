@@ -268,13 +268,13 @@
                               (when-not (= (.. range-obj -commonAncestorContainer -className) "pdfViewer")
                                 (.getBoundingClientRect range-obj)))))
          {:keys [element _ _]} (get db :highlight/selected)]
-     (when (and (some? element) (not (.isSameNode element (.-parentNode target))))
+     (when (and (some? element) (not (.isSameNode element target)))
        (.setAttribute element "fill-opacity" (* (.getAttribute element "fill-opacity") 2)))
      (cond
-       (and (= (.-nodeName target) "rect") (not (.isSameNode (.-parentNode target) element))) {:fx [[:dispatch [:highlight/toolbar-edit (.-parentNode target)]]]}
-       (and (not= (.-nodeName target) "rect") (some? selection-rect)) {:fx [[:dispatch [:highlight/selected nil]]
+       (and (= (.-nodeName target) "g") (not (.isSameNode target element))) {:fx [[:dispatch [:highlight/toolbar-edit target]]]}
+       (and (not= target "g") (some? selection-rect)) {:fx [[:dispatch [:highlight/selected nil]]
                                                                             [:dispatch [:highlight/toolbar-create selection-rect]]]}
-       (not= (.-nodeName target) "rect") {:fx [[:dispatch [:highlight/toolbar-close]]]}))))
+       (not= target "rect") {:fx [[:dispatch [:highlight/toolbar-close]]]}))))
 
 ;;; Pagemarks
 
@@ -314,109 +314,76 @@
     (js/console.log event)))
 
 
-;; (defn render-highlight
-;;   [id {:keys [color opacity x0 x1 y0 y1]} svg page-rect rows]
-;;   (let [group (.createElementNS js/document SVG-NAMESPACE "g")
-;;         r (js/Range.)]
-;;     (doto group
-;;       (.setAttribute "id" id)
-;;       (.setAttribute "cursor" "pointer")
-;;       (.setAttribute "pointer-events" "auto")
-;;       (.setAttribute "fill" color)
-;;       (.setAttribute "fill-opacity" opacity))
-;;     (doseq [i (range y0 (inc y1))]
-;;       (.setStart r (.-firstChild (.item rows i)) (if (== i y0) x0 0))
-;;       (.setEnd r (.-firstChild (.item rows i)) (if (== i y1) x1 (.. (.item rows i) -firstChild -length)))
-;;       (let [coords (.getBoundingClientRect r)
-;;             rect (.createElementNS js/document SVG-NAMESPACE "rect")]
-;;         (doto rect
-;;           (.setAttribute "x" (- (.-x coords) (.-x page-rect)))
-;;           (.setAttribute "y" (- (.-y coords) (.-y page-rect)))
-;;           (.setAttribute "width" (.-width coords))
-;;           (.setAttribute "height" (.-height coords)))
-;;         (.append group rect)))
-;;     (.append svg group)))
-
 ;;; Pagemarks
 
 ;; Helpers
 
 (defn set-cursor
-  [target x y]
+  [target x-in y-in]
   (let [width (.getAttribute target "width")
-        height (.getAttribute target "height")]
+        height (.getAttribute target "height")
+        x (- x-in (js/parseInt (.getAttribute target "x")))
+        y (- y-in (js/parseInt (.getAttribute target "y")))]
     (cond
-      (or (<= 0 x y 5)
-          (and (<= (- width 5) x width)
-               (<= (- height 5) y height))) (.setAttribute target "cursor" "nwse-resize")
-      (or (<= 0 x 5 (- height 5) y height)
-          (<= 0 y 5 (- width 5) x width)) (.setAttribute target "cursor" "nesw-resize")
-      (and (<= 5 y (- height 5))
-           (or (<= 0 x 5)  (<= (- width 5) x width))) (.setAttribute target "cursor" "ew-resize")
-      (and (<= 5 x (- width 5))
-           (or (<= 0 y 5) (<= (- height 5) y height))) (.setAttribute target "cursor" "ns-resize"))))
+      (and (<= 0 x 5) (<= 0 y 5)) (.setAttribute target "cursor" "se-resize") ; upper left corner
+      (and (<= 0 x 5) (<= (- height 5) y height)) (.setAttribute target "cursor" "ne-resize") ; lower left corner
+      (and (<= (- width 5) x width) (<= 0 y 5)) (.setAttribute target "cursor" "sw-resize") ; upper right corner
+      (and (<= (- width 5) x width) (<= (- height 5) y height)) (.setAttribute target "cursor" "nw-resize") ; lower right corner
+      (<= 0 x 5 y (- height 5)) (.setAttribute target "cursor" "w-resize") ; left
+      (and (<= (- width 5) x width) (<= 5 y (- height 5))) (.setAttribute target "cursor" "e-resize") ; right
+      (and (<= 5 x (- width 5)) (<= (- height 5) y height)) (.setAttribute target "cursor" "s-resize") ; bottom
+      (<= 0 y 5 x (- width 5)) (.setAttribute target "cursor" "n-resize"); top
+      )
+    ))
 
 (reg-event-fx
  :pagemark
  (fn [{:keys [db]} [_ target]]
-   (let [text-layer (-> (.closest target ".page")
-                        (.querySelector ".highlightLayer"))
+   (let [page (.closest target ".page")
+         svg (.querySelector page ".highlightLayer")
          rect (.createElementNS js/document SVG-NAMESPACE "rect")
-        ;;  parent (.createElement js/document "div")
-        ;;  left   (.createElement js/document "div")
-        ;;  right  (.createElement js/document "div")
-        ;;  top    (.createElement js/document "div")
-        ;;  bottom (.createElement js/document "div")
-         ]
-    ;;  (js/console.log (.closest target ".highlightLayer"))
-     (js/console.log text-layer)
+         resize-handler (fn [e]
+                          (case (.getAttribute (.-target e) "cursor")
+                            "s-resize" (.setAttribute rect "height" (+ (js/parseInt (.getAttribute rect "height")) (.-movementY e)))
+                            "e-resize" (.setAttribute rect "width" (+ (js/parseInt (.getAttribute rect "width")) (.-movementX e)))
+                            "n-resize" (do
+                                         (.setAttribute rect "y" (+ (js/parseInt (.getAttribute rect "y")) (.-movementY e)))
+                                         (.setAttribute rect "height" (- (js/parseInt (.getAttribute rect "height")) (.-movementY e))))
+                            "w-resize" (do
+                                         (.setAttribute rect "x" (+ (js/parseInt (.getAttribute rect "x")) (.-movementX e)))
+                                         (.setAttribute rect "width" (- (js/parseInt (.getAttribute rect "width")) (.-movementX e))))
+                            "se-resize" (do
+                                          (.setAttribute rect "x" (+ (js/parseInt (.getAttribute rect "x")) (.-movementX e)))
+                                          (.setAttribute rect "y" (+ (js/parseInt (.getAttribute rect "y")) (.-movementY e)))
+                                          (.setAttribute rect "width" (- (js/parseInt (.getAttribute rect "width")) (.-movementX e)))
+                                          (.setAttribute rect "height" (- (js/parseInt (.getAttribute rect "height")) (.-movementY e))))
+                            "ne-resize" (do
+                                          (.setAttribute rect "x" (+ (js/parseInt (.getAttribute rect "x")) (.-movementX e)))
+                                          (.setAttribute rect "width" (- (js/parseInt (.getAttribute rect "width")) (.-movementX e)))
+                                          (.setAttribute rect "height" (+ (js/parseInt (.getAttribute rect "height")) (.-movementY e))))
+                            "sw-resize" (do
+                                          (.setAttribute rect "y" (+ (js/parseInt (.getAttribute rect "y")) (.-movementY e)))
+                                          (.setAttribute rect "width" (+ (js/parseInt (.getAttribute rect "width")) (.-movementX e)))
+                                          (.setAttribute rect "height" (- (js/parseInt (.getAttribute rect "height")) (.-movementY e))))
+                            "nw-resize" (do
+                                          (.setAttribute rect "width" (+ (js/parseInt (.getAttribute rect "width")) (.-movementX e)))
+                                          (.setAttribute rect "height" (+ (js/parseInt (.getAttribute rect "height")) (.-movementY e))))))]
      (doto rect
        (.setAttribute "x" 0)
        (.setAttribute "y" 0)
-       (.setAttribute "width" 500)
+       (.setAttribute "width" (js/parseInt (.. page -style -width)))
        (.setAttribute "height" 700)
        (.setAttribute "stroke-width" 5)
-       (.setAttribute "cursor" "pointer")
        (.setAttribute "pointer-events" "auto")
        (.setAttribute "fill" "none")
        (.setAttribute "stroke" "blue")
-       (.addEventListener "mousemove" (fn [e]
-                                        (set-cursor (.-target e) (.-offsetX e) (.-offsetY e))
-                                        (js/console.log (.-offsetX e) (.-offsetY e)))))
-     (.append text-layer rect)
-    ;;  (js/console.log (aget (.getClientRects (.-canvas page)) 0))
-
-    ;;  (.setAttribute parent "style" "position: absolute; left 0; top: 0;
-    ;;                                  height: 700px; width: 500px;
-    ;;                                  max-width: 816px; min-width: 20px;
-    ;;                                  pointer-events: none;")
-    ;;  (.setAttribute left "style" "cursor: ew-resize; position: absolute; left: 0; top: 0;
-    ;;                                z-index: 9;
-    ;;                                width: 4px; height: 100%;
-    ;;                                pointer-events: auto;
-    ;;                                background-color: rgba(0,0,255,1);")
-    ;;  (.setAttribute right "style" "cursor: ew-resize; position: absolute; right: 0; top: 0;
-    ;;                                z-index: 9;
-    ;;                                width: 4px; height: 100%;
-    ;;                                pointer-events: auto;
-    ;;                                background-color: rgba(0,0,255,1);")
-    ;;   ; (.setAttribute right "onmousedown" pagemark-horizontal-resize)
-      ; (js/console.log (.getAttribute right "onmousedown"))
-      ; (.addEventListener left "mousedown" (fn [e] (if (= (obj/get e "button") 0)
-      ;                                                (horizontal-resize parent e))))
-    ;;  (.addEventListener right "mousedown" (fn [e] (if (= (.-button e) 0)
-    ;;                                                 (horizontal-resize parent e))))
-
-
-    ;;  (.setAttribute top "style" "cursor: ns-resize; position: absolute; left: 0; top: 0;
-    ;;                                width: 100%; height: 4px;
-    ;;                                background-color: rgba(0,0,255,1);")
-    ;;  (.setAttribute bottom "style" "cursor: ns-resize; position: absolute; left: 0; bottom: 0;
-    ;;                                  width: 100%; height: 4px;
-    ;;                                  background-color: rgba(0,0,255,1);")
-    ;;  (.append parent left)
-    ;;  (.append parent right)
-    ;;  (.append parent top)
-    ;;  (.append parent bottom)
-    ;;  (.append text-layer parent)
-     )))
+       (.addEventListener "pointermove" (fn [e]
+                                          (when-not (= (.-buttons e) 1)
+                                            (set-cursor (.-target e) (.-offsetX e) (.-offsetY e)))))
+       (.addEventListener "pointerdown" (fn [e]
+                                          (.addEventListener rect "pointermove" resize-handler)
+                                          (.setPointerCapture rect (.-pointerId e))))
+       (.addEventListener "pointerup" (fn [e]
+                                        (.removeEventListener rect "pointermove" resize-handler)
+                                        (.releasePointerCapture rect (.-pointerId e)))))
+     (.append svg rect))))

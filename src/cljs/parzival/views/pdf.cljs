@@ -38,7 +38,7 @@
         (dispatch [:pdf/view]))
       [:div#viewerContainer (use-style pdf-container-style) ;TODO: Check if left mouse button is pressed
        [highlight-toolbar]
-       [:div#viewer.pdfViewer {:on-mouse-up #(dispatch [:highlight/toolbar (.-target %)])
+       [:div#viewer.pdfViewer {:on-mouse-up #(dispatch [:highlight/toolbar (.. % -target -parentNode)])
                                :on-context-menu (fn [e]
                                                   (.preventDefault e)
                                                   (dispatch [:pagemark (.-target e)])
