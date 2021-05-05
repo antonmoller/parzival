@@ -13,7 +13,7 @@
    :theme/dark true
    :pdf nil
    :pdf/highlights {} ; {:color :opacity :x0 :y0 :x1 :y1}
-   :pdf/pagemark false
+   :pdf/pagemarks {} ; {:page-id {:id {:x :y :width :height}}}
    :loading/progress 0})
 
 

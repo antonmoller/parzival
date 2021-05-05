@@ -162,15 +162,16 @@
  :render/page
  (fn [{:keys [db]} [_ page]]
    (let [highlights (get-in db [:pdf/highlights (dec (.getAttribute page "data-page-number"))])
-         page-rect (.getBoundingClientRect (.. page -firstChild -firstChild))
-         rows      (.. page -firstChild -nextSibling -children)
-         svg (.createElementNS js/document SVG-NAMESPACE "svg")]
+         page-rect  (.getBoundingClientRect (.querySelector page "canvas"))
+         rows       (.-children (.querySelector page ".textLayer"))
+         svg        (.createElementNS js/document SVG-NAMESPACE "svg")
+         old-svg    (.querySelector page ".highlightLayer")]
      (.setAttribute svg "class" "highlightLayer")
      (.setAttribute svg "style" (str "position: absolute; inset: 0; width: 100%; height: 100%;
                                       mix-blend-mode: multiply; z-index: 1; pointer-events: none;"))
      (run! #(render-highlight (first %) (second %) svg page-rect rows) highlights)
-     (when (= (.. page -firstChild -lastChild -nodeName) "svg")
-       (.removeChild (.-firstChild page) (.. page -firstChild -lastChild)))
+     (when (some? old-svg)
+       (.removeChild (.-firstChild page) old-svg))
      (.append (.-firstChild page) svg))))
 
 (reg-event-fx
@@ -298,54 +299,92 @@
       )
     ))
 
+
+(defn resize-handler
+  [e]
+  (let [target (.-target e)
+        cursor (.getAttribute target "cursor")
+        x (js/parseInt (.getAttribute target "x"))
+        y (js/parseInt (.getAttribute target "y"))
+        w (js/parseInt (.getAttribute target "width"))
+        h (js/parseInt (.getAttribute target "height"))
+        dx (.-movementX e)
+        dy (.-movementY e)]
+    (doto target
+      (.setAttribute "x" (if (contains? #{"w-resize" "se-resize" "ne-resize"} cursor)
+                           (+ x dx)
+                           x))
+      (.setAttribute "y" (if (contains? #{"n-resize" "se-resize" "sw-resize"} cursor)
+                           (+ y dy)
+                           y))
+      (.setAttribute "width" (cond
+                               (contains? #{"e-resize" "sw-resize" "nw-resize"} cursor) (+ w dx)
+                               (contains? #{"w-resize" "se-resize" "ne-resize"} cursor) (- w dx)
+                               :else w))
+      (.setAttribute "height" (cond
+                                (contains? #{"s-resize" "ne-resize" "nw-resize"} cursor) (+ h dy)
+                                (contains? #{"n-resize" "se-resize" "sw-resize"} cursor) (- h dy)
+                                :else h)))))
+
+(defn pagemark-id
+  [{:keys [_ x y width height]}]
+  (str "pagemark-" x "-" y "-" width "-" height))
+
+(defn page-id
+  [target]
+  (-> (.closest target ".page")
+      (.getAttribute "data-page-number")
+      (dec)))
+
+(reg-event-fx
+ :pagemark/resize
+ (fn [{:keys [db]} [_ target]]
+   (let [page (page-id target)
+         id (.getAttribute target "id")
+         new-pagemark {:color (.getAttribute target "color")
+                       :x (.getAttribute target "x")
+                       :y (.getAttribute target "y")
+                       :width (.getAttribute target "width")
+                       :height (.getAttribute target "height")}
+         new-id (pagemark-id new-pagemark)]
+     {:db (-> db
+              (update-in [:pdf/pagemarks page] dissoc id)
+              (assoc-in [:pdf/pagemarks page new-id] new-pagemark))
+      :fx [(.setAttribute target "id" new-id)]})))
+
 (reg-event-fx
  :pagemark
  (fn [{:keys [db]} [_ target]]
    (let [page (.closest target ".page")
          svg (.querySelector page ".highlightLayer")
          rect (.createElementNS js/document SVG-NAMESPACE "rect")
-         resize-handler (fn [e]
-                          (case (.getAttribute (.-target e) "cursor")
-                            "s-resize" (.setAttribute rect "height" (+ (js/parseInt (.getAttribute rect "height")) (.-movementY e)))
-                            "e-resize" (.setAttribute rect "width" (+ (js/parseInt (.getAttribute rect "width")) (.-movementX e)))
-                            "n-resize" (do
-                                         (.setAttribute rect "y" (+ (js/parseInt (.getAttribute rect "y")) (.-movementY e)))
-                                         (.setAttribute rect "height" (- (js/parseInt (.getAttribute rect "height")) (.-movementY e))))
-                            "w-resize" (do
-                                         (.setAttribute rect "x" (+ (js/parseInt (.getAttribute rect "x")) (.-movementX e)))
-                                         (.setAttribute rect "width" (- (js/parseInt (.getAttribute rect "width")) (.-movementX e))))
-                            "se-resize" (do
-                                          (.setAttribute rect "x" (+ (js/parseInt (.getAttribute rect "x")) (.-movementX e)))
-                                          (.setAttribute rect "y" (+ (js/parseInt (.getAttribute rect "y")) (.-movementY e)))
-                                          (.setAttribute rect "width" (- (js/parseInt (.getAttribute rect "width")) (.-movementX e)))
-                                          (.setAttribute rect "height" (- (js/parseInt (.getAttribute rect "height")) (.-movementY e))))
-                            "ne-resize" (do
-                                          (.setAttribute rect "x" (+ (js/parseInt (.getAttribute rect "x")) (.-movementX e)))
-                                          (.setAttribute rect "width" (- (js/parseInt (.getAttribute rect "width")) (.-movementX e)))
-                                          (.setAttribute rect "height" (+ (js/parseInt (.getAttribute rect "height")) (.-movementY e))))
-                            "sw-resize" (do
-                                          (.setAttribute rect "y" (+ (js/parseInt (.getAttribute rect "y")) (.-movementY e)))
-                                          (.setAttribute rect "width" (+ (js/parseInt (.getAttribute rect "width")) (.-movementX e)))
-                                          (.setAttribute rect "height" (- (js/parseInt (.getAttribute rect "height")) (.-movementY e))))
-                            "nw-resize" (do
-                                          (.setAttribute rect "width" (+ (js/parseInt (.getAttribute rect "width")) (.-movementX e)))
-                                          (.setAttribute rect "height" (+ (js/parseInt (.getAttribute rect "height")) (.-movementY e))))))]
+         pagemark {:color "blue"
+                   :x 0
+                   :y 0
+                   :width (js/parseInt (.. page -style -width))
+                   :height 700}
+         page-id (dec (.getAttribute page "data-page-number"))
+         id (pagemark-id pagemark)]
      (doto rect
-       (.setAttribute "x" 0)
-       (.setAttribute "y" 0)
-       (.setAttribute "width" (js/parseInt (.. page -style -width)))
-       (.setAttribute "height" 700)
+       (.setAttribute "id" id)
+       (.setAttribute "x" (:x pagemark))
+       (.setAttribute "y" (:y pagemark))
+       (.setAttribute "width" (:width pagemark))
+       (.setAttribute "height" (:height pagemark))
        (.setAttribute "stroke-width" 5)
        (.setAttribute "pointer-events" "auto")
        (.setAttribute "fill" "none")
-       (.setAttribute "stroke" "blue")
+       (.setAttribute "stroke" (:color pagemark))
        (.addEventListener "pointermove" (fn [e]
                                           (when-not (= (.-buttons e) 1)
                                             (set-cursor (.-target e) (.-offsetX e) (.-offsetY e)))))
        (.addEventListener "pointerdown" (fn [e]
-                                          (.addEventListener rect "pointermove" resize-handler)
-                                          (.setPointerCapture rect (.-pointerId e))))
+                                          (when (= (.-buttons e) 1)
+                                            (.addEventListener rect "pointermove" resize-handler)
+                                            (.setPointerCapture rect (.-pointerId e)))))
        (.addEventListener "pointerup" (fn [e]
                                         (.removeEventListener rect "pointermove" resize-handler)
-                                        (.releasePointerCapture rect (.-pointerId e)))))
-     (.append svg rect))))
+                                        (.releasePointerCapture rect (.-pointerId e))
+                                        (dispatch [:pagemark/resize (.-target e)]))))
+     {:db (assoc-in db [:pdf/pagemarks page-id id] pagemark)
+      :fx [(.append svg rect)]})))
