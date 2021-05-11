@@ -2,6 +2,7 @@
   (:require
    [re-frame.core :as rf :refer [dispatch reg-event-fx reg-fx]]
    [parzival.db :as db]
+   [parzival.style :refer [PAGEMARK-COLOR]]
    ["pdfjs-dist" :as pdfjs]
    ["pdfjs-dist/web/pdf_viewer.js" :as pdfjs-viewer]
    [cljs.core.async :refer [go]]
@@ -158,23 +159,49 @@
 
 ;; Events
 
+(def SVG-STYLE
+  "position: absolute; inset: 0; width: 100%; height: 100%;
+   mix-blend-mode: multiply; z-index: 1; pointer-events: none;")
+
 (reg-event-fx
- :render/page
+ :render/page-highlights
  (fn [{:keys [db]} [_ page]]
    (let [highlights (get-in db [:pdf/highlights (dec (.getAttribute page "data-page-number"))])
          page-rect  (.getBoundingClientRect (.querySelector page "canvas"))
          rows       (.-children (.querySelector page ".textLayer"))
-         svg        (.createElementNS js/document SVG-NAMESPACE "svg")
-         old-svg    (.querySelector page ".highlightLayer")]
+         svg        (.createElementNS js/document SVG-NAMESPACE "svg")]
      (doto svg
        (.setAttribute "class" "highlightLayer")
-       (.setAttribute "overflow" "visible")
-       (.setAttribute "style" (str "position: absolute; inset: 0; width: 100%; height: 100%;
-                                  mix-blend-mode: multiply; z-index: 1; pointer-events: none;")))
+       (.setAttribute "style" SVG-STYLE))
      (run! #(render-highlight (first %) (second %) svg page-rect rows) highlights)
-     (when (some? old-svg)
-       (.removeChild (.-firstChild page) old-svg))
-     (.append (.-firstChild page) svg))))
+     (.replaceChild (.querySelector page ".canvasWrapper")
+                    svg
+                    (.querySelector page ".highlightLayer"))
+     {})))
+
+
+(reg-event-fx
+ :render/page
+ (fn [{:keys [db]} [_ page]]
+   (let [page-id (dec (.getAttribute page "data-page-number"))
+         highlights (get-in db [:pdf/highlights page-id])
+         pagemark (get-in db [:pdf/pagemarks page-id])
+         pagemark-layer (.createElementNS js/document SVG-NAMESPACE "svg")
+         highlight-layer (.createElementNS js/document SVG-NAMESPACE "svg")
+         canvas-wrapper (.querySelector page ".canvasWrapper")]
+     (doto highlight-layer
+       (.setAttribute "class" "highlightLayer")
+       (.setAttribute "style" SVG-STYLE))
+     (doto pagemark-layer
+       (.setAttribute "class" "pagemarkLayer")
+       (.setAttribute "overflow" "visible")
+       (.setAttribute "style" SVG-STYLE))
+     {:fx [(.append canvas-wrapper highlight-layer)
+           (.append canvas-wrapper pagemark-layer)
+           (when (some? highlights)
+             [:dispatch [:render/page-highlights page]])
+           (when (some? pagemark)
+             [:dispatch [:pagemark/render page pagemark]])]})))
 
 (reg-event-fx
  :highlight/remove
@@ -220,9 +247,9 @@
                         [:pdf/highlights page-id]
                         (merge-highlights (get-in db [:pdf/highlights page-id])
                                           highlight))
-          :fx [[:dispatch [:render/page page]]
-               (.collapse range-obj)
-               [:dispatch [:highlight/toolbar-close]]]})
+          :fx [[:dispatch [:render/page-highlights page]]
+               [:dispatch [:highlight/toolbar-close]]
+               (.collapse range-obj)]})
        {:fx [[:dispatch [:highlight/toolbar-close]]]}))))
 
 (reg-event-fx
@@ -297,7 +324,7 @@
   (let [target (.-target e)
         cursor (.getAttribute target "cursor")
         b-box ^js (.getBBox target)
-        page-rect (.getBoundingClientRect (.closest target ".highlightLayer"))
+        page-rect (.getBoundingClientRect (.closest target ".pagemarkLayer"))
         page-width-px (.-width page-rect)
         page-height-px (.-height page-rect)
         width-px (+ (.-width b-box) (.-movementX e))
@@ -349,15 +376,10 @@
       :else (.setAttribute target "cursor" "default"))))
 
 (reg-event-fx
- :pagemark/add
- (fn [{:keys [db]} [_ target]]
-   (let [page (.closest target ".page")
-         svg (.querySelector page ".highlightLayer")
-         rect (.createElementNS js/document SVG-NAMESPACE "rect")
-         pagemark {:color "green"
-                   :width "100%" 
-                   :height "40%"}
-         page-id (dec (.getAttribute page "data-page-number"))]
+ :pagemark/render
+ (fn [_ [_ page pagemark]]
+   (let [svg (.querySelector page ".pagemarkLayer")
+         rect (.createElementNS js/document SVG-NAMESPACE "rect")]
      (doto rect
        (.setAttribute "pointer-events" "auto")
        (.setAttribute "width" (:width pagemark))
@@ -377,5 +399,15 @@
                                         (.releasePointerCapture rect (.-pointerId e))
                                         (.setAttribute (.-target e) "cursor" "default")
                                         (dispatch [:pagemark/resize (.-target e)]))))
+     {:fx [(.append svg rect)]})))
+
+(reg-event-fx
+ :pagemark/add
+ (fn [{:keys [db]} [_ target]]
+   (let [page (.closest target ".page")
+         page-id (dec (.getAttribute page "data-page-number"))
+         pagemark {:color (:done PAGEMARK-COLOR)
+                   :width "100%"
+                   :height "40%"}]
      {:db (assoc-in db [:pdf/pagemarks page-id] pagemark)
-      :fx [(.append svg rect)]})))
+      :fx [[:dispatch [:pagemark/render page pagemark]]]})))
