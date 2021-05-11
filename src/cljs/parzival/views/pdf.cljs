@@ -25,7 +25,6 @@
 
 ;;; Components
 
-;;; TODO: the on-click should only be active when the toolbar is not open
 (defn pdf
   []
   (let [pdf? (subscribe [:pdf?])
@@ -41,9 +40,4 @@
        [:div#viewer.pdfViewer {:on-mouse-up #(dispatch [:highlight/toolbar (.. % -target -parentNode)])
                                :on-context-menu (fn [e]
                                                   (.preventDefault e)
-                                                  (dispatch [:pagemark (.-target e)])
-                                                  ;; (.persist e)
-                                                  ;; (js/console.log e)
-                                                  )
-                               }]])))
-
+                                                  (dispatch [:pagemark/add (.-target e)]))}]])))

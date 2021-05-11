@@ -166,9 +166,11 @@
          rows       (.-children (.querySelector page ".textLayer"))
          svg        (.createElementNS js/document SVG-NAMESPACE "svg")
          old-svg    (.querySelector page ".highlightLayer")]
-     (.setAttribute svg "class" "highlightLayer")
-     (.setAttribute svg "style" (str "position: absolute; inset: 0; width: 100%; height: 100%;
-                                      mix-blend-mode: multiply; z-index: 1; pointer-events: none;"))
+     (doto svg
+       (.setAttribute "class" "highlightLayer")
+       (.setAttribute "overflow" "visible")
+       (.setAttribute "style" (str "position: absolute; inset: 0; width: 100%; height: 100%;
+                                  mix-blend-mode: multiply; z-index: 1; pointer-events: none;")))
      (run! #(render-highlight (first %) (second %) svg page-rect rows) highlights)
      (when (some? old-svg)
        (.removeChild (.-firstChild page) old-svg))
@@ -281,54 +283,38 @@
 
 ;; Helpers
 
-(defn set-cursor
-  [target x-in y-in]
-  (let [width (.getAttribute target "width")
-        height (.getAttribute target "height")
-        x (- x-in (js/parseInt (.getAttribute target "x")))
-        y (- y-in (js/parseInt (.getAttribute target "y")))]
-    (cond
-      (and (<= 0 x 5) (<= 0 y 5)) (.setAttribute target "cursor" "se-resize") ; upper left corner
-      (and (<= 0 x 5) (<= (- height 5) y height)) (.setAttribute target "cursor" "ne-resize") ; lower left corner
-      (and (<= (- width 5) x width) (<= 0 y 5)) (.setAttribute target "cursor" "sw-resize") ; upper right corner
-      (and (<= (- width 5) x width) (<= (- height 5) y height)) (.setAttribute target "cursor" "nw-resize") ; lower right corner
-      (<= 0 x 5 y (- height 5)) (.setAttribute target "cursor" "w-resize") ; left
-      (and (<= (- width 5) x width) (<= 5 y (- height 5))) (.setAttribute target "cursor" "e-resize") ; right
-      (and (<= 5 x (- width 5)) (<= (- height 5) y height)) (.setAttribute target "cursor" "s-resize") ; bottom
-      (<= 0 y 5 x (- width 5)) (.setAttribute target "cursor" "n-resize"); top
-      )
-    ))
+(def stroke-width 5)
 
+(defn px-to-percentage
+  [bounding-px new-px]
+  (-> new-px
+      (/ bounding-px)
+      (* 100)
+      (str "%")))
 
 (defn resize-handler
   [e]
   (let [target (.-target e)
         cursor (.getAttribute target "cursor")
-        x (js/parseInt (.getAttribute target "x"))
-        y (js/parseInt (.getAttribute target "y"))
-        w (js/parseInt (.getAttribute target "width"))
-        h (js/parseInt (.getAttribute target "height"))
-        dx (.-movementX e)
-        dy (.-movementY e)]
+        b-box ^js (.getBBox target)
+        page-rect (.getBoundingClientRect (.closest target ".highlightLayer"))
+        page-width-px (.-width page-rect)
+        page-height-px (.-height page-rect)
+        width-px (+ (.-width b-box) (.-movementX e))
+        height-px (+ (.-height b-box) (.-movementY e))]
     (doto target
-      (.setAttribute "x" (if (contains? #{"w-resize" "se-resize" "ne-resize"} cursor)
-                           (+ x dx)
-                           x))
-      (.setAttribute "y" (if (contains? #{"n-resize" "se-resize" "sw-resize"} cursor)
-                           (+ y dy)
-                           y))
-      (.setAttribute "width" (cond
-                               (contains? #{"e-resize" "sw-resize" "nw-resize"} cursor) (+ w dx)
-                               (contains? #{"w-resize" "se-resize" "ne-resize"} cursor) (- w dx)
-                               :else w))
-      (.setAttribute "height" (cond
-                                (contains? #{"s-resize" "ne-resize" "nw-resize"} cursor) (+ h dy)
-                                (contains? #{"n-resize" "se-resize" "sw-resize"} cursor) (- h dy)
-                                :else h)))))
-
-(defn pagemark-id
-  [{:keys [_ x y width height]}]
-  (str "pagemark-" x "-" y "-" width "-" height))
+      (.setAttribute "width" (if (contains? #{"ew-resize" "nwse-resize"} cursor)
+                               (cond 
+                                 (< width-px 100) (px-to-percentage page-width-px 100)
+                                 (< page-width-px width-px) "100%"
+                                 :else (px-to-percentage page-width-px width-px))
+                               (.getAttribute target "width")))
+      (.setAttribute "height" (if (contains? #{"ns-resize" "nwse-resize"} cursor)
+                                (cond
+                                  (< height-px 100) (px-to-percentage page-height-px 100)
+                                  (< page-height-px height-px) "100%"
+                                  :else (px-to-percentage page-height-px height-px))
+                                (.getAttribute target "height"))))))
 
 (defn page-id
   [target]
@@ -339,41 +325,45 @@
 (reg-event-fx
  :pagemark/resize
  (fn [{:keys [db]} [_ target]]
-   (let [page (page-id target)
-         id (.getAttribute target "id")
-         new-pagemark {:color (.getAttribute target "color")
-                       :x (.getAttribute target "x")
-                       :y (.getAttribute target "y")
-                       :width (.getAttribute target "width")
-                       :height (.getAttribute target "height")}
-         new-id (pagemark-id new-pagemark)]
-     {:db (-> db
-              (update-in [:pdf/pagemarks page] dissoc id)
-              (assoc-in [:pdf/pagemarks page new-id] new-pagemark))
-      :fx [(.setAttribute target "id" new-id)]})))
+   {:db (update-in db 
+                   [:pdf/pagemarks (page-id target)] 
+                   assoc
+                   :width (.getAttribute target "width") 
+                   :height (.getAttribute target "height"))}))
+
+(defn set-cursor
+  [target x y]
+  (let [b-box ^js (.getBBox target)
+        width (.-width b-box)
+        height (.-height b-box)]
+    (cond
+      (and (<= (- width stroke-width) x width)
+           (<= (- height stroke-width) y height))
+      (.setAttribute target "cursor" "nwse-resize") ; lower right corner
+      (and (<= (- width stroke-width) x width)
+           (<= stroke-width y (- height stroke-width)))
+      (.setAttribute target "cursor" "ew-resize") ; right
+      (and (<= stroke-width x (- width stroke-width))
+           (<= (- height stroke-width) y height))
+      (.setAttribute target "cursor" "ns-resize") ; bottom
+      :else (.setAttribute target "cursor" "default"))))
 
 (reg-event-fx
- :pagemark
+ :pagemark/add
  (fn [{:keys [db]} [_ target]]
    (let [page (.closest target ".page")
          svg (.querySelector page ".highlightLayer")
          rect (.createElementNS js/document SVG-NAMESPACE "rect")
-         pagemark {:color "blue"
-                   :x 0
-                   :y 0
-                   :width (js/parseInt (.. page -style -width))
-                   :height 700}
-         page-id (dec (.getAttribute page "data-page-number"))
-         id (pagemark-id pagemark)]
+         pagemark {:color "green"
+                   :width "100%" 
+                   :height "40%"}
+         page-id (dec (.getAttribute page "data-page-number"))]
      (doto rect
-       (.setAttribute "id" id)
-       (.setAttribute "x" (:x pagemark))
-       (.setAttribute "y" (:y pagemark))
+       (.setAttribute "pointer-events" "auto")
        (.setAttribute "width" (:width pagemark))
        (.setAttribute "height" (:height pagemark))
-       (.setAttribute "stroke-width" 5)
-       (.setAttribute "pointer-events" "auto")
        (.setAttribute "fill" "none")
+       (.setAttribute "stroke-width" stroke-width)
        (.setAttribute "stroke" (:color pagemark))
        (.addEventListener "pointermove" (fn [e]
                                           (when-not (= (.-buttons e) 1)
@@ -385,6 +375,7 @@
        (.addEventListener "pointerup" (fn [e]
                                         (.removeEventListener rect "pointermove" resize-handler)
                                         (.releasePointerCapture rect (.-pointerId e))
+                                        (.setAttribute (.-target e) "cursor" "default")
                                         (dispatch [:pagemark/resize (.-target e)]))))
-     {:db (assoc-in db [:pdf/pagemarks page-id id] pagemark)
+     {:db (assoc-in db [:pdf/pagemarks page-id] pagemark)
       :fx [(.append svg rect)]})))
