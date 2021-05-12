@@ -1,6 +1,6 @@
 (ns parzival.events
   (:require
-   [re-frame.core :as re-frame]
+   [re-frame.core :as re-frame :refer [dispatch]]
    [parzival.db :as db]
   [day8.re-frame.tracing :refer-macros [fn-traced]]))
 
@@ -29,10 +29,13 @@
  (fn [db _]
    (update db :settings/open not)))
 
-(re-frame/reg-event-db
+(re-frame/reg-event-fx
  :search/toggle
- (fn [db _]
-   (update db :search/open not)))
+ (fn [{:keys [db]} _]
+   (let [anchor (get db :search/anchor)]
+     {:db (if (nil? anchor)
+            (assoc db :search/anchor {:left "50%" :top "50%"})
+            (assoc db :search/anchor nil))})))
 
 (re-frame/reg-event-db
  :theme/switch
@@ -43,3 +46,12 @@
  :loading/progress
  (fn [db prog]
    (assoc db :loading/progress prog)))
+
+(re-frame/reg-event-fx
+ :modal/handle-click
+ (fn [_ [_ id toggle]]
+   (let [modal (.getElementById js/document id)]
+     (.addEventListener js/document "click" (fn handle-click [e]
+                                              (when-not (.contains modal (.-target e))
+                                                (.removeEventListener js/document "click" handle-click)
+                                                (dispatch [toggle])))))))

@@ -7,7 +7,7 @@
    :right-sidebar/open false
    :right-sidebar/width 32
    :settings/open false
-   :search/open false
+   :search/anchor nil
    :highlight/anchor nil ; [x y]
    :highlight/selected nil ; [color page id] [color page id]
    :theme/dark true

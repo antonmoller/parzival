@@ -29,9 +29,9 @@
    (:settings/open db)))
 
 (re-frame/reg-sub
- :search/open
+ :search/anchor
  (fn [db _]
-   (:search/open db)))
+   (:search/anchor db)))
 
 (re-frame/reg-sub
  :theme/dark
