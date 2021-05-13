@@ -1,5 +1,5 @@
 (ns parzival.views.highlight-toolbar
-  (:require 
+  (:require
    [re-frame.core :refer [dispatch subscribe]]
    ["@material-ui/icons/CancelRounded" :default CancelRounded]
    ["@material-ui/icons/Brightness1Rounded" :default Brightness1Rounded]
@@ -10,30 +10,32 @@
 
 ;;; Styles
 
-(def toolbar-style
-  {:visibility "hidden"
-   :width (str TOOLBAR-WIDTH "px")
-   :height "35px"
-   :background-color (color :background-plus-1-color)
-   :box-shadow    (str (:64 DEPTH-SHADOWS) ", 0 0 0 1px " (color :body-text-color :opacity-lower))
-   :color (color :body-text-color)
-   :border-radius "0.25rem"
+(def modal-style 
+  {:z-index (:zindex-modal ZINDICES)
    :position "absolute"
-   :display "flex"
-   :justify-content "space-evenly"
-   :align-items "center"
-   :z-index (:zindex-tooltip ZINDICES)
-   :line-height 1})
+   :box-shadow (str (:64 DEPTH-SHADOWS) ", 0 0 0 1px " (color :body-text-color :opacity-lower))})
+
+(def toolbar-style
+  (merge modal-style
+         {:width (str TOOLBAR-WIDTH "px")
+          :height "35px"
+          :margin-top "5px"
+          :border-radius "0.25rem"
+          :background-color (color :background-plus-1-color)
+          :color (color :body-text-color)
+          :display "flex"
+          :justify-content "space-evenly"
+          :align-items "center"
+          :line-height 1}))
 
 (def anchor-style
-  {:content "''"
-   :position "absolute"
-   :z-index (:zindex-tooltip ZINDICES)
-   :color (color :background-plus-1-color)
-   :margin-left "-5px"
-   :border-width "5px"
-   :border-style "solid"
-   :border-color (str "transparent transparent " (color :background-plus-1-color) " transparent")})
+  (merge modal-style
+         {:content "''"
+          :margin-left "-5px"
+          :border-width "5px"
+          :border-style "solid"
+          :color (color :background-plus-1-color)
+          :border-color (str "transparent transparent " (color :background-plus-1-color) " transparent")}))
 
 (def button-style 
   {:cursor "pointer"
@@ -47,43 +49,40 @@
 ;;; Helpers
 
 (defn get-position
-  [{:keys [page-left page-right anchor-x _]}]
-  (cond
-    (< 0 (- (/ TOOLBAR-WIDTH 2) anchor-x)) "10px"
-    (< page-right (+ page-left anchor-x (/ TOOLBAR-WIDTH 2))) (- page-right TOOLBAR-WIDTH 10)
-    :else (str (- anchor-x (/ TOOLBAR-WIDTH 2)) "px")))
-
+  [{:keys [left page-right]}]
+  (let [left-corner (- left (/ TOOLBAR-WIDTH 2))
+        right-corner (+ left (/ TOOLBAR-WIDTH 2))]
+    (cond
+      (> 0 left-corner) "10px"
+      (< right-corner page-right) (str (- right-corner TOOLBAR-WIDTH 10) "px")
+      :else (str left-corner "px"))))
 
 ;;; Components
 
 (defn highlight-toolbar
   []
-  (let [position   (subscribe [:highlight/anchor])
-        edit?      (subscribe [:highlight/edit])]
-    (fn []
-      [:div
+  (let [pos   @(subscribe [:highlight/anchor])
+        edit? @(subscribe [:highlight/edit])
+        id    "highlight-toolbar"]
+    (when (some? pos)
+      (dispatch [:modal/handle-click id :highlight/toolbar-close])
+      [:div {:id id}
        [:div (merge (use-style anchor-style)
-                    {:style
-                     {:visibility "visible"
-                      :left (str (:anchor-x @position) "px")
-                      :top  (str (- (:anchor-y @position) 10) "px")}})]
+                    {:style {:left (str (:left pos) "px")
+                             :top (str (- (:top pos) 5) "px")}})]
        [:div (merge (use-style toolbar-style)
-                    {:style (if (some? @position)
-                              {:visibility "visible"
-                               :left (get-position @position)
-                               :top  (str (:anchor-y @position) "px")}
-                              {:visibility "hidden"})})
+                    {:style {:top (str (:top pos) "px")
+                             :left (get-position pos)}})
         (doall
          (for [[_ {:keys [color opacity]}] HIGHLIGHT-COLOR]
-           (if (and (some? edit?) (= (:color @edit?) color))
+           (if (and (some? edit?) (= (:color edit?) color))
              [:div (merge (use-style button-style)
                           {:key (str "highlight-" color)
                            :on-click #(dispatch [:highlight/remove])})
               [:> CancelRounded {:style {:color color}}]]
              [:div (merge (use-style button-style)
                           {:key (str "highlight-" color)
-                           :on-click #(if (nil? @edit?)
+                           :on-click #(if (nil? edit?)
                                         (dispatch [:highlight/add color opacity])
                                         (dispatch [:highlight/edit color opacity]))})
               [:> Brightness1Rounded  {:style {:color color}}]])))]])))
-                          

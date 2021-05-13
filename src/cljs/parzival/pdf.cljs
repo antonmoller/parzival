@@ -18,7 +18,6 @@
  (fn [db _]
    (some? (get db :pdf))))
 
-
 ;;; Events
 
 (rf/reg-event-db
@@ -131,7 +130,8 @@
       (.setAttribute "cursor" "pointer")
       (.setAttribute "pointer-events" "auto")
       (.setAttribute "fill" color)
-      (.setAttribute "fill-opacity" opacity))
+      (.setAttribute "fill-opacity" opacity)
+      (.addEventListener "click" #(dispatch [:highlight/toolbar-edit group])))
     (doseq [i (range y0 (inc y1))]
       (.setStart r (.-firstChild (.item rows i)) (if (== i y0) x0 0))
       (.setEnd r (.-firstChild (.item rows i)) (if (== i y1) x1 (.. (.item rows i) -firstChild -length)))
@@ -259,10 +259,9 @@
           (assoc db :highlight/anchor nil)
           (as-> (.getBoundingClientRect (.getElementById js/document "viewer")) page-rect
             (assoc db :highlight/anchor
-                   {:page-left (.-left page-rect)
-                    :page-right (.-right page-rect)
-                    :anchor-x (+ (- (.-x rect) (.-x page-rect)) (/ (.-width rect) 2))
-                    :anchor-y (+ (- (.-bottom rect) (.-y page-rect)) 5)})))}))
+                   {:left (+ (- (.-x rect) (.-x page-rect)) (/ (.-width rect) 2))
+                    :top (- (.-bottom rect) (.-y page-rect))
+                    :page-right (.-right page-rect)})))}))
 
 (rf/reg-event-db
  :highlight/selected
@@ -271,40 +270,32 @@
 
 (reg-event-fx
  :highlight/toolbar-close
- (fn [_ _]
+ (fn [{:keys [db]} _]
+   (as->  (:element (get db :highlight/selected)) selected-highlight
+     (when (some? selected-highlight)
+       (.setAttribute selected-highlight
+                      "fill-opacity"
+                      (* (.getAttribute selected-highlight "fill-opacity") 2))))
    {:fx [[:dispatch [:highlight/set-anchor nil]]
          [:dispatch [:highlight/selected nil]]]}))
 
 (reg-event-fx
- :highlight/toolbar-create
- (fn [_ [_ selection-rect]]
-   {:fx [[:dispatch [:highlight/set-anchor selection-rect]]]}))
-
-(reg-event-fx
  :highlight/toolbar-edit
  (fn [_ [_ target]]
-   {:fx [(.setAttribute target "fill-opacity" (/ (.getAttribute target "fill-opacity") 2))
-         [:dispatch [:highlight/selected {:element target
-                                          :color (.getAttribute target "fill")
-                                          :opacity (.getAttribute target "fill-opacity")}]]
+   (.setAttribute target "fill-opacity" (/ (.getAttribute target "fill-opacity") 2))
+   {:fx [[:dispatch [:highlight/selected {:element target
+                                          :color (.getAttribute target "fill")}]]
          [:dispatch [:highlight/set-anchor (.getBoundingClientRect target)]]]}))
 
 (reg-event-fx
- :highlight/toolbar
- (fn [{:keys [db]} [_ target]]
-   (let [selection-rect (as-> (.getSelection js/window) selection
-                          (when-not (.-isCollapsed selection)
-                            (as-> (.getRangeAt selection 0) range-obj
-                              (when-not (= (.. range-obj -commonAncestorContainer -className) "pdfViewer")
-                                (.getBoundingClientRect range-obj)))))
-         {:keys [element _ _]} (get db :highlight/selected)]
-     (when (and (some? element) (not (.isSameNode element target)))
-       (.setAttribute element "fill-opacity" (* (.getAttribute element "fill-opacity") 2)))
-     (cond
-       (and (= (.-nodeName target) "g") (not (.isSameNode target element))) {:fx [[:dispatch [:highlight/toolbar-edit target]]]}
-       (and (not= target "g") (some? selection-rect)) {:fx [[:dispatch [:highlight/selected nil]]
-                                                                            [:dispatch [:highlight/toolbar-create selection-rect]]]}
-       (not= target "g") {:fx [[:dispatch [:highlight/toolbar-close]]]}))))
+ :highlight/toolbar-create
+ (fn [_ _]
+   (when-let [selection-rect (as-> (.getSelection js/window) selection
+                               (when-not (.-isCollapsed selection)
+                                 (as-> (.getRangeAt selection 0) range-obj
+                                   (when-not (= (.. range-obj -commonAncestorContainer -className) "pdfViewer")
+                                     (.getBoundingClientRect range-obj)))))]
+     {:fx [[:dispatch [:highlight/set-anchor selection-rect]]]})))
 
 ;;; Pagemarks
 
@@ -411,3 +402,13 @@
                    :height "40%"}]
      {:db (assoc-in db [:pdf/pagemarks page-id] pagemark)
       :fx [[:dispatch [:pagemark/render page pagemark]]]})))
+
+(reg-event-fx
+ :pagemark/menu
+ (fn [{:keys [db]} [_ target x y]]
+   (js/console.log target x y)
+   (let [page (.closest target ".page")
+         ]
+     (js/console.log page)
+     (js/console.log x y)
+     )))

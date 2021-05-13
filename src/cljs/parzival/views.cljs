@@ -1,7 +1,6 @@
 (ns parzival.views
   (:require
    [parzival.views.right-sidebar :refer [right-sidebar]]
-   [parzival.views.highlight-toolbar :refer [highlight-toolbar]]
    [parzival.views.settings :refer [settings]]
    [parzival.views.search :refer [search]]
    [parzival.views.app-toolbar :refer [app-toolbar]]
@@ -43,10 +42,9 @@
   (let [route-name (subscribe [:current-route/name])]
     (fn []
       [:div (use-style app-wrapper-style)
-        ;; [search]
+        [search]
         ;; [settings]
-        ;; [highlight-toolbar]
-        ;; [app-toolbar]
+        [app-toolbar]
         ;; [left-sidebar]
         [:div (use-style main-content-style)
          [pdf]

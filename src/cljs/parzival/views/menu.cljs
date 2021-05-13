@@ -6,7 +6,11 @@
 ;;; Styles
 
 (def menu-style
-  {:z-index {:zindex-modal ZINDICES}
+  {:z-index (:zindex-tooltip ZINDICES)
+   :position "absolute"
+   :cursor "pointer"
+   :left "40px"
+   :top "40px"
    :background-color (color :background-plus-1-color)
    :box-shadow    (str (:64 DEPTH-SHADOWS) ", 0 0 0 1px " (color :body-text-color :opacity-lower))
    :border-radius "0.25rem"
