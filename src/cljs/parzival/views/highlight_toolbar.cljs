@@ -20,6 +20,7 @@
          {:width (str TOOLBAR-WIDTH "px")
           :height "35px"
           :margin-top "5px"
+          :margin-left "10px"
           :border-radius "0.25rem"
           :background-color (color :background-plus-1-color)
           :color (color :body-text-color)
