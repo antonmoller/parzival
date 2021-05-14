@@ -41,8 +41,8 @@
       ;;  [menu]
        [:div#viewer.pdfViewer {:on-mouse-up #(dispatch [:highlight/toolbar-create])
                                :on-context-menu (fn [e]
-                                                  (.preventDefault e)
-                                                  (dispatch 
-                                                   [:pagemark/menu (.-target e) (.-clientX e) (.-clientY e)])
+                                                  ;; (.preventDefault e)
+                                                  ;; (dispatch 
+                                                  ;;  [:pagemark/menu (.-target e) (.-clientX e) (.-clientY e)])
                                                   ;; (dispatch [:pagemark/add (.-target e)])
                                                   )}]])))

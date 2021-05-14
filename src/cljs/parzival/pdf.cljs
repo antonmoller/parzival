@@ -210,8 +210,7 @@
          page (.closest element ".page")]
      {:db (update-in db [:pdf/highlights (dec (.getAttribute page "data-page-number"))]
                      dissoc (.getAttribute element "id"))
-      :fx [[:dispatch [:render/page page]]
-           [:dispatch [:highlight/toolbar-close]]]})))
+      :fx [[:dispatch [:render/page-highlights page]]]})))
 
 (reg-event-fx
  :highlight/edit
@@ -222,14 +221,13 @@
                          (dec (.getAttribute page "data-page-number"))
                          (.getAttribute element "id")]
                      assoc :color color :opacity opacity)
-      :fx [[:dispatch [:render/page page]]
-           [:dispatch [:highlight/toolbar-close]]]})))
+      :fx [[:dispatch [:render/page-highlights page]]]})))
 
 (reg-event-fx
  :highlight/add
  (fn [{:keys [db]} [_ color opacity]]
    (let [selection (.getSelection js/document)]
-     (if-not (.-isCollapsed selection)
+     (when-not (.-isCollapsed selection)
        (let [range-obj        (.getRangeAt selection 0)
              text-layer       (.. range-obj -startContainer -parentNode -parentNode)
              page             (.-parentNode text-layer)
@@ -243,14 +241,12 @@
                                :y0 (.indexOf rows-arr (.. range-obj -startContainer -parentNode))
                                :x1 x1
                                :y1 (.indexOf rows-arr end)}]
+         (.collapse range-obj)
          {:db (assoc-in db
                         [:pdf/highlights page-id]
                         (merge-highlights (get-in db [:pdf/highlights page-id])
                                           highlight))
-          :fx [[:dispatch [:render/page-highlights page]]
-               [:dispatch [:highlight/toolbar-close]]
-               (.collapse range-obj)]})
-       {:fx [[:dispatch [:highlight/toolbar-close]]]}))))
+          :fx [[:dispatch [:render/page-highlights page]]]})))))
 
 (reg-event-fx
  :highlight/set-anchor
@@ -269,23 +265,26 @@
    (assoc db :highlight/selected element)))
 
 (reg-event-fx
- :highlight/toolbar-close
+ :highlighting/close
  (fn [{:keys [db]} _]
    (as->  (:element (get db :highlight/selected)) selected-highlight
-     (when (some? selected-highlight)
-       (.setAttribute selected-highlight
-                      "fill-opacity"
-                      (* (.getAttribute selected-highlight "fill-opacity") 2))))
-   {:fx [[:dispatch [:highlight/set-anchor nil]]
-         [:dispatch [:highlight/selected nil]]]}))
+     (.addEventListener js/document "mousedown"
+                        (fn []
+                          (dispatch [:highlight/selected nil])
+                          (dispatch [:highlight/set-anchor nil])
+                          (when (some? selected-highlight)
+                            (.setAttribute selected-highlight
+                                           "fill-opacity"
+                                           (* (.getAttribute selected-highlight "fill-opacity") 2))))
+                        (js-obj "once" true)))))
 
 (reg-event-fx
  :highlight/toolbar-edit
  (fn [_ [_ target]]
-   (.setAttribute target "fill-opacity" (/ (.getAttribute target "fill-opacity") 2))
    {:fx [[:dispatch [:highlight/selected {:element target
                                           :color (.getAttribute target "fill")}]]
-         [:dispatch [:highlight/set-anchor (.getBoundingClientRect target)]]]}))
+         [:dispatch [:highlight/set-anchor (.getBoundingClientRect target)]]
+         (.setAttribute target "fill-opacity" (/ (.getAttribute target "fill-opacity") 2))]}))
 
 (reg-event-fx
  :highlight/toolbar-create

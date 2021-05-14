@@ -45,10 +45,10 @@
         [search]
         ;; [settings]
         [app-toolbar]
-        ;; [left-sidebar]
+        [left-sidebar]
         [:div (use-style main-content-style)
          [pdf]
         ;; [match-panel @route-name]
          ]
-        ;; [right-sidebar]
+        [right-sidebar]
        ])))
