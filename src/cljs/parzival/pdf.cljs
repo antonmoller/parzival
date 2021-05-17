@@ -382,12 +382,17 @@
                                             (set-cursor (.-target e) (.-offsetX e) (.-offsetY e)))))
        (.addEventListener "pointerdown" (fn [e]
                                           (when (= (.-buttons e) 1)
+                                            (doto (.-target e)
+                                              (.setAttribute "fill" (:done PAGEMARK-COLOR))
+                                              (.setAttribute "fill-opacity" 0.2))
                                             (.addEventListener rect "pointermove" resize-handler)
                                             (.setPointerCapture rect (.-pointerId e)))))
        (.addEventListener "pointerup" (fn [e]
                                         (.removeEventListener rect "pointermove" resize-handler)
                                         (.releasePointerCapture rect (.-pointerId e))
-                                        (.setAttribute (.-target e) "cursor" "default")
+                                        (doto (.-target e)
+                                          (.setAttribute "fill" "none")
+                                          (.setAttribute "cursor" "default"))
                                         (dispatch [:pagemark/resize (.-target e)]))))
      {:fx [(.append svg rect)]})))
 
