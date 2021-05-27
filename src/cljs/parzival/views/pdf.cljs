@@ -2,7 +2,7 @@
   (:require
             [re-frame.core :refer [dispatch subscribe]]
             [parzival.views.highlight-toolbar :refer [highlight-toolbar]]
-            [parzival.views.menu :refer [menu]]
+            [parzival.views.pagemark-menu :refer [pagemark-menu]]
             [parzival.style :refer [ZINDICES]]
             [stylefy.core :as stylefy :refer [use-style]]))
 
@@ -36,13 +36,10 @@
       (dispatch [:pdf/load url])
       (when @pdf?
         (dispatch [:pdf/view]))
-      [:div#viewerContainer (use-style pdf-container-style) ;TODO: Check if left mouse button is pressed
+      [:div#viewerContainer (use-style pdf-container-style)
        [highlight-toolbar]
-      ;;  [menu]
+       [pagemark-menu]
        [:div#viewer.pdfViewer {:on-mouse-up #(dispatch [:highlight/toolbar-create])
                                :on-context-menu (fn [e]
                                                   (.preventDefault e)
-                                                  ;; (dispatch 
-                                                  ;;  [:pagemark/menu (.-target e) (.-clientX e) (.-clientY e)])
-                                                  (dispatch [:pagemark/add (.-target e)])
-                                                  )}]])))
+                                                  (dispatch [:pagemark/menu (.-target e) (.-clientX e) (.-clientY e)]))}]])))

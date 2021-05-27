@@ -254,7 +254,8 @@
    {:db (if (nil? rect)
           (assoc db :highlight/anchor nil)
           (as-> (.getBoundingClientRect (.getElementById js/document "viewer")) page-rect
-            (assoc db :highlight/anchor
+            (assoc db
+                   :highlight/anchor
                    {:left (+ (- (.-x rect) (.-x page-rect)) (/ (.-width rect) 2))
                     :top (- (.-bottom rect) (.-y page-rect))
                     :page-right (.-right page-rect)})))}))
@@ -300,7 +301,7 @@
 
 ;; Helpers
 
-(def stroke-width 5)
+(def stroke-width 8)
 
 (defn px-to-percentage
   [bounding-px new-px]
@@ -339,15 +340,6 @@
       (.getAttribute "data-page-number")
       (dec)))
 
-(reg-event-fx
- :pagemark/resize
- (fn [{:keys [db]} [_ target]]
-   {:db (update-in db 
-                   [:pdf/pagemarks (page-id target)] 
-                   assoc
-                   :width (.getAttribute target "width") 
-                   :height (.getAttribute target "height"))}))
-
 (defn set-cursor
   [target x y]
   (let [b-box ^js (.getBBox target)
@@ -365,12 +357,31 @@
       (.setAttribute target "cursor" "ns-resize") ; bottom
       :else (.setAttribute target "cursor" "default"))))
 
+;; Subs
+
+(rf/reg-sub
+ :pagemark/anchor
+ (fn [db _]
+   (get db :pagemark/anchor)))
+
+;; Events
+
+(reg-event-fx
+ :pagemark/resize
+ (fn [{:keys [db]} [_ target]]
+   {:db (update-in db 
+                   [:pdf/pagemarks (page-id target)] 
+                   assoc
+                   :width (.getAttribute target "width") 
+                   :height (.getAttribute target "height"))}))
+
 (reg-event-fx
  :pagemark/render
  (fn [_ [_ page pagemark]]
    (let [svg (.querySelector page ".pagemarkLayer")
          rect (.createElementNS js/document SVG-NAMESPACE "rect")]
      (doto rect
+       (.setAttribute "class" "pagemark")
        (.setAttribute "pointer-events" "auto")
        (.setAttribute "width" (:width pagemark))
        (.setAttribute "height" (:height pagemark))
@@ -398,21 +409,61 @@
 
 (reg-event-fx
  :pagemark/add
- (fn [{:keys [db]} [_ target]]
-   (let [page (.closest target ".page")
-         page-id (dec (.getAttribute page "data-page-number"))
+ (fn [{:keys [db]} [_ page height]]
+   (let [page-id (dec (.getAttribute page "data-page-number"))
+         old-pagemark (.item (.getElementsByClassName page "pagemark") 0)
          pagemark {:color (:done PAGEMARK-COLOR)
                    :width "100%"
-                   :height "40%"}]
+                   :height height}]
+     (when (some? old-pagemark)
+       (.remove old-pagemark))
      {:db (assoc-in db [:pdf/pagemarks page-id] pagemark)
       :fx [[:dispatch [:pagemark/render page pagemark]]]})))
 
 (reg-event-fx
+ :pagemark/remove
+ (fn [{:keys [db]} [_ page]]
+   (let [page-id (dec (.getAttribute page "data-page-number"))]
+     (.remove (.item (.getElementsByClassName page "pagemark") 0))
+     {:db (update db :pdf/pagemarks dissoc page-id)})))
+
+(rf/reg-event-db
+ :pagemark/set-anchor
+ (fn [db [_ coords]]
+   (assoc db :pagemark/anchor coords)))
+
+(reg-event-fx
+ :pagemark/close
+ (fn [_ _]
+   (.addEventListener js/document "mousedown"
+                      #(dispatch [:pagemark/set-anchor nil])
+                      (js-obj "once" true))))
+
+(reg-event-fx
  :pagemark/menu
- (fn [{:keys [db]} [_ target x y]]
-   (js/console.log target x y)
+ (fn [_ [_ target x y]]
    (let [page (.closest target ".page")
-         ]
-     (js/console.log page)
-     (js/console.log x y)
-     )))
+         viewer-rect (.getBoundingClientRect (.getElementById js/document "viewer"))
+         page-rect (.getBoundingClientRect page)
+         viewer-height (-> (.getElementById js/document "viewerContainer")
+                           (.getBoundingClientRect)
+                           (.-height))
+         style (.getComputedStyle js/window (.getElementById js/document "pagemark-menu"))
+         menu-width (js/parseFloat (.-width style))
+         menu-height (js/parseFloat (.-height style))
+         left (if (< (+ x menu-width) (- (.-right viewer-rect) 20))
+                (str (- x (.-x viewer-rect)) "px")
+                (str (- (.-width viewer-rect) menu-width 20) "px"))
+         top (if (< (+ y menu-height) (- viewer-height 10))
+               (str (- y (.-y viewer-rect)) "px")
+               (str (- y (.-y viewer-rect) menu-height 10) "px"))]
+     {:fx [[:dispatch [:pagemark/set-anchor 
+                       {:left left
+                        :top top
+                        :height (-> (- y (.-y page-rect))
+                                    (/ (.-height page-rect))
+                                    (* 100)
+                                    (str "%"))
+                        :edit (not= 0 (.-length (.getElementsByClassName page "pagemark")))
+                        :page page}]]]})))
+                                             

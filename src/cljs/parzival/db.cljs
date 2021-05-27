@@ -10,6 +10,7 @@
    :search/anchor nil
    :highlight/anchor nil ; [x y]
    :highlight/selected nil ; [color page id] [color page id]
+   :pagemark/anchor nil ;  {:left :top :height :edit :page}
    :theme/dark true
    :pdf nil
    :pdf/highlights {} ; {:color :opacity :x0 :y0 :x1 :y1}
