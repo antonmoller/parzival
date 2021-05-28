@@ -14,33 +14,16 @@
    :height "100%"
    :overflow-y "auto"
    ::stylefy/vendors ["webkit"]
-   :scrollbar-width "none"
-  ;;  ::stylefy/mode {"::-webkit-scrollbar" {;:background "rgba(121, 121, 121, 0.4)"
-  ;;  ::stylefy/mode {"::-webkit-scrollbar" {;:background "rgba(121, 121, 121, 0.4)"
-  ;;                                         :border "1px solid rgb(69, 69, 69)"
-  ;;                         ;; :shadow "#000000"
-  ;;                                         ;; :box-shadow (str (:64 DEPTH-SHADOWS) ", 0 0 0 1px " (color :body-text-color :opacity-lower))
-  ;;                         ;; :border-right "0.2px solid rgb(191, 191, 191)"
-  ;;                                         :width "2.5rem"}
-  ;;                  "::-webkit-scrollbar-thumb" {
-  ;;                                               :background "rgba(191, 191, 191, 0.4)"
-  ;;                                               ;; :background "none"
-  ;;                                               ;; :box-shadow (str (:64 DEPTH-SHADOWS) ", 0 0 0 1px " "rgba(191,191,191,0.4)");(color :body-text-color :opacity-lower))
-  ;;                                               :box-shadow "0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19)"
-        
-                                                ;; }}
-  ;; ::stylefy/mode [["::-webkit-scrollbar" {;:background-color "blue"
-  ;;                                         ;;  :border-left "1px solid grey"
-  ;;                                         ;;  :border-right "1px solid grey"
-  ;;                                         ;;  :width "40px"
-  ;;                                         }]
-  ;;                  ["::-webkit-scrollbar-thumb" {:background "#000"
-  ;;                                               ;;  :opacity 0.4
-  ;;                                               ;;  :border-left "1px solid grey"
-  ;;                                               ;;  :border-right "1px solid grey"
-  ;;                                                ; :height "10px"
-  ;;                                                }]]
-})
+   ::stylefy/mode [
+                   ["::-webkit-scrollbar-thumb" {:background "rgba(37,37,38,0.4)"}]
+                   [:hover::-webkit-scrollbar-thumb {:background "rgba(121, 121, 121, 0.4)"}]
+                   ["::-webkit-scrollbar-thumb:hover" {:background "rgba(100, 100, 100, 0.7)"}]
+                   ["::-webkit-scrollbar-thumb:active" {:background "rgba(191, 191, 191, 0.4)"}]
+                   ["::-webkit-scrollbar" {:width "40px"
+                                          :border "1px solid rgb(69, 69, 69)"}]
+                  ;;  ["::-webkit-scrollbar:shadow:top" {
+                  ;;                                     :border "1px solid rgb(69, 69, 69)"}]
+                   ]})
 
 ;;; Components
 
