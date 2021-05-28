@@ -303,6 +303,8 @@
 
 (def stroke-width 8)
 
+(def min-px 100)
+
 (defn px-to-percentage
   [bounding-px new-px]
   (-> new-px
@@ -323,13 +325,13 @@
     (doto target
       (.setAttribute "width" (if (contains? #{"ew-resize" "nwse-resize"} cursor)
                                (cond 
-                                 (< width-px 100) (px-to-percentage page-width-px 100)
+                                 (< width-px min-px) (px-to-percentage page-width-px min-px)
                                  (< page-width-px width-px) "100%"
                                  :else (px-to-percentage page-width-px width-px))
                                (.getAttribute target "width")))
       (.setAttribute "height" (if (contains? #{"ns-resize" "nwse-resize"} cursor)
                                 (cond
-                                  (< height-px 100) (px-to-percentage page-height-px 100)
+                                  (< height-px min-px) (px-to-percentage page-height-px min-px)
                                   (< page-height-px height-px) "100%"
                                   :else (px-to-percentage page-height-px height-px))
                                 (.getAttribute target "height"))))))
@@ -456,14 +458,17 @@
                 (str (- (.-width viewer-rect) menu-width 20) "px"))
          top (if (< (+ y menu-height) (- viewer-height 10))
                (str (- y (.-y viewer-rect)) "px")
-               (str (- y (.-y viewer-rect) menu-height 10) "px"))]
-     {:fx [[:dispatch [:pagemark/set-anchor 
+               (str (- y (.-y viewer-rect) menu-height 10) "px"))
+         height-px (- y (.-y page-rect))
+         height (-> (if (> height-px min-px)
+                      (/ height-px (.-height page-rect))
+                      (/ min-px (.-height page-rect)))
+                    (* 100)
+                    (str "%"))]
+     {:fx [[:dispatch [:pagemark/set-anchor
                        {:left left
                         :top top
-                        :height (-> (- y (.-y page-rect))
-                                    (/ (.-height page-rect))
-                                    (* 100)
-                                    (str "%"))
-                        :edit (not= 0 (.-length (.getElementsByClassName page "pagemark")))
+                        :height height
+                        :edit? (not= 0 (.-length (.getElementsByClassName page "pagemark")))
                         :page page}]]]})))
                                              

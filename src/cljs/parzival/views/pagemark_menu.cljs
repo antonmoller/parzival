@@ -37,7 +37,7 @@
 
 (defn pagemark-menu
   []
-  (let [{:keys [left top height edit page]} @(subscribe [:pagemark/anchor])]
+  (let [{:keys [left top height edit? page]} @(subscribe [:pagemark/anchor])]
     (when (some? left)
       (dispatch [:pagemark/close]))
     [:ul#pagemark-menu (merge (use-style menu-style)
@@ -52,7 +52,7 @@
                  {:on-mouse-down #(dispatch [:pagemark/add page "100%"])})
       [:> Bookmark]
       [:span "Mark Entire Page as Read"]]
-     (when edit
+     (when edit?
        [:li (merge (use-style item-style)
                    {:on-mouse-down #(dispatch [:pagemark/remove page])
                     :style {:color "red"}})
