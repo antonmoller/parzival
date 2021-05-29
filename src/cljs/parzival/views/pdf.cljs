@@ -3,7 +3,7 @@
             [re-frame.core :refer [dispatch subscribe]]
             [parzival.views.highlight-toolbar :refer [highlight-toolbar]]
             [parzival.views.pagemark-menu :refer [pagemark-menu]]
-            [parzival.style :refer [ZINDICES DEPTH-SHADOWS color]]
+            [parzival.style :refer [ZINDICES DEPTH-SHADOWS SCROLLBAR color]]
             [stylefy.core :as stylefy :refer [use-style]]))
 
 ;;; Styles
@@ -14,16 +14,16 @@
    :height "100%"
    :overflow-y "auto"
    ::stylefy/vendors ["webkit"]
-   ::stylefy/mode [
-                   ["::-webkit-scrollbar-thumb" {:background "rgba(37,37,38,0.4)"}]
-                   [:hover::-webkit-scrollbar-thumb {:background "rgba(121, 121, 121, 0.4)"}]
-                   ["::-webkit-scrollbar-thumb:hover" {:background "rgba(100, 100, 100, 0.7)"}]
-                   ["::-webkit-scrollbar-thumb:active" {:background "rgba(191, 191, 191, 0.4)"}]
-                   ["::-webkit-scrollbar" {:width "40px"
-                                          :border "1px solid rgb(69, 69, 69)"}]
-                  ;;  ["::-webkit-scrollbar:shadow:top" {
-                  ;;                                     :border "1px solid rgb(69, 69, 69)"}]
-                   ]})
+   ::stylefy/mode {"::-webkit-scrollbar-thumb" {:background (:thumb-color SCROLLBAR)
+                                                :box-shadow (:thumb-shadow SCROLLBAR)}
+                   :hover::-webkit-scrollbar-thumb {:background (:thumb-visible-color SCROLLBAR)}
+                   "::-webkit-scrollbar-thumb:hover" {:background (:thumb-hover-color SCROLLBAR)}
+                   "::-webkit-scrollbar-thumb:active" {:background (:thumb-active-color SCROLLBAR)}
+                   "::-webkit-scrollbar" {:width "32px"
+                                          :border-right (:border SCROLLBAR)
+                                          :border-left (:border SCROLLBAR)
+                                          :border-top (:border SCROLLBAR)
+                                          :box-shadow (:shadow SCROLLBAR)}}})
 
 ;;; Components
 

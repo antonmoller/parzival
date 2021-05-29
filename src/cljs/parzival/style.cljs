@@ -47,6 +47,18 @@
    :skip "red"
    :schedule "blue"})
 
+(def SCROLLBAR
+  {:thumb-color "rgba(30, 30, 30, 0.4)"
+   :thumb-shadow "rgb(51, 51, 51) 6px 0 6px -6px inset,
+                  rgb(51, 51, 51) 6px 6px 6px -6px inset"
+   :thumb-visible-color "rgba(121, 121, 121, 0.4)"
+   :thumb-hover-color "rgba(100, 100, 100, 0.7)"
+   :thumb-active-color "rgba(191, 191, 191, 0.4)"
+   :border "1px solid rgb(69, 69, 69)"
+   :shadow "rgb(51,51,51) 0 6px 6px -6px inset,
+            rgb(51,51,51) 6px 0 6px -6px inset,
+            rgb(51,51,51) 6px 6px 6px -6px inset"})
+
 (def DEPTH-SHADOWS
   {:4                  "0px 1.6px 3.6px rgba(0, 0, 0, 0.13), 0px 0.3px 0.9px rgba(0, 0, 0, 0.1)"
    :8                  "0px 3.2px 7.2px rgba(0, 0, 0, 0.13), 0px 0.6px 1.8px rgba(0, 0, 0, 0.1)"
