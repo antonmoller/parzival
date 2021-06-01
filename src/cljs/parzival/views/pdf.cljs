@@ -14,9 +14,9 @@
    :overflow-x "hidden"
    :overflow-y "scroll"
    :padding-right "50px"
+   :scrollbar-width "none"
    ::stylefy/vendors ["webkit"]
-   ::stylefy/mode {"::-webkit-scrollbar" {:display "none"} ; TODO IE, Edge, Firefox
-                   }})
+   ::stylefy/mode {"::-webkit-scrollbar" {:display "none"}}})
 
 
 (def scroll-container-style 
