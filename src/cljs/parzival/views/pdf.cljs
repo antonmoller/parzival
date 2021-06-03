@@ -46,20 +46,32 @@
                      [:.thumb:hover {:background (:thumb-hover-color SCROLLBAR)}]
                      [:.thumb:active {:background (:thumb-active-color SCROLLBAR)}]]})
 
+;;; Helpers
+
+(defn compute-height
+  [id]
+  (as-> (.getElementById js/document id) res
+    (.getComputedStyle js/window res)
+    (.getPropertyValue res "height")
+    (js/parseInt res)))
+
 ;;; Components
 
 (defn scrollbar
   [content]
   (let [state (r/atom {:thumb-top 0
-                       :thumb-height 75})
+                       :thumb-height 44})
         pointer-move-handler (fn [e]
                                (let [new-y-tmp (+ (:thumb-top @state) (.-movementY e))
                                      scrollbar-height (.. js/document -documentElement -clientHeight)
                                      t-height (:thumb-height @state)
+                                     viewer-container (.getElementById js/document "viewerContainer")
+                                     scaling (/ (compute-height "viewer") (compute-height "viewerContainer"))
                                      new-y  (cond
                                               (< new-y-tmp 0) 0
                                               (> (+ new-y-tmp t-height) scrollbar-height) (- scrollbar-height t-height)
                                               :else new-y-tmp)]
+                                 (.scroll viewer-container 0 (* scaling new-y))
                                  (swap! state assoc :thumb-top new-y)))
         pointer-down-handler (fn [e]
                                (when (= (.-buttons e) 1)
@@ -72,19 +84,27 @@
                                (.releasePointerCapture (.-pointerId e))))
         pointer-down-track-handler (fn [e]
                                      (when-not (.contains (.. e -target -classList) "thumb")
-                                       (let [scrollbar-height (.. js/document -documentElement -clientHeight)
+                                       (let [new-y-tmp  (.-clientY e)
+                                             scrollbar-height (.. js/document -documentElement -clientHeight)
                                              t-height (:thumb-height @state)
-                                             new-y (if (> (+ (.-clientY e) t-height) scrollbar-height)
-                                                     (- scrollbar-height t-height)
-                                                     (.-clientY e))]
+                                             container (.getElementById js/document "viewerContainer")
+                                             scaling (/ (compute-height "viewer") (compute-height "viewerContainer"))
+                                             new-y  (cond
+                                                      (< new-y-tmp 0) 0
+                                                      (> (+ new-y-tmp t-height) scrollbar-height) (- scrollbar-height t-height)
+                                                      :else new-y-tmp)]
+                                         (.scroll container 0 (* scaling new-y))
                                          (swap! state assoc :thumb-top new-y))))
-        ]
+        scroll-handler (fn [e]
+                         (let [scrollbar-height (.. js/document -documentElement -clientHeight)
+                               height-percent (/ (.. e -target -scrollTop) (compute-height "viewer"))]
+                           (swap! state assoc :thumb-top (* height-percent scrollbar-height))))]
     (fn []
-      [:div (use-style scroll-container-style)
+      [:div (merge (use-style scroll-container-style)
+                   {:on-scroll scroll-handler})
        content
        [:div.scrollbar (merge (use-sub-style scroll-container-style :scrollbar)
-                              {:on-pointer-down pointer-down-track-handler
-                               })
+                              {:on-pointer-down pointer-down-track-handler})
         [:div.thumb (merge (use-sub-style scroll-container-style :thumb)
                            {:style {:top (:thumb-top @state)
                                     :height (str (:thumb-height @state) "px")}
@@ -101,7 +121,7 @@
       (dispatch [:pdf/load url])
       (when @pdf?
         (dispatch [:pdf/view]))
-       [scrollbar
+      [scrollbar
        [:div#viewerContainer (use-style pdf-container-style)
         [highlight-toolbar]
         [pagemark-menu]
