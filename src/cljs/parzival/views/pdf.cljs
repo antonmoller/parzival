@@ -1,10 +1,11 @@
 (ns parzival.views.pdf
   (:require
-            [re-frame.core :refer [dispatch subscribe]]
-            [parzival.views.highlight-toolbar :refer [highlight-toolbar]]
-            [parzival.views.pagemark-menu :refer [pagemark-menu]]
-            [parzival.style :refer [ZINDICES DEPTH-SHADOWS SCROLLBAR color]]
-            [stylefy.core :as stylefy :refer [use-style use-sub-style]]))
+   [re-frame.core :refer [dispatch subscribe]]
+   [reagent.core :as r]
+   [parzival.views.highlight-toolbar :refer [highlight-toolbar]]
+   [parzival.views.pagemark-menu :refer [pagemark-menu]]
+   [parzival.style :refer [ZINDICES DEPTH-SHADOWS SCROLLBAR color]]
+   [stylefy.core :as stylefy :refer [use-style use-sub-style]]))
 
 ;;; Styles
 
@@ -49,10 +50,35 @@
 
 (defn scrollbar
   [content]
-  [:div (use-style scroll-container-style)
-   content
-   [:div.scrollbar (use-sub-style scroll-container-style :scrollbar)
-    [:div.thumb (use-sub-style scroll-container-style :thumb)]]])
+  (let [state (r/atom {:thumb-top 0
+                       :thumb-height 75})
+        pointer-move-handler (fn [e]
+                               (let [new-y-tmp (+ (:thumb-top @state) (.-movementY e))
+                                     scrollbar-height (.. js/document -documentElement -clientHeight)
+                                     t-height (:thumb-height @state)
+                                     new-y  (cond
+                                              (< new-y-tmp 0) 0
+                                              (> (+ new-y-tmp t-height) scrollbar-height) (- scrollbar-height t-height)
+                                              :else new-y-tmp)]
+                                 (swap! state assoc :thumb-top new-y)))
+        pointer-down-handler (fn [e]
+                               (when (= (.-buttons e) 1)
+                                 (doto (.-target e)
+                                   (.addEventListener "pointermove" pointer-move-handler)
+                                   (.setPointerCapture (.-pointerId e)))))
+        pointer-up-handler (fn [e]
+                             (doto (.-target e)
+                               (.removeEventListener "pointermove" pointer-move-handler)
+                               (.releasePointerCapture (.-pointerId e))))]
+    (fn []
+      [:div (use-style scroll-container-style)
+       content
+       [:div.scrollbar (use-sub-style scroll-container-style :scrollbar)
+        [:div.thumb (merge (use-sub-style scroll-container-style :thumb)
+                           {:style {:top (:thumb-top @state)
+                                    :height (str (:thumb-height @state) "px")}
+                            :on-pointer-down pointer-down-handler
+                            :on-pointer-up pointer-up-handler})]]])))
 
 (defn pdf
   []

@@ -50,7 +50,6 @@
 (re-frame/reg-event-fx
  :modal/handle-click
  (fn [_ [_ id toggle]]
-   (js/console.log)
    (let [modal (.getElementById js/document id)]
      (.addEventListener js/document "mousedown" (fn handle-click [e]
                                                   (when-not (.contains modal (.-target e))
