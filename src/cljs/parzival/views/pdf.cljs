@@ -69,11 +69,22 @@
         pointer-up-handler (fn [e]
                              (doto (.-target e)
                                (.removeEventListener "pointermove" pointer-move-handler)
-                               (.releasePointerCapture (.-pointerId e))))]
+                               (.releasePointerCapture (.-pointerId e))))
+        pointer-down-track-handler (fn [e]
+                                     (when-not (.contains (.. e -target -classList) "thumb")
+                                       (let [scrollbar-height (.. js/document -documentElement -clientHeight)
+                                             t-height (:thumb-height @state)
+                                             new-y (if (> (+ (.-clientY e) t-height) scrollbar-height)
+                                                     (- scrollbar-height t-height)
+                                                     (.-clientY e))]
+                                         (swap! state assoc :thumb-top new-y))))
+        ]
     (fn []
       [:div (use-style scroll-container-style)
        content
-       [:div.scrollbar (use-sub-style scroll-container-style :scrollbar)
+       [:div.scrollbar (merge (use-sub-style scroll-container-style :scrollbar)
+                              {:on-pointer-down pointer-down-track-handler
+                               })
         [:div.thumb (merge (use-sub-style scroll-container-style :thumb)
                            {:style {:top (:thumb-top @state)
                                     :height (str (:thumb-height @state) "px")}
