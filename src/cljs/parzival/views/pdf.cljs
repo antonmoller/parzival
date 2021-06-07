@@ -17,8 +17,7 @@
    :padding-right "50px"
    :scrollbar-width "none"
    ::stylefy/vendors ["webkit"]
-  ;;  ::stylefy/mode {"::-webkit-scrollbar" {:display "none"}}
-   })
+   ::stylefy/mode {"::-webkit-scrollbar" {:display "none"}}})
 
 
 (def scroll-container-style 
@@ -47,34 +46,23 @@
                      [:.thumb:hover {:background (:thumb-hover-color SCROLLBAR)}]
                      [:.thumb:active {:background (:thumb-active-color SCROLLBAR)}]]})
 
-;;; Helpers
-
-(defn compute-height
-  [id]
-  (as-> (.getElementById js/document id) res
-    (.getComputedStyle js/window res)
-    (.getPropertyValue res "height")
-    (js/parseInt res)))
-
 ;;; Components
 
 (defn scrollbar
   [content]
-  (let [ref (clojure.core/atom nil)
-        state (r/atom {:thumb-top 0
-                       :thumb-height 0})
-        pointer-move-handler (fn [e]
-                               (let [new-y-tmp (+ (:thumb-top @state) (.-movementY e))
-                                     scrollbar-height (.. js/document -documentElement -clientHeight)
-                                     t-height (:thumb-height @state)
-                                     viewer-container (.getElementById js/document "viewerContainer")
-                                     scaling (/ (compute-height "viewer") (compute-height "viewerContainer"))
-                                     new-y  (cond
-                                              (< new-y-tmp 0) 0
-                                              (> (+ new-y-tmp t-height) scrollbar-height) (- scrollbar-height t-height)
-                                              :else new-y-tmp)]
-                                 (.scroll viewer-container 0 (* scaling new-y))
-                                 (swap! state assoc :thumb-top new-y)))
+  (let [scrollbar (subscribe [:pdf/scrollbar])
+        top (r/atom 0)
+        new-pos (fn [y]
+                  (let [new-y  (cond
+                                 (< y 0) 0
+                                 (> y (:bottom-limit @scrollbar)) (:bottom-limit @scrollbar)
+                                 :else y)]
+                    (.scroll (:container @scrollbar) 0 (* (:scaling @scrollbar) new-y))
+                    (reset! top new-y)))
+        pointer-move-handler #(new-pos (+ @top (.-movementY %)))
+        pointer-down-track-handler (fn [e]
+                                     (when (and (not (.contains (.. e -target -classList) "thumb")) (= (.-buttons e) 1))
+                                       (new-pos (.-clientY e))))
         pointer-down-handler (fn [e]
                                (when (= (.-buttons e) 1)
                                  (doto (.-target e)
@@ -84,41 +72,20 @@
                              (doto (.-target e)
                                (.removeEventListener "pointermove" pointer-move-handler)
                                (.releasePointerCapture (.-pointerId e))))
-        pointer-down-track-handler (fn [e]
-                                     (when (and (not (.contains (.. e -target -classList) "thumb")) (= (.-buttons e) 1))
-                                       (let [new-y-tmp  (.-clientY e)
-                                             scrollbar-height (.. js/document -documentElement -clientHeight)
-                                             t-height (:thumb-height @state)
-                                             container (.getElementById js/document "viewerContainer")
-                                             scaling (/ (compute-height "viewer") (compute-height "viewerContainer"))
-                                             new-y  (cond
-                                                      (< new-y-tmp 0) 0
-                                                      (> (+ new-y-tmp t-height) scrollbar-height) (- scrollbar-height t-height)
-                                                      :else new-y-tmp)]
-                                         (.scroll container 0 (* scaling new-y))
-                                         (swap! state assoc :thumb-top new-y))))
-        scroll-handler (fn [e]
-                         (let [scrollbar-height (.. js/document -documentElement -clientHeight)
-                               height-percent (/ (.. e -target -scrollTop) (compute-height "viewer"))]
-                           (swap! state assoc :thumb-top (* height-percent scrollbar-height))))]
-    (r/create-class
-     {:display-name "scrollbar-container"
-      :component-did-mount (fn []
-                             (when (some? @ref)
-                               (swap! state assoc :thumb-height 44)))
-      :reagent-render
-      (fn []
-        [:div (merge (use-style scroll-container-style)
-                     {:ref #(reset! ref %)
-                      :on-scroll scroll-handler})
-         content
-         [:div.scrollbar (merge (use-sub-style scroll-container-style :scrollbar)
-                                {:on-pointer-down pointer-down-track-handler})
-          [:div.thumb (merge (use-sub-style scroll-container-style :thumb)
-                             {:style {:top (:thumb-top @state)
-                                      :height (str (:thumb-height @state) "px")}
-                              :on-pointer-down pointer-down-handler
-                              :on-pointer-up pointer-up-handler})]]])})))
+        scroll-handler #(->> (/ (.. % -target -scrollTop) (:pdf-height @scrollbar))
+                             (* (:track-height @scrollbar))
+                             (reset! top))]
+    (fn []
+      [:div (merge (use-style scroll-container-style)
+                   {:on-scroll scroll-handler})
+       content
+       [:div.scrollbar (merge (use-sub-style scroll-container-style :scrollbar)
+                              {:on-pointer-down pointer-down-track-handler})
+        [:div.thumb (merge (use-sub-style scroll-container-style :thumb)
+                           {:style {:top @top
+                                    :height (str (:thumb-height @scrollbar) "px")}
+                            :on-pointer-down pointer-down-handler
+                            :on-pointer-up pointer-up-handler})]]])))
 
 (defn pdf
   []

@@ -18,6 +18,11 @@
  (fn [db _]
    (some? (get db :pdf))))
 
+(rf/reg-sub
+:pdf/scrollbar
+(fn [db _]
+  (get db :pdf/scrollbar)))
+
 ;;; Events
 
 (rf/reg-event-db
@@ -51,6 +56,11 @@
                    :on-success [:pdf/load-success]
                    :on-failure [:pdf/load-failure]}}))
 
+(rf/reg-event-db
+ :pdf/scrollbar
+ (fn [db [_ x]]
+   (assoc db :pdf/scrollbar x)))
+
 (reg-event-fx
  :pdf/view
  (fn [{:keys [db]} _]
@@ -65,11 +75,24 @@
                                                      "eventBus" event-bus
                                                      "linkService" link-service
                                                       ; "findController" find-controller
-                                                     "textLayerMode" 2))]
+                                                     "textLayerMode" 2))
+         get-height #(-> (.getComputedStyle js/window %)
+                         (.getPropertyValue "height")
+                         (js/parseInt))
+         scrollbar #(let [viewer-height (get-height viewer)
+                          container-height (get-height container)
+                          thumb-height (* container-height (/ container-height viewer-height))]
+                      {:container container
+                       :track-height container-height
+                       :pdf-height viewer-height
+                       :thumb-height thumb-height
+                       :scaling (/ viewer-height container-height)
+                       :bottom-limit (- container-height thumb-height)})]
      (.setViewer link-service pdf-viewer)
      (.setDocument pdf-viewer pdf)
      (.setDocument link-service pdf nil)
-     (.on event-bus "textlayerrendered" #(dispatch [:render/page (.. % -source -textLayerDiv -parentNode)])))))
+     (.on event-bus "textlayerrendered" #(dispatch [:render/page (.. % -source -textLayerDiv -parentNode)]))
+     (.on event-bus "pagesinit" #(dispatch [:pdf/scrollbar (scrollbar)])))))
 
 ;;; Highlights
 
@@ -324,7 +347,7 @@
         height-px (+ (.-height b-box) (.-movementY e))]
     (doto target
       (.setAttribute "width" (if (contains? #{"ew-resize" "nwse-resize"} cursor)
-                               (cond 
+                               (cond
                                  (< width-px min-px) (px-to-percentage page-width-px min-px)
                                  (< page-width-px width-px) "100%"
                                  :else (px-to-percentage page-width-px width-px))
@@ -371,10 +394,10 @@
 (reg-event-fx
  :pagemark/resize
  (fn [{:keys [db]} [_ target]]
-   {:db (update-in db 
-                   [:pdf/pagemarks (page-id target)] 
+   {:db (update-in db
+                   [:pdf/pagemarks (page-id target)]
                    assoc
-                   :width (.getAttribute target "width") 
+                   :width (.getAttribute target "width")
                    :height (.getAttribute target "height"))}))
 
 (reg-event-fx
@@ -471,4 +494,3 @@
                         :height height
                         :edit? (not= 0 (.-length (.getElementsByClassName page "pagemark")))
                         :page page}]]]})))
-                                             

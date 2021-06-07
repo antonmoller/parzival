@@ -13,6 +13,7 @@
    :pagemark/anchor nil ;  {:left :top :height :edit :page}
    :theme/dark true
    :pdf nil
+   :pdf/scrollbar nil
    :pdf/highlights {} ; {:color :opacity :x0 :y0 :x1 :y1}
    :pdf/pagemarks {} ; {:page-id {:color :width :height}}
    :loading/progress 0})
