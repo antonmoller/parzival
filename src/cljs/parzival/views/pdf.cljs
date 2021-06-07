@@ -17,7 +17,8 @@
    :padding-right "50px"
    :scrollbar-width "none"
    ::stylefy/vendors ["webkit"]
-   ::stylefy/mode {"::-webkit-scrollbar" {:display "none"}}})
+  ;;  ::stylefy/mode {"::-webkit-scrollbar" {:display "none"}}
+   })
 
 
 (def scroll-container-style 
@@ -59,8 +60,9 @@
 
 (defn scrollbar
   [content]
-  (let [state (r/atom {:thumb-top 0
-                       :thumb-height 44})
+  (let [ref (clojure.core/atom nil)
+        state (r/atom {:thumb-top 0
+                       :thumb-height 0})
         pointer-move-handler (fn [e]
                                (let [new-y-tmp (+ (:thumb-top @state) (.-movementY e))
                                      scrollbar-height (.. js/document -documentElement -clientHeight)
@@ -83,7 +85,7 @@
                                (.removeEventListener "pointermove" pointer-move-handler)
                                (.releasePointerCapture (.-pointerId e))))
         pointer-down-track-handler (fn [e]
-                                     (when-not (.contains (.. e -target -classList) "thumb")
+                                     (when (and (not (.contains (.. e -target -classList) "thumb")) (= (.-buttons e) 1))
                                        (let [new-y-tmp  (.-clientY e)
                                              scrollbar-height (.. js/document -documentElement -clientHeight)
                                              t-height (:thumb-height @state)
@@ -99,17 +101,24 @@
                          (let [scrollbar-height (.. js/document -documentElement -clientHeight)
                                height-percent (/ (.. e -target -scrollTop) (compute-height "viewer"))]
                            (swap! state assoc :thumb-top (* height-percent scrollbar-height))))]
-    (fn []
-      [:div (merge (use-style scroll-container-style)
-                   {:on-scroll scroll-handler})
-       content
-       [:div.scrollbar (merge (use-sub-style scroll-container-style :scrollbar)
-                              {:on-pointer-down pointer-down-track-handler})
-        [:div.thumb (merge (use-sub-style scroll-container-style :thumb)
-                           {:style {:top (:thumb-top @state)
-                                    :height (str (:thumb-height @state) "px")}
-                            :on-pointer-down pointer-down-handler
-                            :on-pointer-up pointer-up-handler})]]])))
+    (r/create-class
+     {:display-name "scrollbar-container"
+      :component-did-mount (fn []
+                             (when (some? @ref)
+                               (swap! state assoc :thumb-height 44)))
+      :reagent-render
+      (fn []
+        [:div (merge (use-style scroll-container-style)
+                     {:ref #(reset! ref %)
+                      :on-scroll scroll-handler})
+         content
+         [:div.scrollbar (merge (use-sub-style scroll-container-style :scrollbar)
+                                {:on-pointer-down pointer-down-track-handler})
+          [:div.thumb (merge (use-sub-style scroll-container-style :thumb)
+                             {:style {:top (:thumb-top @state)
+                                      :height (str (:thumb-height @state) "px")}
+                              :on-pointer-down pointer-down-handler
+                              :on-pointer-up pointer-up-handler})]]])})))
 
 (defn pdf
   []
