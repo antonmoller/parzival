@@ -36,7 +36,7 @@
                                  :z-index 2
                                  :left 0
                                  :top 0
-                                 :height "75px"
+                                 :height "0px"
                                  :width "inherit"
                                  :background (:thumb-color SCROLLBAR)
                                  :box-shadow (:thumb-shadow SCROLLBAR)
@@ -60,32 +60,47 @@
                     (.scroll (:container @scrollbar) 0 (* (:scaling @scrollbar) new-y))
                     (reset! top new-y)))
         pointer-move-handler #(new-pos (+ @top (.-movementY %)))
-        pointer-down-track-handler (fn [e]
-                                     (when (and (not (.contains (.. e -target -classList) "thumb")) (= (.-buttons e) 1))
-                                       (new-pos (.-clientY e))))
-        pointer-down-handler (fn [e]
-                               (when (= (.-buttons e) 1)
-                                 (doto (.-target e)
-                                   (.addEventListener "pointermove" pointer-move-handler)
-                                   (.setPointerCapture (.-pointerId e)))))
         pointer-up-handler (fn [e]
                              (doto (.-target e)
                                (.removeEventListener "pointermove" pointer-move-handler)
                                (.releasePointerCapture (.-pointerId e))))
-        scroll-handler #(->> (/ (.. % -target -scrollTop) (:pdf-height @scrollbar))
+        pointer-down-handler (fn [e]
+                               (case (.-buttons e)
+                                 1 (if (.contains (.. e -target -classList) "thumb")
+                                     (doto (.-target e)
+                                       (.addEventListener "pointermove" pointer-move-handler)
+                                       (.addEventListener "pointerup" pointer-up-handler (js-obj "once" true))
+                                       (.setPointerCapture (.-pointerId e)))
+                                     (new-pos (.-clientY e)))
+                                 2 (js/console.log "right")))
+        scroll-handler (fn [e]
+                         (->> (/ (.. e -target -scrollTop) (:pdf-height @scrollbar))
                              (* (:track-height @scrollbar))
-                             (reset! top))]
-    (fn []
-      [:div (merge (use-style scroll-container-style)
-                   {:on-scroll scroll-handler})
-       content
-       [:div.scrollbar (merge (use-sub-style scroll-container-style :scrollbar)
-                              {:on-pointer-down pointer-down-track-handler})
-        [:div.thumb (merge (use-sub-style scroll-container-style :thumb)
-                           {:style {:top @top
-                                    :height (str (:thumb-height @scrollbar) "px")}
-                            :on-pointer-down pointer-down-handler
-                            :on-pointer-up pointer-up-handler})]]])))
+                             (reset! top)))]
+     (fn []
+       [:div#scrollWrapper (merge (use-style scroll-container-style)
+                                  {:on-scroll scroll-handler
+                                   :on-context-menu #(.preventDefault %)})
+        content
+        [:div.scrollbar (merge (use-sub-style scroll-container-style :scrollbar)
+                               {:on-pointer-down pointer-down-handler})
+         [:div.thumb (merge (use-sub-style scroll-container-style :thumb)
+                            {:style {:top @top
+                                     :height (str (:thumb-height @scrollbar) "px")}})]
+         [:div {:style {:position "absolute"
+                        :background "blue"
+                        :z-index 1
+                        :opacity 0.5
+                        :width "30%"
+                        :height "200px"
+                        :top "500px"}}]
+         [:div {:style {:position "absolute"
+                        :background "red"
+                        :z-index 1
+                        :opacity 0.5
+                        :width "30%"
+                        :height "200px"
+                        :top "700px"}}]]])))
 
 (defn pdf
   []
