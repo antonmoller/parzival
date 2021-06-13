@@ -389,6 +389,11 @@
  (fn [db _]
    (get db :pagemark/anchor)))
 
+(rf/reg-sub
+ :pagemark/sidebar
+ (fn [db _]
+   (get db :pagemark/sidebar)))
+
 ;; Events
 
 (reg-event-fx
@@ -456,6 +461,11 @@
  :pagemark/set-anchor
  (fn [db [_ coords]]
    (assoc db :pagemark/anchor coords)))
+
+(rf/reg-event-db
+ :pagemark/sidebar
+ (fn [db [_ key val]]
+   (assoc-in db [:pagemark/sidebar key] val)))
 
 (reg-event-fx
  :pagemark/close
