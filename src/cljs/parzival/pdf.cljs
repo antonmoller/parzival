@@ -463,9 +463,15 @@
    (assoc db :pagemark/anchor coords)))
 
 (rf/reg-event-db
- :pagemark/sidebar
+ :pagemark/sidebar-add
  (fn [db [_ key val]]
    (assoc-in db [:pagemark/sidebar key] val)))
+
+(rf/reg-event-db
+ :pagemark/sidebar-remove
+ (fn [db [_ key]]
+   (update db :pagemark/sidebar dissoc key)))
+
 
 (reg-event-fx
  :pagemark/close

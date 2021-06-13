@@ -11,7 +11,7 @@
    :highlight/anchor nil ; [x y]
    :highlight/selected nil ; [color page id] [color page id]
    :pagemark/anchor nil ;  {:left :top :height :edit :page}
-   :pagemark/sidebar nil ; {:start-page :end-page :deadline nil/date}
+   :pagemark/sidebar {} ; {:start-page :end-page :deadline nil/date}
    :theme/dark true
    :pdf nil
    :pdf/scrollbar nil

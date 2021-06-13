@@ -111,11 +111,12 @@
 ;;; Components
 
 (defn pagemark-card
-  [type]
+  [key value type]
   (case type
     :schedule [:div (use-style pagemark-card-style)
                [:div (use-sub-style pagemark-card-style :content)
-                [button {:style {:align-self "flex-start"}}
+                [button {:on-click #(dispatch [:pagemark/sidebar-remove key])
+                         :style {:align-self "flex-start"}}
                  [:> Close]]
                 [:div {:style {:display "flex"
                                :justify-content "center"
@@ -131,7 +132,8 @@
     :skip [:div (use-style pagemark-card-style)
            [:div (merge (use-sub-style pagemark-card-style :content)
                         {:style {:height "75px"}})
-            [button {:style {:align-self "flex-start"}}
+            [button {:on-click #(dispatch [:pagemark/sidebar-remove key])
+                     :style {:align-self "flex-start"}}
              [:> Close]]
             [:div {:style {:display "flex"
                            :justify-content "center"
@@ -144,54 +146,37 @@
 
 (defn pagemark
   []
-  [:div#createPagemark (use-style pagemark-style)
-   [:div (merge (use-sub-style pagemark-style :viewer-overlay)
-                {:on-scroll #(.stopPropagation %)})
-    [:br]
-    [button {:on-mouse-down #(js/console.log "schedule")
-             :primary true
-             :style {;:background (PAGEMARK-COLOR :schedule)
+  (let [pagemarks (subscribe [:pagemark/sidebar])]
+    (fn []
+      [:div#createPagemark (use-style pagemark-style)
+       [:div (merge (use-sub-style pagemark-style :viewer-overlay)
+                    {:on-scroll #(.stopPropagation %)})
+        [:br]
+        [button {:on-click #(dispatch [:pagemark/sidebar-add (random-uuid) {:start-page nil :end-page nil :deadline nil}])
+                 :primary true
+                 :style {;:background (PAGEMARK-COLOR :schedule)
                      ;:opacity (OPACITIES :opacity-high)
                      ;:color (color :link-color)
-                     :width "250px"
+                         :width "250px"
                     ;;  :color "white"
-                     }}
-     [:<>
-      [:span "Schedule Pages for Later"]
-      [:> Add]]]
-    [:br]
-    [button {:on-mouse-down #(js/console.log "skip")
-             :primary true
-             :style {;:background "red"
-                     :width "250px"
-                     :color "red"}}
-     [:<>
-      [:span "Skip Pages"]
-      [:> Add]]]
-    [pagemark-card :schedule]
-    [pagemark-card :schedule]
-    [pagemark-card :schedule]
-    [pagemark-card :skip]
-    [pagemark-card :skip]
-    [pagemark-card :skip]
-    [pagemark-card :skip]
-    [pagemark-card :skip]
-    [pagemark-card :schedule]
-    [pagemark-card :schedule]
-    [pagemark-card :schedule]
-    [pagemark-card :schedule]
-    [pagemark-card :skip]
-    [pagemark-card :skip]
-    [pagemark-card :skip]
-    [pagemark-card :skip]
-    [pagemark-card :skip]
-    [pagemark-card :skip]
-    [pagemark-card :skip]
-    [pagemark-card :skip]
-    [pagemark-card :skip]
-    [pagemark-card :skip]
-    [pagemark-card :skip]]
-   [:div (use-sub-style pagemark-style :scrollbar-overlay)]])
+                         }}
+         [:<>
+          [:span "Schedule Pages for Later"]
+          [:> Add]]]
+        [:br]
+        [button {:on-click #(dispatch [:pagemark/sidebar-add (random-uuid) {:start-page nil :end-page nil}])
+                 :primary true
+                 :style {;:background "red"
+                         :width "250px"
+                         :color "red"}}
+         [:<>
+          [:span "Skip Pages"]
+          [:> Add]]]
+        (for [[k v] @pagemarks]
+          (if (contains? v :deadline)
+            ^{:key k} [pagemark-card k v :schedule]
+            ^{:key k} [pagemark-card k v :skip]))]
+       [:div (use-sub-style pagemark-style :scrollbar-overlay)]])))
 
 (defn scrollbar
   [content]
