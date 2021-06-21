@@ -86,7 +86,6 @@
    :border-radius "0.25rem"
    :background (color :background-plus-1-color :opacity-high)
    :box-shadow [[(:64 DEPTH-SHADOWS) ", 0 0 0 1px " (color :body-text-color :opacity-lower)]]
-  ;;  :border "3px solid green"
    ::stylefy/sub-styles {:content {:height "125px"
                                    :padding-bottom "1rem"
                                    :display "flex"
@@ -127,7 +126,7 @@
                  [:input (use-sub-style pagemark-card-style :input
                                         {:placeholder "end"})]]
                 [:input (merge (use-sub-style pagemark-card-style :input
-                                              {:placeholder "date"})
+                                              {:placeholder "deadline"})
                                {:style {:width "160px"}})]]]
     :skip [:div (use-style pagemark-card-style)
            [:div (merge (use-sub-style pagemark-card-style :content)
