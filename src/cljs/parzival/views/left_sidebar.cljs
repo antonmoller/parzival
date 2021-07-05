@@ -41,9 +41,9 @@
    :height "fixed"
    :overflow-y "auto"
    :list-style "none"
+   :scrollbar-width "none"
    ::stylefy/vendors ["webkit"]
-   ::stylefy/mode [["::-webkit-scrollbar" {:width "0px"
-                                           :background "transparent"}]]})
+   ::stylefy/mode [["::-webkit-scrollbar" {:display "none"}]]})
 
 (def headline-style
 {:cursor "default"

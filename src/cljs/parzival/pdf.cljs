@@ -56,11 +56,6 @@
                    :on-success [:pdf/load-success]
                    :on-failure [:pdf/load-failure]}}))
 
-(rf/reg-event-db
- :pdf/scrollbar
- (fn [db [_ x]]
-   (assoc db :pdf/scrollbar x)))
-
 (reg-event-fx
  :pdf/view
  (fn [{:keys [db]} _]
@@ -75,24 +70,11 @@
                                                      "eventBus" event-bus
                                                      "linkService" link-service
                                                       ; "findController" find-controller
-                                                     "textLayerMode" 2))
-         get-height #(-> (.getComputedStyle js/window %)
-                         (.getPropertyValue "height")
-                         (js/parseInt))
-         scrollbar #(let [viewer-height (get-height viewer)
-                          container-height (get-height container)
-                          thumb-height (* container-height (/ container-height viewer-height))]
-                      {:container container
-                       :track-height container-height
-                       :pdf-height viewer-height
-                       :thumb-height thumb-height
-                       :scaling (/ viewer-height container-height)
-                       :bottom-limit (- container-height thumb-height)})]
+                                                     "textLayerMode" 2))]
      (.setViewer link-service pdf-viewer)
      (.setDocument pdf-viewer pdf)
      (.setDocument link-service pdf nil)
-     (.on event-bus "textlayerrendered" #(dispatch [:render/page (.. % -source -textLayerDiv -parentNode)]))
-     (.on event-bus "pagesinit" #(dispatch [:pdf/scrollbar (scrollbar)])))))
+     (.on event-bus "textlayerrendered" #(dispatch [:render/page (.. % -source -textLayerDiv -parentNode)])))))
 
 ;;; Highlights
 
@@ -384,15 +366,15 @@
 
 ;; Subs
 
-(rf/reg-sub
- :pagemark/anchor
- (fn [db _]
-   (get db :pagemark/anchor)))
+;; (rf/reg-sub
+;;  :pagemark/anchor
+;;  (fn [db _]
+;;    (get db :pagemark/anchor)))
 
-(rf/reg-sub
- :pagemark/sidebar
- (fn [db _]
-   (get db :pagemark/sidebar)))
+;; (rf/reg-sub
+;;  :pagemark/sidebar
+;;  (fn [db _]
+;;    (get db :pagemark/sidebar)))
 
 ;; Events
 
@@ -462,15 +444,18 @@
  (fn [db [_ coords]]
    (assoc db :pagemark/anchor coords)))
 
-(rf/reg-event-db
- :pagemark/sidebar-add
- (fn [db [_ key val]]
-   (assoc-in db [:pagemark/sidebar key] val)))
+;; (rf/reg-event-db
+;;  :pagemark/sidebar-add
+;;  (fn [db [_ val]]
+;;    (update db :pagemark/sidebar conj val)))
 
-(rf/reg-event-db
- :pagemark/sidebar-remove
- (fn [db [_ key]]
-   (update db :pagemark/sidebar dissoc key)))
+;; (rf/reg-event-db
+;;  :pagemark/sidebar-remove
+;;  (fn [db [_ key]]
+;;    (update db :pagemark/sidebar (remove ) #{key})
+;;           ;;  (remove #(= key %)))
+;;   ;;  (update db :pagemark/sidebar dissoc key)
+;;    ))
 
 
 (reg-event-fx
