@@ -371,10 +371,10 @@
  (fn [db _]
    (get db :pagemark/anchor)))
 
-;; (rf/reg-sub
-;;  :pagemark/sidebar
-;;  (fn [db _]
-;;    (get db :pagemark/sidebar)))
+(rf/reg-sub
+ :pagemark/sidebar
+ (fn [db _]
+   (get db :pagemark/sidebar)))
 
 ;; Events
 

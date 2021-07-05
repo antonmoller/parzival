@@ -205,17 +205,24 @@
                     (.scroll (:container @state) 0 (* (:scaling @state) new-y))
                     (swap! state assoc :top new-y)))
         pointer-move-handler #(new-pos (+ (:top @state) (.-movementY %)))
+        scroll-handler (fn [e]
+                         (->> (/ (.. e -target -scrollTop) (:scroll-height @state))
+                              (* (:window-height @state))
+                              (swap! state assoc :top)))
         pointer-up-handler (fn [e]
+                             (.addEventListener (:container @state) "scroll" scroll-handler)
                              (doto (.-target e)
                                (.removeEventListener "pointermove" pointer-move-handler)
                                (.releasePointerCapture (.-pointerId e))))
         pointer-down-handler (fn [e]
                                (case (.-buttons e)
                                  1 (if (.contains (.. e -target -classList) "thumb")
-                                     (doto (.-target e)
-                                       (.addEventListener "pointermove" pointer-move-handler)
-                                       (.addEventListener "pointerup" pointer-up-handler (js-obj "once" true))
-                                       (.setPointerCapture (.-pointerId e)))
+                                     (do
+                                       (.removeEventListener (:container @state) "scroll" scroll-handler)
+                                       (doto (.-target e)
+                                         (.addEventListener "pointermove" pointer-move-handler)
+                                         (.addEventListener "pointerup" pointer-up-handler (js-obj "once" true))
+                                         (.setPointerCapture (.-pointerId e))))
                                      (new-pos (.-clientY e)))
                                  2 (do
                                      (swap! state update :pagemark? not)
@@ -225,11 +232,7 @@
                                                           (when (nil? (.closest (.-target e) "#createPagemark"))
                                                             (.removeEventListener js/document "pointerdown" close-pagemark)
                                                             (swap! state update :pagemark? not)))))))
-        scroll-handler (fn [e]
-                         (->> (/ (.. e -target -scrollTop) (:scroll-height @state))
-                              (* (:window-height @state))
-                              (swap! state assoc :top)))
-        resize-observer (js/ResizeObserver. 
+        resize-observer (js/ResizeObserver.
                          (fn [e]
                            (let [window-changed (.find e #(= "scrollbar" (.. % -target -id)))
                                  scroll-changed (.find e #(= "viewer" (.. % -target -id)))
@@ -259,14 +262,15 @@
     (r/create-class
      {:display-name "scrollbar-wrapper"
       :component-did-mount (fn []
-                             (->> (.getElementById js/document "viewerContainer")
-                                  (swap! state assoc :container))
+                             (doto (.getElementById js/document "viewerContainer")
+                               (.addEventListener "scroll" scroll-handler)
+                               (->> (swap! state assoc :container)))
                              (.observe resize-observer (.getElementById js/document "viewer"))
                              (.observe resize-observer (.getElementById js/document "scrollbar")))
       :conponent-will-unmount #(.disconnect resize-observer)
       :reagent-render (fn []
                         [:div#scrollWrapper (merge (use-style scroll-container-style)
-                                                   {:on-scroll scroll-handler
+                                                   {;:on-scroll scroll-handler
                                                     :on-context-menu #(.preventDefault %)})
                          content
                          (when (:pagemark? @state)
