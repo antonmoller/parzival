@@ -194,8 +194,8 @@
                        :scroll-height 0
                        :window-height 0
                        :thumb-height 0
-                       :scaling nil
-                       :bottom-limit nil
+                       :scaling 0
+                       :bottom-limit 0
                        :pagemark? false})
         new-pos (fn [y]
                   (let [new-y  (cond
@@ -229,29 +229,33 @@
                          (->> (/ (.. e -target -scrollTop) (:scroll-height @state))
                               (* (:window-height @state))
                               (swap! state assoc :top)))
-        resize-observer (js/ResizeObserver. (fn [e]
-                                              (let [window-changed (.find e #(= "scrollbar" (.. % -target -id)))
-                                                    scroll-changed (.find e #(= "viewer" (.. % -target -id)))
-                                                    window-height (if (some? window-changed)
-                                                                    (.. window-changed -contentRect -height)
-                                                                    (:window-height @state))
-                                                    scroll-height (if (some? scroll-changed)
-                                                                    (.. scroll-changed -contentRect -height)
-                                                                    (:scroll-height @state))
-                                                    bottom-limit (->> (/ window-height scroll-height)
-                                                                      (- 1)
-                                                                      (* window-height))
-                                                    scaling      (/ scroll-height window-height)
-                                                    thumb-height (* window-height (/ window-height scroll-height))
-                                                    top (* (:top @state) (:scaling @state) (/ scaling))]
-                                                (reset! state {:container (:container @state)
-                                                               :top top
-                                                               :scroll-height scroll-height
-                                                               :window-height window-height
-                                                               :thumb-height thumb-height
-                                                               :scaling scaling
-                                                               :bottom-limit bottom-limit
-                                                               :pagemark? (:pagemark? @state)}))))]
+        resize-observer (js/ResizeObserver. 
+                         (fn [e]
+                           (let [window-changed (.find e #(= "scrollbar" (.. % -target -id)))
+                                 scroll-changed (.find e #(= "viewer" (.. % -target -id)))
+                                 window-height (if (some? window-changed)
+                                                 (.. window-changed -contentRect -height)
+                                                 (:window-height @state))
+                                 scroll-height (if (some? scroll-changed)
+                                                 (.. scroll-changed -contentRect -height)
+                                                 (:scroll-height @state))
+                                 bottom-limit (->> (/ window-height scroll-height)
+                                                   (- 1)
+                                                   (* window-height))
+                                 scaling      (/ scroll-height window-height)
+                                 thumb-height (* window-height
+                                                 (/ window-height scroll-height))
+                                 top (if (= scaling 0)
+                                       0
+                                       (* (:top @state) (:scaling @state) (/ scaling)))]
+                             (reset! state {:container (:container @state)
+                                            :top top
+                                            :scroll-height scroll-height
+                                            :window-height window-height
+                                            :thumb-height thumb-height
+                                            :scaling scaling
+                                            :bottom-limit bottom-limit
+                                            :pagemark? (:pagemark? @state)}))))]
     (r/create-class
      {:display-name "scrollbar-wrapper"
       :component-did-mount (fn []

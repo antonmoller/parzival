@@ -366,10 +366,10 @@
 
 ;; Subs
 
-;; (rf/reg-sub
-;;  :pagemark/anchor
-;;  (fn [db _]
-;;    (get db :pagemark/anchor)))
+(rf/reg-sub
+ :pagemark/anchor
+ (fn [db _]
+   (get db :pagemark/anchor)))
 
 ;; (rf/reg-sub
 ;;  :pagemark/sidebar
