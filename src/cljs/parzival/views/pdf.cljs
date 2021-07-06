@@ -13,22 +13,19 @@
 
 ;;; Styles
 
-(def hide-scrollbar
-  {:overflow-y "auto"
-   :scrollbar-width "none"
-   ::stylefy/vendors ["webkit"]
-   ::stylefy/mode {"::-webkit-scrollbar" {:display "none"}}})
-
 ;; (def scrollbar-width "32px")
 (def scrollbar-width "20px")
 
 (def pdf-container-style
-  (merge hide-scrollbar
-         {:position "absolute"
-          :height "100%"
-          :overflow-x "hidden"
-          :overflow-y "scroll"
-          :padding-right "50px"}))
+  {:position "absolute"
+   :height "100%"
+   :padding-right "50px"
+   :overflow-x "hidden"
+   :overflow-y "scroll"
+   :scrollbar-width "none"
+   ::stylefy/vendors ["webkit"]
+   ::stylefy/mode {"::-webkit-scrollbar" {:display "none"}}
+   })
 
 
 (def scroll-container-style 
@@ -68,7 +65,7 @@
    :justify-content "space-between"
    :align-items "center"
    :backdrop-filter "blur(8px)"
-   })
+   :border-left "1px solid grey"})
 
 (def pagemark-card-style
   {:width "250px"
@@ -188,7 +185,7 @@
                        :cursor "not-allowed"}}]]])))
 
 (defn scrollbar
-  [content]
+  [{:keys [content container-id scrollbar-content]}]
   (let [state (r/atom {:container nil
                        :top 0
                        :scroll-height 0
@@ -235,7 +232,7 @@
         resize-observer (js/ResizeObserver.
                          (fn [e]
                            (let [window-changed (.find e #(= "scrollbar" (.. % -target -id)))
-                                 scroll-changed (.find e #(= "viewer" (.. % -target -id)))
+                                 scroll-changed (.find e #(=  container-id (.. % -target -id))) 
                                  window-height (if (some? window-changed)
                                                  (.. window-changed -contentRect -height)
                                                  (:window-height @state))
@@ -265,13 +262,12 @@
                              (doto (.getElementById js/document "viewerContainer")
                                (.addEventListener "scroll" scroll-handler)
                                (->> (swap! state assoc :container)))
-                             (.observe resize-observer (.getElementById js/document "viewer"))
+                             (.observe resize-observer (.getElementById js/document container-id)) 
                              (.observe resize-observer (.getElementById js/document "scrollbar")))
       :conponent-will-unmount #(.disconnect resize-observer)
       :reagent-render (fn []
                         [:div#scrollWrapper (merge (use-style scroll-container-style)
-                                                   {;:on-scroll scroll-handler
-                                                    :on-context-menu #(.preventDefault %)})
+                                                   {:on-context-menu #(.preventDefault %)})
                          content
                          (when (:pagemark? @state)
                            [pagemark])
@@ -280,30 +276,7 @@
                           [:div.thumb (merge (use-sub-style scroll-container-style :thumb)
                                              {:style {:top (:top @state)
                                                       :height (str (:thumb-height @state) "px")}})]
-                          [:div {:style {:position "absolute"
-                                         :background "green"
-                                         :opacity 0.4
-                                         :width "30%"
-                                         :height "300px"
-                                         :top "200px"}}]
-                          [:div {:style {:position "absolute"
-                                         :background "red"
-                                         :opacity 0.4
-                                         :width "30%"
-                                         :height "100px"
-                                         :top "0px"}}]
-                          [:div {:style {:position "absolute"
-                                         :background "blue"
-                                         :opacity 0.4
-                                         :width "30%"
-                                         :height "200px"
-                                         :top "600px"}}]
-                          [:div {:style {:position "absolute"
-                                         :background "green"
-                                         :opacity 0.4
-                                         :width "30%"
-                                         :height "400px"
-                                         :top "900px"}}]]])})))
+                          scrollbar-content]])})))
 
 (defn pdf
   []
@@ -316,10 +289,40 @@
       (when @pdf?
         (dispatch [:pdf/view]))
       [scrollbar
-       [:div#viewerContainer (use-style pdf-container-style)
-        [highlight-toolbar]
-        [pagemark-menu]
-        [:div#viewer.pdfViewer {:on-mouse-up #(dispatch [:highlight/toolbar-create])
-                                :on-context-menu (fn [e]
-                                                   (.preventDefault e)
-                                                   (dispatch [:pagemark/menu (.-target e) (.-clientX e) (.-clientY e)]))}]]])))
+       {:content [:div#viewerContainer (use-style pdf-container-style)
+                  [highlight-toolbar]
+                  [pagemark-menu]
+                  [:div#viewer.pdfViewer {:on-mouse-up #(dispatch [:highlight/toolbar-create])
+                                          :on-context-menu (fn [e]
+                                                             (.preventDefault e)
+                                                             (dispatch [:pagemark/menu 
+                                                                        (.-target e) 
+                                                                        (.-clientX e) 
+                                                                        (.-clientY e)]))}]]
+        :container-id "viewer"
+        :scrollbar-content [:div
+                            [:div {:style {:position "absolute"
+                                           :background "green"
+                                           :opacity 0.4
+                                           :width "30%"
+                                           :height "300px"
+                                           :top "200px"}}]
+                            [:div {:style {:position "absolute"
+                                           :background "red"
+                                           :opacity 0.4
+                                           :width "30%"
+                                           :height "100px"
+                                           :top "0px"}}]
+                            [:div {:style {:position "absolute"
+                                           :background "blue"
+                                           :opacity 0.4
+                                           :width "30%"
+                                           :height "200px"
+                                           :top "600px"}}]
+                            [:div {:style {:position "absolute"
+                                           :background "green"
+                                           :opacity 0.4
+                                           :width "30%"
+                                           :height "400px"
+                                           :top "900px"}}]]
+        }])))
