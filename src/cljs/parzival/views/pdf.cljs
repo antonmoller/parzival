@@ -162,12 +162,10 @@
 (defn pdf
   []
   (let [pdf? (subscribe [:pdf?])
-        pagemark? (subscribe [:pagemark?])
         url "https://arxiv.org/pdf/2006.06676v2.pdf"
         ; url "http://ltu.diva-portal.org/smash/get/diva2:1512634/FULLTEXT01.pdf"
         ]
     (fn []
-      (js/console.log @pagemark?)
       (dispatch [:pdf/load url])
       (when @pdf?
         (dispatch [:pdf/view]))
