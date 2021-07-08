@@ -16,6 +16,7 @@
    :pdf nil
    :pdf/highlights {} ; {:color :opacity :x0 :y0 :x1 :y1}
    :pdf/pagemarks {} ; {:page-id {:color :width :height}}
+   :pagemark? false
    :loading/progress 0})
 
 

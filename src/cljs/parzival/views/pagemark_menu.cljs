@@ -1,5 +1,6 @@
 (ns parzival.views.pagemark-menu
   (:require
+   ["@material-ui/icons/Book" :default Book]
    ["@material-ui/icons/Bookmark" :default Bookmark]
    ["@material-ui/icons/BookmarkBorder" :default BookmarkBorder]
    ["@material-ui/icons/Remove" :default Remove]
@@ -52,6 +53,10 @@
                  {:on-mouse-down #(dispatch [:pagemark/add page "100%"])})
       [:> Bookmark]
       [:span "Mark Entire Page as Read"]]
+     [:li (merge (use-style item-style)
+                 {:on-mouse-down #(dispatch [:pagemark?])})
+      [:> Book]
+      [:span "Skip/Schedule Pages"]]
      (when edit?
        [:li (merge (use-style item-style)
                    {:on-mouse-down #(dispatch [:pagemark/remove page])

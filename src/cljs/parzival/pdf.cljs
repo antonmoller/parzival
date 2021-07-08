@@ -372,11 +372,32 @@
    (get db :pagemark/anchor)))
 
 (rf/reg-sub
+ :pagemark?
+ (fn [db _]
+   (get db :pagemark?)))
+
+(rf/reg-sub
  :pagemark/sidebar
  (fn [db _]
    (get db :pagemark/sidebar)))
 
 ;; Events
+
+(rf/reg-event-db
+ :pagemark-state
+ (fn [db [_ bool]]
+   (assoc db :pagemark? bool)))
+
+(reg-event-fx
+ :pagemark?
+ (fn [{:keys [db]} _]
+   (.addEventListener js/document
+                      "pointerdown"
+                      (fn close-pagemark [e]
+                        (when (nil? (.closest (.-target e) "#createPagemark"))
+                          (.removeEventListener js/document "pointerdown" close-pagemark)
+                          (dispatch [:pagemark-state false]))))
+   {:fx [[:dispatch [:pagemark-state true]]]}))
 
 (reg-event-fx
  :pagemark/resize

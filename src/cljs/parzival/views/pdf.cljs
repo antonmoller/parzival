@@ -8,13 +8,11 @@
    [parzival.views.highlight-toolbar :refer [highlight-toolbar]]
    [parzival.views.pagemark-menu :refer [pagemark-menu]]
    [parzival.views.buttons :refer [button]]
+   [parzival.views.virtual-scrollbar :refer [virtual-scrollbar]]
    [parzival.style :refer [ZINDICES DEPTH-SHADOWS SCROLLBAR PAGEMARK-COLOR OPACITIES color]]
    [stylefy.core :as stylefy :refer [use-style use-sub-style]]))
 
 ;;; Styles
-
-;; (def scrollbar-width "32px")
-(def scrollbar-width "20px")
 
 (def pdf-container-style
   {:position "absolute"
@@ -24,35 +22,7 @@
    :overflow-y "scroll"
    :scrollbar-width "none"
    ::stylefy/vendors ["webkit"]
-   ::stylefy/mode {"::-webkit-scrollbar" {:display "none"}}
-   })
-
-
-(def scroll-container-style 
-  {:position "relative"
-   :z-index (:zindex-sticky ZINDICES)
-   :width "855px"
-   :height "100%"
-   ::stylefy/sub-styles {:scrollbar {:position "absolute"
-                                     :right 0
-                                     :height "100%"
-                                     :box-sizing "border-box"
-                                     :width scrollbar-width
-                                     :border (:border SCROLLBAR)
-                                     :box-shadow (:shadow SCROLLBAR)}
-                         :thumb {:position "absolute"
-                                 :z-index 1
-                                 :left 0
-                                 :top 0
-                                 :height "0px"
-                                 :width "100%"
-                                 :background (:thumb-color SCROLLBAR)
-                                 :box-shadow (:thumb-shadow SCROLLBAR)
-                                 :transition "background 0.8s linear"}}
-   ::stylefy/manual [[:&:hover [:.thumb {:background (:thumb-visible-color SCROLLBAR)
-                                         :transition "background 0.2s linear"}]]
-                     [:.thumb:hover {:background (:thumb-hover-color SCROLLBAR)}]
-                     [:.thumb:active {:background (:thumb-active-color SCROLLBAR)}]]})
+   ::stylefy/mode {"::-webkit-scrollbar" {:display "none"}}})
 
 (def pagemark-style
   {:position "absolute"
@@ -61,6 +31,7 @@
    :right 0
    :width "360px"
    :height "100%"
+   :visibility "hidden"
    :display "flex"
    :justify-content "space-between"
    :align-items "center"
@@ -123,9 +94,11 @@
 
 (defn pagemark
   []
-  (let [pagemarks (subscribe [:pagemark/sidebar])]
+  (let [pagemark? (subscribe [:pagemark?])
+        pagemarks (subscribe [:pagemark/sidebar])]
     (fn []
-      [:div#createPagemark (use-style pagemark-style)
+      [:div#createPagemark (merge (use-style pagemark-style)
+                                  {:style {:visibility (if @pagemark? "visible" "hidden")}})
         ;; (into [:div] (map #(do ^{:key (:key %)} [pagemark-card %]) @pagemarks))]
        [pagemark-card]
        [:div {:style {:position "relative"
@@ -184,122 +157,34 @@
                        :background "rgba(0,255,0,0.3)"
                        :cursor "not-allowed"}}]]])))
 
-(defn scrollbar
-  [{:keys [content container-id scrollbar-content]}]
-  (let [state (r/atom {:container nil
-                       :top 0
-                       :scroll-height 0
-                       :window-height 0
-                       :thumb-height 0
-                       :scaling 0
-                       :bottom-limit 0
-                       :pagemark? false})
-        new-pos (fn [y]
-                  (let [new-y  (cond
-                                 (< y 0) 0
-                                 (> y (:bottom-limit @state)) (:bottom-limit @state)
-                                 :else y)]
-                    (.scroll (:container @state) 0 (* (:scaling @state) new-y))
-                    (swap! state assoc :top new-y)))
-        pointer-move-handler #(new-pos (+ (:top @state) (.-movementY %)))
-        scroll-handler (fn [e]
-                         (->> (/ (.. e -target -scrollTop) (:scroll-height @state))
-                              (* (:window-height @state))
-                              (swap! state assoc :top)))
-        pointer-up-handler (fn [e]
-                             (.addEventListener (:container @state) "scroll" scroll-handler)
-                             (doto (.-target e)
-                               (.removeEventListener "pointermove" pointer-move-handler)
-                               (.releasePointerCapture (.-pointerId e))))
-        pointer-down-handler (fn [e]
-                               (case (.-buttons e)
-                                 1 (if (.contains (.. e -target -classList) "thumb")
-                                     (do
-                                       (.removeEventListener (:container @state) "scroll" scroll-handler)
-                                       (doto (.-target e)
-                                         (.addEventListener "pointermove" pointer-move-handler)
-                                         (.addEventListener "pointerup" pointer-up-handler (js-obj "once" true))
-                                         (.setPointerCapture (.-pointerId e))))
-                                     (new-pos (.-clientY e)))
-                                 2 (do
-                                     (swap! state update :pagemark? not)
-                                     (.addEventListener js/document
-                                                        "pointerdown"
-                                                        (fn close-pagemark [e]
-                                                          (when (nil? (.closest (.-target e) "#createPagemark"))
-                                                            (.removeEventListener js/document "pointerdown" close-pagemark)
-                                                            (swap! state update :pagemark? not)))))))
-        resize-observer (js/ResizeObserver.
-                         (fn [e]
-                           (let [window-changed (.find e #(= "scrollbar" (.. % -target -id)))
-                                 scroll-changed (.find e #(=  container-id (.. % -target -id))) 
-                                 window-height (if (some? window-changed)
-                                                 (.. window-changed -contentRect -height)
-                                                 (:window-height @state))
-                                 scroll-height (if (some? scroll-changed)
-                                                 (.. scroll-changed -contentRect -height)
-                                                 (:scroll-height @state))
-                                 bottom-limit (->> (/ window-height scroll-height)
-                                                   (- 1)
-                                                   (* window-height))
-                                 scaling      (/ scroll-height window-height)
-                                 thumb-height (* window-height
-                                                 (/ window-height scroll-height))
-                                 top (if (= scaling 0)
-                                       0
-                                       (* (:top @state) (:scaling @state) (/ scaling)))]
-                             (reset! state {:container (:container @state)
-                                            :top top
-                                            :scroll-height scroll-height
-                                            :window-height window-height
-                                            :thumb-height thumb-height
-                                            :scaling scaling
-                                            :bottom-limit bottom-limit
-                                            :pagemark? (:pagemark? @state)}))))]
-    (r/create-class
-     {:display-name "scrollbar-wrapper"
-      :component-did-mount (fn []
-                             (doto (.getElementById js/document "viewerContainer")
-                               (.addEventListener "scroll" scroll-handler)
-                               (->> (swap! state assoc :container)))
-                             (.observe resize-observer (.getElementById js/document container-id)) 
-                             (.observe resize-observer (.getElementById js/document "scrollbar")))
-      :conponent-will-unmount #(.disconnect resize-observer)
-      :reagent-render (fn []
-                        [:div#scrollWrapper (merge (use-style scroll-container-style)
-                                                   {:on-context-menu #(.preventDefault %)})
-                         content
-                         (when (:pagemark? @state)
-                           [pagemark])
-                         [:div#scrollbar.scrollbar (merge (use-sub-style scroll-container-style :scrollbar)
-                                                          {:on-pointer-down pointer-down-handler})
-                          [:div.thumb (merge (use-sub-style scroll-container-style :thumb)
-                                             {:style {:top (:top @state)
-                                                      :height (str (:thumb-height @state) "px")}})]
-                          scrollbar-content]])})))
+
 
 (defn pdf
   []
   (let [pdf? (subscribe [:pdf?])
+        pagemark? (subscribe [:pagemark?])
         url "https://arxiv.org/pdf/2006.06676v2.pdf"
         ; url "http://ltu.diva-portal.org/smash/get/diva2:1512634/FULLTEXT01.pdf"
         ]
     (fn []
+      (js/console.log @pagemark?)
       (dispatch [:pdf/load url])
       (when @pdf?
         (dispatch [:pdf/view]))
-      [scrollbar
-       {:content [:div#viewerContainer (use-style pdf-container-style)
-                  [highlight-toolbar]
-                  [pagemark-menu]
-                  [:div#viewer.pdfViewer {:on-mouse-up #(dispatch [:highlight/toolbar-create])
-                                          :on-context-menu (fn [e]
-                                                             (.preventDefault e)
-                                                             (dispatch [:pagemark/menu 
-                                                                        (.-target e) 
-                                                                        (.-clientX e) 
-                                                                        (.-clientY e)]))}]]
+      [virtual-scrollbar
+       {:content  [:div#viewerContainer (use-style pdf-container-style)
+                   [highlight-toolbar]
+                   [pagemark-menu]
+                   [:div#viewer.pdfViewer {:on-mouse-up #(dispatch [:highlight/toolbar-create])
+                                           :on-context-menu (fn [e]
+                                                              (.preventDefault e)
+                                                              (dispatch [:pagemark/menu
+                                                                         (.-target e)
+                                                                         (.-clientX e)
+                                                                         (.-clientY e)]))}]]
         :container-id "viewer"
+        :container-width "855px"
+        :content-overlay [pagemark]
         :scrollbar-content [:div
                             [:div {:style {:position "absolute"
                                            :background "green"
@@ -325,4 +210,4 @@
                                            :width "30%"
                                            :height "400px"
                                            :top "900px"}}]]
-        }])))
+        :scrollbar-width "20px"}])))
