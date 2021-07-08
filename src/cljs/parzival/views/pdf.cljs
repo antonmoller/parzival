@@ -180,6 +180,7 @@
                                                                          (.-target e)
                                                                          (.-clientX e)
                                                                          (.-clientY e)]))}]]
+        :scroll-container-id "viewerContainer"
         :container-id "viewer"
         :container-width "855px"
         :content-overlay [pagemark]
