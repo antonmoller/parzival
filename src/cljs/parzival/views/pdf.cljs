@@ -185,7 +185,6 @@
         ; url "http://ltu.diva-portal.org/smash/get/diva2:1512634/FULLTEXT01.pdf"
         ]
     (fn []
-      (js/console.log "loading pdf" @loading?)
       (when (and (not @pdf?) (not @loading?))
         (dispatch [:pdf/loading-set true])
         (dispatch [:pdf/load url]))
