@@ -19,23 +19,42 @@
    (some? (get db :pdf))))
 
 (rf/reg-sub
-:pdf/scrollbar
-(fn [db _]
-  (get db :pdf/scrollbar)))
+ :pdf
+ (fn [db _]
+   (get db :pdf)))
+
+(rf/reg-sub
+ :pdf/page-percentage
+ (fn [db _]
+   (-> (get db :pdf)
+       (.-numPages)
+       (/))))
+
+(rf/reg-sub
+ :pdf/loading?
+ (fn [db _]
+   (get db :pdf/loading?)))
 
 ;;; Events
 
 (rf/reg-event-db
+ :pdf/loading-set
+ (fn [db [_ loading?]]
+   (assoc db :pdf/loading? loading?)))
+
+(rf/reg-event-fx
  :pdf/load-success
- (fn [db [_ pdf]]
-   (assoc db :pdf pdf)))
+ (fn [{:keys [db]} [_ pdf]]
+   {:db (assoc db :pdf pdf)
+    :fx [[:dispatch [:pdf/loading-set false]]]}))
 
 ;TODO: Change error handling so it's actually useful
 ; Is this called everytime :pdf is called????
 (reg-event-fx
  :pdf/load-failure
  (fn [_ [_ err]]
-   (js/console.log err)))
+   (js/console.log err)
+   {:fx [[:dispatch [:pdf/loading-set false]]]}))
 
 (reg-fx
  :pdf/document
@@ -381,6 +400,56 @@
  (fn [db _]
    (get db :pagemark/sidebar)))
 
+(rf/reg-sub
+ :pdf/pagemarks
+ (fn [db _]
+   (get db :pdf/pagemarks)))
+
+
+(defn transform-pagemark
+  [{:keys [type start end end-percentage]} page-percentage]
+  {:type type
+   :top (-> (* 100 page-percentage start)
+            (str "%"))
+   :height (-> (- end start)
+               (+ (/ (js/parseFloat end-percentage) 100))
+               (* 100 page-percentage)
+               (str "%"))})
+
+(defn group-consecutive-pages
+  [pagemarks]
+  (when (not-empty pagemarks)
+    (let [percentage-fn #(-> (* (js/parseFloat (:width %)) (js/parseFloat (:height %)))
+                             (/ 100)
+                             (str "%"))
+          sorted (into (sorted-map) pagemarks)
+          [first-k first-v] (first sorted)]
+      (reduce-kv (fn [m k v]
+                   (let [last-idx (dec (count m))
+                         l (last m)
+                         end-percentage (percentage-fn v)]
+                     (if (and (= (:type l) (:type v))
+                              (= (:end l) (dec k))
+                              (= "100%" (:end-percentage l)))
+                       (assoc m last-idx {:type (:type l)
+                                          :start (:start l)
+                                          :end k
+                                          :end-percentage end-percentage})
+                       (conj m {:type (:type v)
+                                :start k
+                                :end k
+                                :end-percentage end-percentage}))))
+                 [{:type (:type first-v) :start first-k :end first-k :end-percentage (percentage-fn first-v)}]
+                 (dissoc sorted first-k)))))
+
+(rf/reg-sub
+ :pagemarks
+ :<- [:pdf/pagemarks]
+ :<- [:pdf/page-percentage]
+ (fn [[pagemarks page-percentage] _]
+   (->> (group-consecutive-pages pagemarks)
+        (map #(transform-pagemark % page-percentage)))))
+
 ;; Events
 
 (rf/reg-event-db
@@ -445,7 +514,8 @@
  (fn [{:keys [db]} [_ page height]]
    (let [page-id (dec (.getAttribute page "data-page-number"))
          old-pagemark (.item (.getElementsByClassName page "pagemark") 0)
-         pagemark {:color (:done PAGEMARK-COLOR)
+         pagemark {:type "read" ; TODO
+                   :color (:done PAGEMARK-COLOR)
                    :width "100%"
                    :height height}]
      (when (some? old-pagemark)

@@ -29,7 +29,7 @@
   (stylefy/tag "body" style/app-styles)
   (rf/dispatch-sync [::events/initialize-db])
   (dev-setup)
-  (js/Worker. "/js/compiled/pdf.worker.js")
+  ;; (js/Worker. "/js/compiled/pdf.worker.js") TODO
   (mount-root))
 
 

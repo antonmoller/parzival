@@ -35,8 +35,8 @@
    :display "flex"
    :justify-content "space-between"
    :align-items "center"
-   :backdrop-filter "blur(8px)"
-   :border-left "1px solid grey"})
+   :pointer-events "none"
+   })
 
 (def pagemark-card-style
   {:width "250px"
@@ -45,6 +45,7 @@
    :pointer-events "auto"
    :border-radius "0.25rem"
    :background (color :background-plus-1-color :opacity-high)
+   :backdrop-filter "blur(8px)"
    :box-shadow [[(:64 DEPTH-SHADOWS) ", 0 0 0 1px " (color :body-text-color :opacity-lower)]]
    ::stylefy/sub-styles {:content {:height "125px"
                                    :padding-bottom "1rem"
@@ -68,8 +69,7 @@
                                                  "::placeholder" {:color (color :body-text-color :opacity-med)}}}
                          :line {:height "125px"
                                 :width "20px"
-                                :border "2px solid red"}}
-                           })
+                                :border "2px solid red"}}})
 
 ;;; Components
 
@@ -94,8 +94,7 @@
 
 (defn pagemark
   []
-  (let [pagemark? (subscribe [:pagemark?])
-        pagemarks (subscribe [:pagemark/sidebar])]
+  (let [pagemark? (subscribe [:pagemark?])]
     (fn []
       [:div#createPagemark (merge (use-style pagemark-style)
                                   {:style {:visibility (if @pagemark? "visible" "hidden")}})
@@ -107,11 +106,8 @@
                       :right 1
                       :bottom 1
                       :height "100%"
-                      ;; :width scrollbar-width
-                      ;; :width "68px"
                       :width "68px"
-                      ;; :background "transparent"
-                      ;; :backdrop-filter "blur(8px)"
+                      :border-left (str "1px solid " (color :background-plus-1-color))
                       :pointer-events "auto"}}
         [:div {:style {:position "absolute"
                        :top 0
@@ -157,16 +153,42 @@
                        :background "rgba(0,255,0,0.3)"
                        :cursor "not-allowed"}}]]])))
 
+(def pagemark-sidebar-style
+  {:position "absolute"
+   :width "30%"
+   :opacity "0.4"})
+
+        ;; (into [:div] (map #(do ^{:key (:key %)} [pagemark-card %]) @pagemarks))]
+
+(defn pagemark-sidebar-key
+  [{:keys [_ top height]}]
+  (str "pagemark-sidebar-" top "-" height))
+
+(defn pagemark-sidebar
+  [render?]
+  (when render?
+    (let [pagemarks (subscribe [:pagemarks])]
+      (fn []
+        (into [:div] (map #(do ^{:key (pagemark-sidebar-key %)}
+                            [:div (merge (use-style pagemark-sidebar-style)
+                                         {:style {:top (:top %)
+                                                  :height (:height %)
+                                                  :background "green"}})]) @pagemarks))))))
 
 
 (defn pdf
   []
   (let [pdf? (subscribe [:pdf?])
+        loading? (subscribe [:pdf/loading?])
+        ;; pdf (subscribe [:pdf])
         url "https://arxiv.org/pdf/2006.06676v2.pdf"
         ; url "http://ltu.diva-portal.org/smash/get/diva2:1512634/FULLTEXT01.pdf"
         ]
     (fn []
-      (dispatch [:pdf/load url])
+      (js/console.log "loading pdf" @loading?)
+      (when (and (not @pdf?) (not @loading?))
+        (dispatch [:pdf/loading-set true])
+        (dispatch [:pdf/load url]))
       (when @pdf?
         (dispatch [:pdf/view]))
       [virtual-scrollbar
@@ -184,29 +206,5 @@
         :container-id "viewer"
         :container-width "855px"
         :content-overlay [pagemark]
-        :scrollbar-content [:div
-                            [:div {:style {:position "absolute"
-                                           :background "green"
-                                           :opacity 0.4
-                                           :width "30%"
-                                           :height "300px"
-                                           :top "200px"}}]
-                            [:div {:style {:position "absolute"
-                                           :background "red"
-                                           :opacity 0.4
-                                           :width "30%"
-                                           :height "100px"
-                                           :top "0px"}}]
-                            [:div {:style {:position "absolute"
-                                           :background "blue"
-                                           :opacity 0.4
-                                           :width "30%"
-                                           :height "200px"
-                                           :top "600px"}}]
-                            [:div {:style {:position "absolute"
-                                           :background "green"
-                                           :opacity 0.4
-                                           :width "30%"
-                                           :height "400px"
-                                           :top "900px"}}]]
+        :scrollbar-content [pagemark-sidebar @pdf?]
         :scrollbar-width "20px"}])))

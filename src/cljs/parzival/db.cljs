@@ -14,6 +14,7 @@
    :pagemark/sidebar '() ; {:start-page :end-page :deadline nil/date}
    :theme/dark true
    :pdf nil
+   :pdf/loading? false
    :pdf/highlights {} ; {:color :opacity :x0 :y0 :x1 :y1}
    :pdf/pagemarks {} ; {:page-id {:color :width :height}}
    :pagemark? false
@@ -21,3 +22,9 @@
 
 
 ; {page-id {highlight-id {:color "green" :start-idx :start-offset :end-idx :end-offset}}}
+
+
+; {:page-id {:color :width :height :skip? :schedule?}}
+; Only one of skip? and schedule? Can be true at one time
+; If reader sets pagemark on skip page, remove skip
+;; ; Render skip/schedule as line on the right side. NOOOO
