@@ -489,14 +489,14 @@
        (.setAttribute "height" (:height pagemark))
        (.setAttribute "fill" "none")
        (.setAttribute "stroke-width" stroke-width)
-       (.setAttribute "stroke" (:color pagemark))
+       (.setAttribute "stroke" ((:type pagemark) PAGEMARK-COLOR))
        (.addEventListener "pointermove" (fn [e]
                                           (when-not (= (.-buttons e) 1)
                                             (set-cursor (.-target e) (.-offsetX e) (.-offsetY e)))))
        (.addEventListener "pointerdown" (fn [e]
                                           (when (= (.-buttons e) 1)
                                             (doto (.-target e)
-                                              (.setAttribute "fill" (:done PAGEMARK-COLOR))
+                                              (.setAttribute "fill" ((:type pagemark) PAGEMARK-COLOR))
                                               (.setAttribute "fill-opacity" 0.2))
                                             (.addEventListener rect "pointermove" resize-handler)
                                             (.setPointerCapture rect (.-pointerId e)))))
@@ -514,8 +514,7 @@
  (fn [{:keys [db]} [_ page height]]
    (let [page-id (dec (.getAttribute page "data-page-number"))
          old-pagemark (.item (.getElementsByClassName page "pagemark") 0)
-         pagemark {:type "read" ; TODO
-                   :color (:done PAGEMARK-COLOR)
+         pagemark {:type :done
                    :width "100%"
                    :height height}]
      (when (some? old-pagemark)

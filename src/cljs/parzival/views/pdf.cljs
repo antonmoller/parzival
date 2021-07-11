@@ -71,6 +71,17 @@
                                 :width "20px"
                                 :border "2px solid red"}}})
 
+(def pagemark-sidebar-style
+  {:position "absolute"
+   :width "30%"
+   :opacity "0.4"})
+  
+;;; Helpers
+
+(defn pagemark-sidebar-key
+  [{:keys [_ top height]}]
+  (str "pagemark-sidebar-" top "-" height))
+
 ;;; Components
 
 (defn pagemark-card
@@ -98,7 +109,6 @@
     (fn []
       [:div#createPagemark (merge (use-style pagemark-style)
                                   {:style {:visibility (if @pagemark? "visible" "hidden")}})
-        ;; (into [:div] (map #(do ^{:key (:key %)} [pagemark-card %]) @pagemarks))]
        [pagemark-card]
        [:div {:style {:position "relative"
                       :z-index 1
@@ -153,34 +163,21 @@
                        :background "rgba(0,255,0,0.3)"
                        :cursor "not-allowed"}}]]])))
 
-(def pagemark-sidebar-style
-  {:position "absolute"
-   :width "30%"
-   :opacity "0.4"})
-
-        ;; (into [:div] (map #(do ^{:key (:key %)} [pagemark-card %]) @pagemarks))]
-
-(defn pagemark-sidebar-key
-  [{:keys [_ top height]}]
-  (str "pagemark-sidebar-" top "-" height))
-
 (defn pagemark-sidebar
   [render?]
-  (when render?
-    (let [pagemarks (subscribe [:pagemarks])]
-      (fn []
+  (fn []
+    (when render?
+      (let [pagemarks (subscribe [:pagemarks])]
         (into [:div] (map #(do ^{:key (pagemark-sidebar-key %)}
                             [:div (merge (use-style pagemark-sidebar-style)
                                          {:style {:top (:top %)
                                                   :height (:height %)
-                                                  :background "green"}})]) @pagemarks))))))
-
+                                                  :background ((:type %) PAGEMARK-COLOR)}})]) @pagemarks))))))
 
 (defn pdf
   []
   (let [pdf? (subscribe [:pdf?])
         loading? (subscribe [:pdf/loading?])
-        ;; pdf (subscribe [:pdf])
         url "https://arxiv.org/pdf/2006.06676v2.pdf"
         ; url "http://ltu.diva-portal.org/smash/get/diva2:1512634/FULLTEXT01.pdf"
         ]
