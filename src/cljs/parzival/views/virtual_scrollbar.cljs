@@ -38,7 +38,7 @@
   "Usage: hide the scrollbar in the container using :scrollbar-width \"none\" and
    ::-webkit-scrollbar {:display \"none\"}. Set padding-right of the container to
    width that will fit the virtual scrollbar. Also set :overflow-x \"hidden\""
-  [{:keys [content scroll-container-id container-id container-width content-overlay scrollbar-content scrollbar-width]}]
+  [{:keys [content scroll-container-id container-id container-width scrollbar-content scrollbar-width]}]
   (let [state (r/atom {:container nil
                        :top 0
                        :scroll-height 0
@@ -117,7 +117,6 @@
                                                    {:style {:width container-width}
                                                     :on-context-menu #(.preventDefault %)})
                          content
-                         content-overlay
                          [:div#scrollbar.scrollbar (merge (use-sub-style scroll-container-style :scrollbar)
                                                           {:style {:width scrollbar-width}
                                                            :on-pointer-down pointer-down-handler})

@@ -14,6 +14,7 @@
    :pagemark/sidebar '() ; {:start-page :end-page :deadline nil/date}
    :theme/dark true
    :pdf nil
+   :pdf/pages 37
    :pdf/loading? false
    :pdf/highlights {} ; {:color :opacity :x0 :y0 :x1 :y1}
    :pdf/pagemarks {} ; {:page-id {:color :width :height}}
@@ -28,3 +29,5 @@
 ; Only one of skip? and schedule? Can be true at one time
 ; If reader sets pagemark on skip page, remove skip
 ;; ; Render skip/schedule as line on the right side. NOOOO
+
+;; pagemark ---> {:page-id {:type :skip? :schedule? :width :height :skip? :schedule?}}

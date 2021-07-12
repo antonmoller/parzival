@@ -14,6 +14,8 @@
 
 ;;; Styles
 
+(def scrollbar-width "20px")
+
 (def pdf-container-style
   {:position "absolute"
    :height "100%"
@@ -31,7 +33,7 @@
    :right 0
    :width "360px"
    :height "100%"
-   :visibility "hidden"
+  ;;  :visibility "hidden"
    :display "flex"
    :justify-content "space-between"
    :align-items "center"
@@ -75,6 +77,27 @@
   {:position "absolute"
    :width "30%"
    :opacity "0.4"})
+
+(def pagemark-change-style
+  {:position "relative"
+   :z-index 1
+   :top 1
+   :right 1
+   :bottom 1
+   :height "100%"
+   :width "68px"
+   :border-left (str "1px solid " (color :background-plus-1-color))
+   :pointer-events "auto"})
+
+(def pagemark-edit-style
+  {:position "absolute"
+   :right 0
+   :width (-> (js/parseInt scrollbar-width) ; Don't count left/right borders
+              (- 2)
+              (str "px"))
+   :box-sizing "border-box"
+   :cursor "not-allowed"
+   :opacity 0.4})
   
 ;;; Helpers
 
@@ -103,76 +126,30 @@
                                   {:placeholder "deadline"})
                    {:style {:width "160px"}})]]])
 
-(defn pagemark
-  []
+(defn pagemark-sidebar
+  [pagemarks]
   (let [pagemark? (subscribe [:pagemark?])]
     (fn []
-      [:div#createPagemark (merge (use-style pagemark-style)
-                                  {:style {:visibility (if @pagemark? "visible" "hidden")}})
-       [pagemark-card]
-       [:div {:style {:position "relative"
-                      :z-index 1
-                      :top 1
-                      :right 1
-                      :bottom 1
-                      :height "100%"
-                      :width "68px"
-                      :border-left (str "1px solid " (color :background-plus-1-color))
-                      :pointer-events "auto"}}
-        [:div {:style {:position "absolute"
-                       :top 0
-                      ;;  :left scrollbar-width
-                      ;;  :right 1
-                       :height "100px"
-                       :width "17px"
-                       :right 0
-                      ;;  :left 1
-                       :background "rgba(255,0,0,0.5)"
-                       :border-top "1px solid red"
-                       :border-bottom "1px solid red"
-                       :cursor "ns-resize"}}]
-        [:div {:style {:position "absolute"
-                       :top 200
-                       :bottom 500
-                       :width "100%"
-                      ;;  :left 1
-                       :right 0
-                       :height "1px"
-                       :background "rgba(0,255,0,0.5)"
-                       :border-top "1px solid green"
-                       :border-bottom "1px solid green"
-                       :box-sizing "border-box"
-                       :cursor "ns-resize"}}]
-        [:div {:style {:position "absolute"
-                       :top 600
-                      ;;  :left 1
-                      ;;  :right 0
-                       :height "200px"
-                       :width "100%"
-                       :background "rgba(0,0,255,0.1)"
-                       :border-top "1px solid blue"
-                       :border-bottom "1px solid blue"
-                       :cursor "ns-resize"}}]
-        [:div {:style {:position "absolute"
-                       :top 900
-                      ;;  :left 1
-                       :right 0
-                      ;;  :width "100%"
-                       :height "400px"
-                       :width "17px"
-                       :background "rgba(0,255,0,0.3)"
-                       :cursor "not-allowed"}}]]])))
-
-(defn pagemark-sidebar
-  [render?]
-  (fn []
-    (when render?
-      (let [pagemarks (subscribe [:pagemarks])]
-        (into [:div] (map #(do ^{:key (pagemark-sidebar-key %)}
-                            [:div (merge (use-style pagemark-sidebar-style)
-                                         {:style {:top (:top %)
-                                                  :height (:height %)
-                                                  :background ((:type %) PAGEMARK-COLOR)}})]) @pagemarks))))))
+      (if-not @pagemark?
+        (into [:div]
+              (map #(do
+                      ^{:key (pagemark-sidebar-key %)}
+                      [:div (merge (use-style pagemark-sidebar-style)
+                                   {:style {:top (:top %)
+                                            :height (:height %)
+                                            :background ((:type %) PAGEMARK-COLOR)}})])
+                   @pagemarks))
+        [:div#createPagemark (merge (use-style pagemark-style)
+                                    {:on-pointer-down #(.stopPropagation %)})
+         [pagemark-card]
+         (into [:div (use-style pagemark-change-style)]
+               (map #(do
+                       ^{:key (pagemark-sidebar-key %)}
+                       [:div (merge (use-style pagemark-edit-style)
+                                    {:style {:top (:top %)
+                                             :height (:height %)
+                                             :background ((:type %) PAGEMARK-COLOR)}})])
+                    @pagemarks))]))))
 
 (defn pdf
   []
@@ -180,6 +157,7 @@
         loading? (subscribe [:pdf/loading?])
         url "https://arxiv.org/pdf/2006.06676v2.pdf"
         ; url "http://ltu.diva-portal.org/smash/get/diva2:1512634/FULLTEXT01.pdf"
+        pagemarks (subscribe [:pagemarks])
         ]
     (fn []
       (when (and (not @pdf?) (not @loading?))
@@ -201,6 +179,5 @@
         :scroll-container-id "viewerContainer"
         :container-id "viewer"
         :container-width "855px"
-        :content-overlay [pagemark]
-        :scrollbar-content [pagemark-sidebar @pdf?]
-        :scrollbar-width "20px"}])))
+        :scrollbar-content [pagemark-sidebar pagemarks]
+        :scrollbar-width scrollbar-width}])))

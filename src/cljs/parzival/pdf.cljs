@@ -26,9 +26,7 @@
 (rf/reg-sub
  :pdf/page-percentage
  (fn [db _]
-   (-> (get db :pdf)
-       (.-numPages)
-       (/))))
+   (/ (get db :pdf/pages))))
 
 (rf/reg-sub
  :pdf/loading?
