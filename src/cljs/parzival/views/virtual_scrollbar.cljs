@@ -24,13 +24,15 @@
                                  :top 0
                                  :height "0px"
                                  :width "100%"
-                                 :background (:thumb-color SCROLLBAR)
                                  :box-shadow (:thumb-shadow SCROLLBAR)
                                  :transition "background 0.8s linear"}}
    ::stylefy/manual [[:&:hover [:.thumb {:background (:thumb-visible-color SCROLLBAR)
+                                         :box-shadow (:thumb-shadow SCROLLBAR)
                                          :transition "background 0.2s linear"}]]
-                     [:.thumb:hover {:background (:thumb-hover-color SCROLLBAR)}]
-                     [:.thumb:active {:background (:thumb-active-color SCROLLBAR)}]]})
+                     [:.thumb:hover {:background (:thumb-hover-color SCROLLBAR)
+                                     :box-shadow (:thumb-shadow SCROLLBAR)}]
+                     [:.thumb:active {:background (:thumb-active-color SCROLLBAR)
+                                      :box-shadow (:thumb-shadow SCROLLBAR)}]]})
 
 ;;; Components
 
