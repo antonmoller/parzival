@@ -4,6 +4,8 @@
             [re-frame.core :refer [subscribe]]
             [stylefy.core :as stylefy]))
 
+(def PDF-SCROLLBAR-WIDTH "20px")
+
 (def THEME-DARK
   {:background-color          "rgba(30, 30, 30, 1)"          ; "#1E1E1E"
    :background-plus-1-color   "rgba(37, 37, 38, 1)"         ; "#252526"

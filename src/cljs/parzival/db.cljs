@@ -17,7 +17,7 @@
    :pdf/pages 37
    :pdf/loading? false
    :pdf/highlights {} ; {:color :opacity :x0 :y0 :x1 :y1}
-   :pdf/pagemarks {} ; {:page-id {:color :width :height}}
+   :pdf/pagemarks {} ; {:page-id {:done nil/{:width :height} :skip :schedule}}
    :pagemark? false
    :loading/progress 0})
 

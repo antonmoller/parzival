@@ -24,6 +24,11 @@
    (get db :pdf)))
 
 (rf/reg-sub
+ :pdf/no-pages
+ (fn [db _]
+   (get db :pdf/pages)))
+
+(rf/reg-sub
  :pdf/page-percentage
  (fn [db _]
    (/ (get db :pdf/pages))))
@@ -403,50 +408,95 @@
  (fn [db _]
    (get db :pdf/pagemarks)))
 
+(defn calc-bottom
+  [{:keys [_ _ top height]}]
+  (-> (+ (js/parseFloat top) (js/parseFloat height))
+      (str "%")))
 
-(defn transform-pagemark
-  [{:keys [type start end end-percentage]} page-percentage]
+(defn merge?
+  [p-0 p-1]
+  (if (= :schedule (:type p-0) (:type p-1))
+    (and
+     (= (:schedule p-0) (:schedule p-1))
+     (= (calc-bottom p-0) (:top p-1)))
+    (and
+     (some? p-0)
+     (= (:type p-0) (:type p-1))
+     (= (calc-bottom p-0) (:top p-1)))))
+
+(defn merge-pagemarks
+  [{:keys [type schedule top height]} p-1]
   {:type type
-   :top (-> (* 100 page-percentage start)
-            (str "%"))
-   :height (-> (- end start)
-               (+ (/ (js/parseFloat end-percentage) 100))
-               (* 100 page-percentage)
+   :schedule schedule
+   :top top
+   :height (-> (+ (js/parseFloat height) (js/parseFloat (:height p-1)))
                (str "%"))})
 
+(defn get-type
+  [{:keys [done skip schedule]}]
+  [(cond
+     (some? done) :done
+     skip :skip
+     (and (nil? done) (not= "" schedule)) :schedule)
+   (if (and (some? done) (not= "" schedule))
+     :schedule
+     nil)])
+
+(defn calc-top
+  [start-page page-offset page-percentage]
+  (-> (* 100 page-percentage start-page)
+      (+ (js/parseFloat page-offset))
+      (str "%")))
+
+(defn calc-height
+  [{:keys [width height]} page-percentage]
+  (-> (* page-percentage (js/parseFloat width) (js/parseFloat height))
+      (/ 100)
+      (str "%")))
+
+(defn calc-offset-height
+  [{:keys [width height]} page-percentage]
+  (-> (* (js/parseFloat width) (js/parseFloat height))
+      (/ 100)
+      (->> (- 100))
+      (* page-percentage)
+      (str "%")))
+
 (defn group-consecutive-pages
-  [pagemarks]
-  (when (not-empty pagemarks)
-    (let [percentage-fn #(-> (* (js/parseFloat (:width %)) (js/parseFloat (:height %)))
-                             (/ 100)
-                             (str "%"))
-          sorted (into (sorted-map) pagemarks)
-          [first-k first-v] (first sorted)]
-      (reduce-kv (fn [m k v]
-                   (let [last-idx (dec (count m))
-                         l (last m)
-                         end-percentage (percentage-fn v)]
-                     (if (and (= (:type l) (:type v))
-                              (= (:end l) (dec k))
-                              (= "100%" (:end-percentage l)))
-                       (assoc m last-idx {:type (:type l)
-                                          :start (:start l)
-                                          :end k
-                                          :end-percentage end-percentage})
-                       (conj m {:type (:type v)
-                                :start k
-                                :end k
-                                :end-percentage end-percentage}))))
-                 [{:type (:type first-v) :start first-k :end first-k :end-percentage (percentage-fn first-v)}]
-                 (dissoc sorted first-k)))))
+  [pagemarks page-percentage]
+  (reduce-kv (fn [[head & tail] k v]
+               (let [[type-0 type-1] (get-type v)
+                     new-pagemark-0 {:type type-0 ; Can be any type
+                                     :schedule (if (nil? type-1)
+                                                 (:schedule v)
+                                                 "")
+                                     :top (calc-top k 0 page-percentage)
+                                     :height (calc-height (if (some? (:done v))
+                                                            (:done v)
+                                                            {:width "100%" :height "100%"})
+                                                          page-percentage)}
+                     new-pagemark-1 (if (some? type-1) ; must be schedule else nil
+                                      {:type type-1
+                                       :schedule (:schedule v)
+                                       :top (calc-top k
+                                                      (calc-height (:done v) page-percentage)
+                                                      page-percentage)
+                                       :height (calc-offset-height (:done v) page-percentage)}
+                                      nil)]
+                 (cond-> tail
+                   (merge? head new-pagemark-0) (conj (merge-pagemarks head new-pagemark-0))
+                   (and (not (merge? head new-pagemark-0)) (some? head)) (conj head new-pagemark-0)
+                   (nil? head) (conj new-pagemark-0)
+                   (some? new-pagemark-1) (conj new-pagemark-1))))
+             '()
+             (into (sorted-map) pagemarks)))
 
 (rf/reg-sub
  :pagemarks
  :<- [:pdf/pagemarks]
  :<- [:pdf/page-percentage]
  (fn [[pagemarks page-percentage] _]
-   (->> (group-consecutive-pages pagemarks)
-        (map #(transform-pagemark % page-percentage)))))
+   (group-consecutive-pages pagemarks page-percentage)))
 
 ;; Events
 
@@ -469,42 +519,59 @@
 (reg-event-fx
  :pagemark/resize
  (fn [{:keys [db]} [_ target]]
-   {:db (update-in db
-                   [:pdf/pagemarks (page-id target)]
-                   assoc
-                   :width (.getAttribute target "width")
-                   :height (.getAttribute target "height"))}))
+   (let [width (.getAttribute target "width")
+         height (.getAttribute target "height")
+         old-pagemark (get-in db [:pdf/pagemarks (page-id target)])
+         new-pagemark {:done {:width width :height height}
+                       :skip false
+                       :schedule (if (= "100%" width height)
+                                   ""
+                                   (:schedule old-pagemark))}]
+     {:db (assoc-in db [:pdf/pagemarks (page-id target)] new-pagemark)})))
+
+(defn pagemark-done
+  [rect pagemark]
+  (doto rect
+    (.setAttribute "class" "pagemark")
+    (.setAttribute "pointer-events" "auto")
+    (.setAttribute "width" (:width pagemark))
+    (.setAttribute "height" (:height pagemark))
+    (.setAttribute "fill" "none")
+    (.setAttribute "stroke-width" stroke-width)
+    (.setAttribute "stroke" (:done PAGEMARK-COLOR))
+    (.addEventListener "pointermove" (fn [e]
+                                       (when-not (= (.-buttons e) 1)
+                                         (set-cursor (.-target e) (.-offsetX e) (.-offsetY e)))))
+    (.addEventListener "pointerdown" (fn [e]
+                                       (when (= (.-buttons e) 1)
+                                         (doto (.-target e)
+                                           (.setAttribute "fill" (:done PAGEMARK-COLOR))
+                                           (.setAttribute "fill-opacity" 0.2))
+                                         (.addEventListener rect "pointermove" resize-handler)
+                                         (.setPointerCapture rect (.-pointerId e)))))
+    (.addEventListener "pointerup" (fn [e]
+                                     (.removeEventListener rect "pointermove" resize-handler)
+                                     (.releasePointerCapture rect (.-pointerId e))
+                                     (doto (.-target e)
+                                       (.setAttribute "fill" "none")
+                                       (.setAttribute "cursor" "default"))
+                                     (dispatch [:pagemark/resize (.-target e)])))))
+
+(defn pagemark-skip
+  [rect]
+  (doto rect
+    (.setAttribute "class" "pagemark")
+    (.setAttribute "style" (str "pointer-events: auto; width: 100%; height: 100%;
+                                 fill: " (:skip PAGEMARK-COLOR) "; fill-opacity: 0.3;"))))
 
 (reg-event-fx
  :pagemark/render
  (fn [_ [_ page pagemark]]
    (let [svg (.querySelector page ".pagemarkLayer")
          rect (.createElementNS js/document SVG-NAMESPACE "rect")]
-     (doto rect
-       (.setAttribute "class" "pagemark")
-       (.setAttribute "pointer-events" "auto")
-       (.setAttribute "width" (:width pagemark))
-       (.setAttribute "height" (:height pagemark))
-       (.setAttribute "fill" "none")
-       (.setAttribute "stroke-width" stroke-width)
-       (.setAttribute "stroke" ((:type pagemark) PAGEMARK-COLOR))
-       (.addEventListener "pointermove" (fn [e]
-                                          (when-not (= (.-buttons e) 1)
-                                            (set-cursor (.-target e) (.-offsetX e) (.-offsetY e)))))
-       (.addEventListener "pointerdown" (fn [e]
-                                          (when (= (.-buttons e) 1)
-                                            (doto (.-target e)
-                                              (.setAttribute "fill" ((:type pagemark) PAGEMARK-COLOR))
-                                              (.setAttribute "fill-opacity" 0.2))
-                                            (.addEventListener rect "pointermove" resize-handler)
-                                            (.setPointerCapture rect (.-pointerId e)))))
-       (.addEventListener "pointerup" (fn [e]
-                                        (.removeEventListener rect "pointermove" resize-handler)
-                                        (.releasePointerCapture rect (.-pointerId e))
-                                        (doto (.-target e)
-                                          (.setAttribute "fill" "none")
-                                          (.setAttribute "cursor" "default"))
-                                        (dispatch [:pagemark/resize (.-target e)]))))
+     (cond
+       (some? (:done pagemark)) (pagemark-done rect (:done pagemark))
+       (:skip pagemark) (pagemark-skip rect))
      {:fx [(.append svg rect)]})))
 
 (reg-event-fx
@@ -512,9 +579,12 @@
  (fn [{:keys [db]} [_ page height]]
    (let [page-id (dec (.getAttribute page "data-page-number"))
          old-pagemark (.item (.getElementsByClassName page "pagemark") 0)
-         pagemark {:type :done
-                   :width "100%"
-                   :height height}]
+         old-pagemark-db (get-in db [:pdf/pagemarks page-id])
+         pagemark {:done {:width "100%" :height height}
+                   :skip false
+                   :schedule (if (and (some? old-pagemark-db) (not= "100%" height))
+                               (:schedule old-pagemark-db)
+                               "")}]
      (when (some? old-pagemark)
        (.remove old-pagemark))
      {:db (assoc-in db [:pdf/pagemarks page-id] pagemark)
@@ -523,19 +593,34 @@
 (reg-event-fx
  :pagemark/remove
  (fn [{:keys [db]} [_ page]]
-   (let [page-id (dec (.getAttribute page "data-page-number"))]
+   (let [page-id (dec (.getAttribute page "data-page-number"))
+         pagemark (get-in db [:pdf/pagemarks page-id])]
      (.remove (.item (.getElementsByClassName page "pagemark") 0))
-     {:db (update db :pdf/pagemarks dissoc page-id)})))
+     {:db (if (= "" (:schedule pagemark))
+            (update db :pdf/pagemarks dissoc page-id)
+            (update-in db [:pdf/pagemarks page-id] assoc :done nil))})))
 
 (rf/reg-event-db
  :pagemark/set-anchor
  (fn [db [_ coords]]
    (assoc db :pagemark/anchor coords)))
 
-;; (rf/reg-event-db
-;;  :pagemark/sidebar-add
-;;  (fn [db [_ val]]
-;;    (update db :pagemark/sidebar conj val)))
+(rf/reg-event-fx
+ :pagemark/sidebar-add
+ (fn [{:keys [db]} [_ {:keys [start-page end-page deadline]}]]
+   (let [pages (->> (range (int start-page) (inc (int end-page)))
+                    (map dec))
+         skip? (= deadline "")
+         pagemarks (reduce (fn [m page-id]
+                             (let [page-value (get m page-id)]
+                               (if (nil? page-value)
+                                 (assoc m page-id {:done nil
+                                                   :skip skip?
+                                                   :schedule deadline})
+                                 m))) ; Do nothing if page exists
+                           (get db :pdf/pagemarks)
+                           pages)]
+     {:db (assoc db :pdf/pagemarks pagemarks)})))
 
 ;; (rf/reg-event-db
 ;;  :pagemark/sidebar-remove

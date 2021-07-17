@@ -3,18 +3,17 @@
    ["@material-ui/icons/Close" :default Close]
    ["@material-ui/icons/ArrowRightAlt" :default ArrowRightAlt]
    ["@material-ui/icons/Add" :default Add]
+   ["@material-ui/icons/Done" :default Done]
    [re-frame.core :refer [dispatch subscribe]]
    [reagent.core :as r]
    [parzival.views.highlight-toolbar :refer [highlight-toolbar]]
    [parzival.views.pagemark-menu :refer [pagemark-menu]]
    [parzival.views.buttons :refer [button]]
    [parzival.views.virtual-scrollbar :refer [virtual-scrollbar]]
-   [parzival.style :refer [ZINDICES DEPTH-SHADOWS SCROLLBAR PAGEMARK-COLOR OPACITIES color]]
+   [parzival.style :refer [ZINDICES DEPTH-SHADOWS PAGEMARK-COLOR color PDF-SCROLLBAR-WIDTH]]
    [stylefy.core :as stylefy :refer [use-style use-sub-style]]))
 
 ;;; Styles
-
-(def scrollbar-width "20px")
 
 (def pdf-container-style
   {:position "absolute"
@@ -31,47 +30,11 @@
    :z-index 2
    :top 0
    :right 0
-   :width "360px"
    :height "100%"
-  ;;  :visibility "hidden"
    :display "flex"
    :justify-content "space-between"
    :align-items "center"
-   :pointer-events "none"
-   })
-
-(def pagemark-card-style
-  {:width "250px"
-  ;;  :margin "0 2rem"
-   :margin-left "2.5rem"
-   :pointer-events "auto"
-   :border-radius "0.25rem"
-   :background (color :background-plus-1-color :opacity-high)
-   :backdrop-filter "blur(8px)"
-   :box-shadow [[(:64 DEPTH-SHADOWS) ", 0 0 0 1px " (color :body-text-color :opacity-lower)]]
-   ::stylefy/sub-styles {:content {:height "125px"
-                                   :padding-bottom "1rem"
-                                   :display "flex"
-                                   :flex-direction "column"
-                                   :justify-content "space-between"
-                                   :align-items "center"}
-                         :input {:width "50px"
-                                 :background-color (color :left-sidebar-color)
-                                 :opacity "0.7"
-                                 :color "inherit"
-                                 :caret-color (color :link-color)
-                                 :font-size "1rem"
-                                 :font-weight "300"
-                                 :border-radius "0.25rem"
-                                 :border "none"
-                                 :line-height "1.3"
-                                 :letter-spacing "-0.03em"
-                                 :padding "0.5rem"
-                                 ::stylefy/mode {:focus {:outline "none"}
-                                                 "::placeholder" {:color (color :body-text-color :opacity-med)}}}
-                         :line {:height "125px"
-                                :width "20px"
-                                :border "2px solid red"}}})
+   :pointer-events "none"})
 
 (def pagemark-sidebar-style
   {:position "absolute"
@@ -86,13 +49,13 @@
    :bottom 1
    :height "100%"
    :width "68px"
-   :border-left (str "1px solid " (color :background-plus-1-color))
+  ;;  :border-left (str "1px solid " (color :background-plus-1-color))
    :pointer-events "auto"})
 
 (def pagemark-edit-style
   {:position "absolute"
    :right 0
-   :width (-> (js/parseInt scrollbar-width) ; Don't count left/right borders
+   :width (-> (js/parseInt PDF-SCROLLBAR-WIDTH) ; Don't count left/right borders
               (- 2)
               (str "px"))
    :box-sizing "border-box"
@@ -102,29 +65,116 @@
 ;;; Helpers
 
 (defn pagemark-sidebar-key
-  [{:keys [_ top height]}]
-  (str "pagemark-sidebar-" top "-" height))
+  [{:keys [type top height]}]
+  (str "pagemark-sidebar-" type "-" top "-" height))
 
 ;;; Components
 
+(def pagemark-card-style
+  {:width "200px"
+   :padding "1rem"
+   :border-radius "0.25rem"
+   :box-sizing "border-box"
+   :display "flex"
+   :flex-direction "column"
+   :justify-content "space-around"
+   :pointer-events "auto"
+   :background (color :background-plus-1-color :opacity-high)
+   :backdrop-filter "blur(8px)"
+   :box-shadow [[(:64 DEPTH-SHADOWS) ", 0 0 0 1px " (color :body-text-color :opacity-lower)]]
+   ::stylefy/sub-styles {:input {:width "95%"
+                                 :align-self "flex-end"
+                                 :background-color (color :left-sidebar-color)
+                                 :opacity "0.7"
+                                 :color "inherit"
+                                 :caret-color (color :link-color)
+                                 :font-size "1rem"
+                                 :font-weight "300"
+                                 :border-radius "0.25rem"
+                                 :border "none"
+                                 :line-height "1.3"
+                                 :letter-spacing "-0.03em"
+                                 :padding "0.5rem"
+                                 :margin-bottom "0.5rem"
+                                 :box-sizing "border-box"
+                                 ::stylefy/mode {:focus {:outline "none"}
+                                                 "::placeholder" {:color (color :body-text-color :opacity-med)}}}
+                         :label {:font-weight "700"
+                                 :font-size "0.75rem"
+                                 :line-height "1.7"}
+                         :row-container {:display "flex"
+                                         :justify-content "space-between"}
+                         :line {:height "125px"
+                                :width "20px"
+                                :border "2px solid red"}}})
+
 (defn pagemark-card
   [value]
-  [:div (use-style pagemark-card-style)
-   [:div (use-sub-style pagemark-card-style :content)
-    [button {:on-click #(dispatch [:pagemark/sidebar-remove (:key value)])
-             :style {:align-self "flex-start"}}
-     [:> Close]]
-    [:div {:style {:display "flex"
-                   :justify-content "center"
-                   :align-items "center"}}
-     [:input (use-sub-style pagemark-card-style :input
-                            {:placeholder "start"})]
-     [:> ArrowRightAlt {:style {:font-size "2.375rem"}}]
-     [:input (use-sub-style pagemark-card-style :input
-                            {:placeholder "end"})]]
-    [:input (merge (use-sub-style pagemark-card-style :input
-                                  {:placeholder "deadline"})
-                   {:style {:width "160px"}})]]])
+  (let [state (r/atom {:start-page ""
+                       :end-page ""
+                       :deadline ""})
+        no-pages (subscribe [:pdf/no-pages])
+        today (as-> (js/Date.) date
+                (str (.getFullYear date) "-"
+                     (.padStart (str (inc (.getMonth date))) 2 "0") "-"
+                     (.padStart (str (.getDate date)) 2 "0")))]
+    (fn []
+      [:form (use-style pagemark-card-style
+                        {:on-submit (fn [_]
+                                      (dispatch [:pagemark/sidebar-add @state])
+                                      (reset! state {:start-page "" :end-page "" :deadline ""}))})
+       [:label (use-sub-style pagemark-card-style :label) "Pages"]
+       [:input (use-sub-style pagemark-card-style :input
+                              (as-> (if (and (not= (:end-page @state) "")
+                                             (<= 1 (:end-page @state) @no-pages))
+                                      (:end-page @state)
+                                      @no-pages) max-val
+                              {:type "number"
+                               :value (:start-page @state)
+                               :on-change #(swap! state assoc :start-page (.. % -target -value))
+                               :required true
+                               :min 1
+                               :max max-val
+                               :placeholder (str "Start (1 - " max-val ")")}))]
+       [:input (use-sub-style pagemark-card-style :input
+                              (as-> (if (and (not= (:start-page @state) "") \
+                                             (<= 1 (:start-page @state) @no-pages))
+                                      (:start-page @state)
+                                      1) min-val
+                                {:type "number"
+                                 :value (:end-page @state)
+                                 :on-change #(swap! state assoc :end-page (.. % -target -value))
+                                 :required true
+                                 :min min-val 
+                                 :max @no-pages
+                                 :placeholder (str "End (" min-val " - " @no-pages ")")}))]
+
+       [:label (use-sub-style pagemark-card-style :label) "Deadline"]
+       [:input (use-sub-style pagemark-card-style :input
+                              {:type "date"
+                               :value (:deadline @state)
+                               :on-change #(swap! state assoc :deadline (.. % -target -value))
+                               :id "deadline-input"
+                               :min today
+                               :placeholder "Deadline"})]
+       [:div (use-sub-style pagemark-card-style :row-container)
+        ;; TODO Clears the fields and removes currently active pagemark
+        [button {;:on-click #(dispatch [:pagemark/sidebar-remove (:key value)])
+                 :type "button"
+                ;;  :disabled true
+                ;;  :style {:background "rgba(255,0,0,0.3)"}
+                 }
+         [:> Close]]
+        [button {;:on-click #(dispatch [:pagemark/sidebar-remove (:key value)])
+                 :type "submit"
+                ;;  :on-submit #(js/console.log %)
+                ;;  :on-click #(js/console.log %)
+                ;;  :primary true
+                ;;  :disabled true
+                ;;  :style {:background "rgba(0,255,0,0.3)"}
+                 }
+         [:> Done]]
+        ]])))
 
 (defn pagemark-sidebar
   [pagemarks]
@@ -176,8 +226,8 @@
                                                                          (.-target e)
                                                                          (.-clientX e)
                                                                          (.-clientY e)]))}]]
-        :scroll-container-id "viewerContainer"
-        :container-id "viewer"
-        :container-width "855px"
+        :scroll-container-id "viewerContainer" ; the container where the scrollbar would be
+        :container-id "viewer" ; The container that contains the content that will be scrolled
+        :container-width "855px" ; The width of the container
         :scrollbar-content [pagemark-sidebar pagemarks]
-        :scrollbar-width scrollbar-width}])))
+        :scrollbar-width PDF-SCROLLBAR-WIDTH}])))
