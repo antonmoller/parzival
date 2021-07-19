@@ -52,12 +52,15 @@
   ;;  :border-left (str "1px solid " (color :background-plus-1-color))
    :pointer-events "auto"})
 
+(def width
+  (-> (js/parseInt PDF-SCROLLBAR-WIDTH) ; Don't count left/right borders
+      (- 2)
+      (str "px")))
+
 (def pagemark-edit-style
   {:position "absolute"
    :right 0
-   :width (-> (js/parseInt PDF-SCROLLBAR-WIDTH) ; Don't count left/right borders
-              (- 2)
-              (str "px"))
+   :width width
    :box-sizing "border-box"
    :cursor "not-allowed"
    :opacity 0.4})
@@ -65,8 +68,8 @@
 ;;; Helpers
 
 (defn pagemark-sidebar-key
-  [{:keys [type top height]}]
-  (str "pagemark-sidebar-" type "-" top "-" height))
+  [{:keys [_ start-page end-page _ _]}]
+  (str "pagemark-scrollbar-" start-page "-" end-page))
 
 ;;; Components
 
@@ -112,7 +115,8 @@
   []
   (let [state (r/atom {:start-page ""
                        :end-page ""
-                       :deadline ""})
+                       :deadline ""
+                       :active-pagemark nil})
         no-pages (subscribe [:pdf/no-pages])
         today (as-> (js/Date.) date
                 (str (.getFullYear date) "-"
@@ -180,15 +184,19 @@
         pagemark? (subscribe [:pagemark?])
         state (r/atom {:start-page ""
                        :end-page ""
-                       :deadline ""})
+                       :deadline ""
+                       :active-pagemark nil})
         no-pages (subscribe [:pdf/no-pages])
         today (as-> (js/Date.) date
                 (str (.getFullYear date) "-"
                      (.padStart (str (inc (.getMonth date))) 2 "0") "-"
                      (.padStart (str (.getDate date)) 2 "0")))
-        reset-state #(reset! state {:start-page "" :end-page "" :deadline ""})]
+        reset-state #(reset! state {:start-page "" :end-page "" :deadline "" :active-pagemark nil})
+        reset-width #(when (some? (:active-pagemark @state))
+                       (-> (.getElementById js/document (:active-pagemark @state))
+                           (.. -style -width)
+                           (set! width)))]
     (fn []
-      (js/console.log @pagemarks)
       (if-not @pagemark?
         (into [:div]
               (map #(do
@@ -204,6 +212,7 @@
                            {:on-submit (fn [e]
                                          (.preventDefault e)
                                          (dispatch [:pagemark/sidebar-add @state])
+                                         (reset-width)
                                          (reset-state))})
           [:label (use-sub-style pagemark-card-style :label) "Pages"]
           [:input (use-sub-style pagemark-card-style :input
@@ -240,13 +249,10 @@
                                   :min today
                                   :placeholder "Deadline"})]
           [:div (use-sub-style pagemark-card-style :row-container)
-        ;; TODO Clears the fields and removes currently active pagemark
            [button {:on-click (fn [_]
-                                (reset-state)
-                                )
-                    ;#(dispatch [:pagemark/sidebar-remove (:key value)])
+                                (dispatch [:pagemark/sidebar-remove @state])
+                                (reset-state))
                     :type "button"
-                ;;  :disabled true
                 ;;  :style {:background "rgba(255,0,0,0.3)"}
                     }
             [:> Close]]
@@ -257,23 +263,28 @@
                     }
             [:> Done]]]]
          (into [:div (use-style pagemark-change-style)]
-               (map #(do
-                       ^{:key (pagemark-sidebar-key %)}
-                       [:div (merge (use-style pagemark-edit-style)
-                                    {:on-click (fn [e]
-                                                 (set! (.. e -target -style -width) "100%")
-                                                 (reset! state {:start-page (str (js/parseInt (:top %)))
-                                                                :end-page (str (js/parseInt (:height %)))
-                                                                :deadline "2020-12-20"}))
-                                     :style {:top (:top %)
-                                             :height (:height %)
-                                             :cursor (if (not= :done (:type %))
-                                                       "pointer"
-                                                       "not-allowed")
-                                             :background ((:type %) PAGEMARK-COLOR)
-                                             :border-top (str "1px solid " ((:type %) PAGEMARK-COLOR))
-                                             :border-bottom (str "1px solid " ((:type %) PAGEMARK-COLOR))}})])
-                    @pagemarks))]))))
+               (map (fn [v]
+                      (as-> (pagemark-sidebar-key v) key
+                        ^{:key key}
+                        [:div (merge (use-style pagemark-edit-style)
+                                     {:id key
+                                      :on-click (fn [e]
+                                                  (when (not= :done (:type e))
+                                                    (reset-width)
+                                                    (set! (.. e -target -style -width) "100%")
+                                                    (reset! state {:start-page (:start-page v)
+                                                                   :end-page (:end-page v)
+                                                                   :deadline (:schedule v)
+                                                                   :active-pagemark (.. e -target -id)})))
+                                      :style {:top (:top v)
+                                              :height (:height v)
+                                              :cursor (if (not= :done (:type v))
+                                                        "pointer"
+                                                        "not-allowed")
+                                              :background ((:type v) PAGEMARK-COLOR)
+                                              :border-top (str "1px solid " ((:type v) PAGEMARK-COLOR))
+                                              :border-bottom (str "1px solid " ((:type v) PAGEMARK-COLOR))}})]))
+                      @pagemarks))]))))
 
 (defn pdf
   []

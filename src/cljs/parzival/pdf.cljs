@@ -7,6 +7,7 @@
    ["pdfjs-dist/web/pdf_viewer.js" :as pdfjs-viewer]
    [cljs.core.async :refer [go]]
    [cljs.core.async.interop :refer [<p!]]
+   [clojure.set :refer [difference]]
    [day8.re-frame.tracing :refer-macros [fn-traced]]))
 
 (def SVG-NAMESPACE "http://www.w3.org/2000/svg")
@@ -461,15 +462,13 @@
   (reduce-kv (fn [[head & tail] k v]
                (let [pagemark {:type (get-type v) ; Can be any type
                                :schedule (:schedule v)
-                               :start-page k
-                               :end-page k
+                               :start-page (inc k)
+                               :end-page (inc k)
                                :top (calc-top k page-percentage)
                                :height (calc-height (if (some? (:done v))
                                                       (:done v)
                                                       {:width "100%" :height "100%"})
                                                     page-percentage)}]
-                 (js/console.log head)
-                 (js/console.log pagemark)
                  (cond
                    (merge? head pagemark) (conj tail (merge-pagemarks head pagemark))
                    (some? head) (conj tail head pagemark)
@@ -588,11 +587,16 @@
  (fn [db [_ coords]]
    (assoc db :pagemark/anchor coords)))
 
+(defn get-pages
+  [start-page end-page]
+  (->> (range (int start-page) (inc (int end-page)))
+       (map dec)))
+
+; TODO: Refractor
 (rf/reg-event-fx
  :pagemark/sidebar-add
- (fn [{:keys [db]} [_ {:keys [start-page end-page deadline]}]]
-   (let [pages (->> (range (int start-page) (inc (int end-page)))
-                    (map dec))
+ (fn [{:keys [db]} [_ {:keys [start-page end-page deadline _]}]]
+   (let [pages (get-pages start-page end-page)
          skip? (= deadline "")
          pagemarks (reduce (fn [m page-id]
                              (let [page-value (get m page-id)]
@@ -604,6 +608,13 @@
                            (get db :pdf/pagemarks)
                            pages)]
      {:db (assoc db :pdf/pagemarks pagemarks)})))
+
+(rf/reg-event-db
+ :pagemark/sidebar-remove
+ (fn [db [_ {:keys [start-page end-page _ _]}]]
+   (-> (set (keys (get db :pdf/pagemarks)))
+       (difference (set (get-pages start-page end-page)))
+       (->> (update db :pdf/pagemarks select-keys)))))
 
 ;; (rf/reg-event-db
 ;;  :pagemark/sidebar-remove
