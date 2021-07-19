@@ -109,7 +109,7 @@
                                 :border "2px solid red"}}})
 
 (defn pagemark-card
-  [value]
+  []
   (let [state (r/atom {:start-page ""
                        :end-page ""
                        :deadline ""})
@@ -120,7 +120,9 @@
                      (.padStart (str (.getDate date)) 2 "0")))]
     (fn []
       [:form (use-style pagemark-card-style
-                        {:on-submit (fn [_]
+                        {:on-submit (fn [e]
+                                      (js/console.log "submit form")
+                                      (.preventDefault e)
                                       (dispatch [:pagemark/sidebar-add @state])
                                       (reset! state {:start-page "" :end-page "" :deadline ""}))})
        [:label (use-sub-style pagemark-card-style :label) "Pages"]
@@ -129,13 +131,13 @@
                                              (<= 1 (:end-page @state) @no-pages))
                                       (:end-page @state)
                                       @no-pages) max-val
-                              {:type "number"
-                               :value (:start-page @state)
-                               :on-change #(swap! state assoc :start-page (.. % -target -value))
-                               :required true
-                               :min 1
-                               :max max-val
-                               :placeholder (str "Start (1 - " max-val ")")}))]
+                                {:type "number"
+                                 :value (:start-page @state)
+                                 :on-change #(swap! state assoc :start-page (.. % -target -value))
+                                 :required true
+                                 :min 1
+                                 :max max-val
+                                 :placeholder (str "Start (1 - " max-val ")")}))]
        [:input (use-sub-style pagemark-card-style :input
                               (as-> (if (and (not= (:start-page @state) "") \
                                              (<= 1 (:start-page @state) @no-pages))
@@ -145,7 +147,7 @@
                                  :value (:end-page @state)
                                  :on-change #(swap! state assoc :end-page (.. % -target -value))
                                  :required true
-                                 :min min-val 
+                                 :min min-val
                                  :max @no-pages
                                  :placeholder (str "End (" min-val " - " @no-pages ")")}))]
 
@@ -165,20 +167,26 @@
                 ;;  :style {:background "rgba(255,0,0,0.3)"}
                  }
          [:> Close]]
-        [button {;:on-click #(dispatch [:pagemark/sidebar-remove (:key value)])
-                 :type "submit"
-                ;;  :on-submit #(js/console.log %)
-                ;;  :on-click #(js/console.log %)
+        [button {:type "submit"
                 ;;  :primary true
                 ;;  :disabled true
                 ;;  :style {:background "rgba(0,255,0,0.3)"}
                  }
-         [:> Done]]
-        ]])))
+         [:> Done]]]])))
 
 (defn pagemark-sidebar
-  [pagemarks]
-  (let [pagemark? (subscribe [:pagemark?])]
+  []
+  (let [pagemarks (subscribe [:pagemarks])
+        pagemark? (subscribe [:pagemark?])
+        state (r/atom {:start-page ""
+                       :end-page ""
+                       :deadline ""})
+        no-pages (subscribe [:pdf/no-pages])
+        today (as-> (js/Date.) date
+                (str (.getFullYear date) "-"
+                     (.padStart (str (inc (.getMonth date))) 2 "0") "-"
+                     (.padStart (str (.getDate date)) 2 "0")))
+        reset-state #(reset! state {:start-page "" :end-page "" :deadline ""})]
     (fn []
       (if-not @pagemark?
         (into [:div]
@@ -191,14 +199,79 @@
                    @pagemarks))
         [:div#createPagemark (merge (use-style pagemark-style)
                                     {:on-pointer-down #(.stopPropagation %)})
-         [pagemark-card]
+         [:form (use-style pagemark-card-style
+                           {:on-submit (fn [e]
+                                         (.preventDefault e)
+                                         (dispatch [:pagemark/sidebar-add @state])
+                                         (reset-state))})
+          [:label (use-sub-style pagemark-card-style :label) "Pages"]
+          [:input (use-sub-style pagemark-card-style :input
+                                 (as-> (if (and (not= (:end-page @state) "")
+                                                (<= 1 (:end-page @state) @no-pages))
+                                         (:end-page @state)
+                                         @no-pages) max-val
+                                   {:type "number"
+                                    :value (:start-page @state)
+                                    :on-change #(swap! state assoc :start-page (.. % -target -value))
+                                    :required true
+                                    :min 1
+                                    :max max-val
+                                    :placeholder (str "Start (1 - " max-val ")")}))]
+          [:input (use-sub-style pagemark-card-style :input
+                                 (as-> (if (and (not= (:start-page @state) "") \
+                                             (<= 1 (:start-page @state) @no-pages))
+                                         (:start-page @state)
+                                         1) min-val
+                                   {:type "number"
+                                    :value (:end-page @state)
+                                    :on-change #(swap! state assoc :end-page (.. % -target -value))
+                                    :required true
+                                    :min min-val
+                                    :max @no-pages
+                                    :placeholder (str "End (" min-val " - " @no-pages ")")}))]
+
+          [:label (use-sub-style pagemark-card-style :label) "Deadline"]
+          [:input (use-sub-style pagemark-card-style :input
+                                 {:type "date"
+                                  :value (:deadline @state)
+                                  :on-change #(swap! state assoc :deadline (.. % -target -value))
+                                  :id "deadline-input"
+                                  :min today
+                                  :placeholder "Deadline"})]
+          [:div (use-sub-style pagemark-card-style :row-container)
+        ;; TODO Clears the fields and removes currently active pagemark
+           [button {:on-click (fn [_]
+                                (reset-state)
+                                )
+                    ;#(dispatch [:pagemark/sidebar-remove (:key value)])
+                    :type "button"
+                ;;  :disabled true
+                ;;  :style {:background "rgba(255,0,0,0.3)"}
+                    }
+            [:> Close]]
+           [button {:type "submit"
+                ;;  :primary true
+                ;;  :disabled true
+                ;;  :style {:background "rgba(0,255,0,0.3)"}
+                    }
+            [:> Done]]]]
          (into [:div (use-style pagemark-change-style)]
                (map #(do
                        ^{:key (pagemark-sidebar-key %)}
                        [:div (merge (use-style pagemark-edit-style)
-                                    {:style {:top (:top %)
+                                    {:on-click (fn [e]
+                                                 (set! (.. e -target -style -width) "100%")
+                                                 (reset! state {:start-page (str (js/parseInt (:top %)))
+                                                                :end-page (str (js/parseInt (:height %)))
+                                                                :deadline "2020-12-20"}))
+                                     :style {:top (:top %)
                                              :height (:height %)
-                                             :background ((:type %) PAGEMARK-COLOR)}})])
+                                             :cursor (if (not= :done (:type %))
+                                                       "pointer"
+                                                       "not-allowed")
+                                             :background ((:type %) PAGEMARK-COLOR)
+                                             :border-top (str "1px solid " ((:type %) PAGEMARK-COLOR))
+                                             :border-bottom (str "1px solid " ((:type %) PAGEMARK-COLOR))}})])
                     @pagemarks))]))))
 
 (defn pdf
@@ -207,7 +280,6 @@
         loading? (subscribe [:pdf/loading?])
         url "https://arxiv.org/pdf/2006.06676v2.pdf"
         ; url "http://ltu.diva-portal.org/smash/get/diva2:1512634/FULLTEXT01.pdf"
-        pagemarks (subscribe [:pagemarks])
         ]
     (fn []
       (when (and (not @pdf?) (not @loading?))
@@ -229,5 +301,5 @@
         :scroll-container-id "viewerContainer" ; the container where the scrollbar would be
         :container-id "viewer" ; The container that contains the content that will be scrolled
         :container-width "855px" ; The width of the container
-        :scrollbar-content [pagemark-sidebar pagemarks]
+        :scrollbar-content [pagemark-sidebar]
         :scrollbar-width PDF-SCROLLBAR-WIDTH}])))

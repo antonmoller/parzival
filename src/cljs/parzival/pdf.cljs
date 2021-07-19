@@ -507,7 +507,7 @@
 
 (reg-event-fx
  :pagemark?
- (fn [{:keys [db]} _]
+ (fn [_ _]
    (.addEventListener js/document
                       "pointerdown"
                       (fn close-pagemark [e]
