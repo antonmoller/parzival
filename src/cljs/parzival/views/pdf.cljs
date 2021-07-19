@@ -188,6 +188,7 @@
                      (.padStart (str (.getDate date)) 2 "0")))
         reset-state #(reset! state {:start-page "" :end-page "" :deadline ""})]
     (fn []
+      (js/console.log @pagemarks)
       (if-not @pagemark?
         (into [:div]
               (map #(do

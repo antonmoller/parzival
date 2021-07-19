@@ -408,44 +408,46 @@
  (fn [db _]
    (get db :pdf/pagemarks)))
 
-(defn calc-bottom
-  [{:keys [_ _ top height]}]
-  (-> (+ (js/parseFloat top) (js/parseFloat height))
-      (str "%")))
+;; (defn merge?
+;;   [p-0 p-1]
+;;   (if (= :schedule (:type p-0) (:type p-1))
+;;     (and
+;;      (= (:schedule p-0) (:schedule p-1))
+;;      (= (calc-bottom p-0) (:top p-1)))
+;;     (and
+;;      (some? p-0)
+;;      (= (:type p-0) (:type p-1))
 
 (defn merge?
   [p-0 p-1]
-  (if (= :schedule (:type p-0) (:type p-1))
-    (and
-     (= (:schedule p-0) (:schedule p-1))
-     (= (calc-bottom p-0) (:top p-1)))
-    (and
-     (some? p-0)
-     (= (:type p-0) (:type p-1))
-     (= (calc-bottom p-0) (:top p-1)))))
+  (and
+   (some? p-0)
+   (= (inc (:end-page p-0)) (:start-page p-1))
+   (= (:type p-0) (:type p-1))
+   (and (some? (:schedule p-0)) (= (:schedule p-0) (:schedule p-1)))))
+
+;;      (= (calc-bottom p-0) (:top p-1)))))
 
 (defn merge-pagemarks
-  [{:keys [type schedule top height]} p-1]
+  [{:keys [type schedule start-page _ top height]} p-1]
   {:type type
    :schedule schedule
+   :start-page start-page
+   :end-page (:end-page p-1)
    :top top
    :height (-> (+ (js/parseFloat height) (js/parseFloat (:height p-1)))
                (str "%"))})
 
 (defn get-type
   [{:keys [done skip schedule]}]
-  [(cond
-     (some? done) :done
-     skip :skip
-     (and (nil? done) (not= "" schedule)) :schedule)
-   (if (and (some? done) (not= "" schedule))
-     :schedule
-     nil)])
+  (cond
+    (some? done) :done
+    skip :skip
+    (not= "" schedule) :schedule))
 
 (defn calc-top
-  [start-page page-offset page-percentage]
+  [start-page page-percentage]
   (-> (* 100 page-percentage start-page)
-      (+ (js/parseFloat page-offset))
       (str "%")))
 
 (defn calc-height
@@ -454,40 +456,24 @@
       (/ 100)
       (str "%")))
 
-(defn calc-offset-height
-  [{:keys [width height]} page-percentage]
-  (-> (* (js/parseFloat width) (js/parseFloat height))
-      (/ 100)
-      (->> (- 100))
-      (* page-percentage)
-      (str "%")))
-
 (defn group-consecutive-pages
   [pagemarks page-percentage]
   (reduce-kv (fn [[head & tail] k v]
-               (let [[type-0 type-1] (get-type v)
-                     new-pagemark-0 {:type type-0 ; Can be any type
-                                     :schedule (if (nil? type-1)
-                                                 (:schedule v)
-                                                 "")
-                                     :top (calc-top k 0 page-percentage)
-                                     :height (calc-height (if (some? (:done v))
-                                                            (:done v)
-                                                            {:width "100%" :height "100%"})
-                                                          page-percentage)}
-                     new-pagemark-1 (if (some? type-1) ; must be schedule else nil
-                                      {:type type-1
-                                       :schedule (:schedule v)
-                                       :top (calc-top k
-                                                      (calc-height (:done v) page-percentage)
-                                                      page-percentage)
-                                       :height (calc-offset-height (:done v) page-percentage)}
-                                      nil)]
-                 (cond-> tail
-                   (merge? head new-pagemark-0) (conj (merge-pagemarks head new-pagemark-0))
-                   (and (not (merge? head new-pagemark-0)) (some? head)) (conj head new-pagemark-0)
-                   (nil? head) (conj new-pagemark-0)
-                   (some? new-pagemark-1) (conj new-pagemark-1))))
+               (let [pagemark {:type (get-type v) ; Can be any type
+                               :schedule (:schedule v)
+                               :start-page k
+                               :end-page k
+                               :top (calc-top k page-percentage)
+                               :height (calc-height (if (some? (:done v))
+                                                      (:done v)
+                                                      {:width "100%" :height "100%"})
+                                                    page-percentage)}]
+                 (js/console.log head)
+                 (js/console.log pagemark)
+                 (cond
+                   (merge? head pagemark) (conj tail (merge-pagemarks head pagemark))
+                   (some? head) (conj tail head pagemark)
+                   :else (conj tail pagemark))))
              '()
              (into (sorted-map) pagemarks)))
 
@@ -579,12 +565,9 @@
  (fn [{:keys [db]} [_ page height]]
    (let [page-id (dec (.getAttribute page "data-page-number"))
          old-pagemark (.item (.getElementsByClassName page "pagemark") 0)
-         old-pagemark-db (get-in db [:pdf/pagemarks page-id])
          pagemark {:done {:width "100%" :height height}
                    :skip false
-                   :schedule (if (and (some? old-pagemark-db) (not= "100%" height))
-                               (:schedule old-pagemark-db)
-                               "")}]
+                   :schedule ""}]
      (when (some? old-pagemark)
        (.remove old-pagemark))
      {:db (assoc-in db [:pdf/pagemarks page-id] pagemark)
@@ -617,7 +600,7 @@
                                  (assoc m page-id {:done nil
                                                    :skip skip?
                                                    :schedule deadline})
-                                 m))) ; Do nothing if page exists
+                                 m))) ; Do nothing if page exists TODO: This case should not be possible
                            (get db :pdf/pagemarks)
                            pages)]
      {:db (assoc db :pdf/pagemarks pagemarks)})))
