@@ -616,15 +616,6 @@
        (difference (set (get-pages start-page end-page)))
        (->> (update db :pdf/pagemarks select-keys)))))
 
-;; (rf/reg-event-db
-;;  :pagemark/sidebar-remove
-;;  (fn [db [_ key]]
-;;    (update db :pagemark/sidebar (remove ) #{key})
-;;           ;;  (remove #(= key %)))
-;;   ;;  (update db :pagemark/sidebar dissoc key)
-;;    ))
-
-
 (reg-event-fx
  :pagemark/close
  (fn [_ _]
