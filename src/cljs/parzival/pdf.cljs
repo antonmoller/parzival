@@ -537,12 +537,10 @@
 (reg-event-fx
  :pagemark/remove
  (fn [{:keys [db]} [_ page]]
-   (let [page-id (dec (.getAttribute page "data-page-number"))
-         pagemark (get-in db [:pdf/pagemarks page-id])]
-     (.remove (.item (.getElementsByClassName page "pagemark") 0))
-     {:db (if (= "" (:schedule pagemark))
-            (update db :pdf/pagemarks dissoc page-id)
-            (update-in db [:pdf/pagemarks page-id] assoc :done nil))})))
+   (.remove (.item (.getElementsByClassName page "pagemark") 0))
+   {:db (->>  (.getAttribute page "data-page-number")
+              (dec)
+              (update db :pdf/pagemarks dissoc))}))
 
 (rf/reg-event-db
  :pagemark/set-anchor
