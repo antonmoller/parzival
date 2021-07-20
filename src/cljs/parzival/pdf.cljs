@@ -338,26 +338,25 @@
 (defn resize-handler
   [e]
   (let [target (.-target e)
-        cursor (.getAttribute target "cursor")
+        cursor (.. target -style -cursor)
         b-box ^js (.getBBox target)
         page-rect (.getBoundingClientRect (.closest target ".pagemarkLayer"))
         page-width-px (.-width page-rect)
         page-height-px (.-height page-rect)
         width-px (+ (.-width b-box) (.-movementX e))
         height-px (+ (.-height b-box) (.-movementY e))]
-    (doto target
-      (.setAttribute "width" (if (contains? #{"ew-resize" "nwse-resize"} cursor)
-                               (cond
-                                 (< width-px min-px) (px-to-percentage page-width-px min-px)
-                                 (< page-width-px width-px) "100%"
-                                 :else (px-to-percentage page-width-px width-px))
-                               (.getAttribute target "width")))
-      (.setAttribute "height" (if (contains? #{"ns-resize" "nwse-resize"} cursor)
-                                (cond
-                                  (< height-px min-px) (px-to-percentage page-height-px min-px)
-                                  (< page-height-px height-px) "100%"
-                                  :else (px-to-percentage page-height-px height-px))
-                                (.getAttribute target "height"))))))
+    (set! (.. target -style -width) (if (contains? #{"ew-resize" "nwse-resize"} cursor)
+                                      (cond
+                                        (< width-px min-px) (px-to-percentage page-width-px min-px)
+                                        (< page-width-px width-px) "100%"
+                                        :else (px-to-percentage page-width-px width-px))
+                                      (.. target -style -width)))
+    (set! (.. target -style -height) (if (contains? #{"ns-resize" "nwse-resize"} cursor)
+                                       (cond
+                                         (< height-px min-px) (px-to-percentage page-height-px min-px)
+                                         (< page-height-px height-px) "100%"
+                                         :else (px-to-percentage page-height-px height-px))
+                                       (.. target -style -height)))))
 
 (defn page-id
   [target]
@@ -373,14 +372,14 @@
     (cond
       (and (<= (- width stroke-width) x width)
            (<= (- height stroke-width) y height))
-      (.setAttribute target "cursor" "nwse-resize") ; lower right corner
+      (set! (.. target -style -cursor) "nwse-resize") ; lower right corner
       (and (<= (- width stroke-width) x width)
            (<= stroke-width y (- height stroke-width)))
-      (.setAttribute target "cursor" "ew-resize") ; right
+      (set! (.. target -style -cursor) "ew-resize") ; right
       (and (<= stroke-width x (- width stroke-width))
            (<= (- height stroke-width) y height))
-      (.setAttribute target "cursor" "ns-resize") ; bottom
-      :else (.setAttribute target "cursor" "default"))))
+      (set! (.. target -style -cursor) "ns-resize") ; bottom
+      :else (set! (.. target -style -cursor) "default"))))
 
 ;; Subs
 
@@ -421,7 +420,6 @@
    :end-page (:end-page p-1)
    :end-area (:end-area p-1)})
                
-
 (defn get-type
   [{:keys [done skip schedule]}]
   (cond
@@ -475,8 +473,8 @@
 (reg-event-fx
  :pagemark/resize
  (fn [{:keys [db]} [_ target]]
-   (let [width (.getAttribute target "width")
-         height (.getAttribute target "height")
+   (let [width (.. target -style -width)
+         height (.. target -style -height)
          old-pagemark (get-in db [:pdf/pagemarks (page-id target)])
          new-pagemark {:done {:width width :height height}
                        :skip false
@@ -489,28 +487,24 @@
   [rect pagemark]
   (doto rect
     (.setAttribute "class" "pagemark")
-    (.setAttribute "pointer-events" "auto")
-    (.setAttribute "width" (:width pagemark))
-    (.setAttribute "height" (:height pagemark))
-    (.setAttribute "fill" "none")
-    (.setAttribute "stroke-width" stroke-width)
-    (.setAttribute "stroke" (:done PAGEMARK-COLOR))
+    (-> (.-style)
+        (set! (str "width: " (:width pagemark) "; height:" (:height pagemark)
+                   "; fill: none; stroke-width:" stroke-width "; stroke:"
+                   (:done PAGEMARK-COLOR) "; pointer-events: auto;")))
     (.addEventListener "pointermove" (fn [e]
                                        (when-not (= (.-buttons e) 1)
                                          (set-cursor (.-target e) (.-offsetX e) (.-offsetY e)))))
     (.addEventListener "pointerdown" (fn [e]
                                        (when (= (.-buttons e) 1)
-                                         (doto (.-target e)
-                                           (.setAttribute "fill" (:done PAGEMARK-COLOR))
-                                           (.setAttribute "fill-opacity" 0.2))
+                                         (set! (.. e -target -style -fill) (:done PAGEMARK-COLOR))
+                                         (set! (.. e -target -style -fillOpacity) 0.2)
                                          (.addEventListener rect "pointermove" resize-handler)
                                          (.setPointerCapture rect (.-pointerId e)))))
     (.addEventListener "pointerup" (fn [e]
                                      (.removeEventListener rect "pointermove" resize-handler)
                                      (.releasePointerCapture rect (.-pointerId e))
-                                     (doto (.-target e)
-                                       (.setAttribute "fill" "none")
-                                       (.setAttribute "cursor" "default"))
+                                     (set! (.. e -target -style -fill) "none")
+                                     (set! (.. e -target -style -cursor) "default")
                                      (dispatch [:pagemark/resize (.-target e)])))))
 
 (defn pagemark-skip
