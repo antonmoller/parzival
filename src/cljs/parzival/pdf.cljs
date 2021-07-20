@@ -7,7 +7,7 @@
    ["pdfjs-dist/web/pdf_viewer.js" :as pdfjs-viewer]
    [cljs.core.async :refer [go]]
    [cljs.core.async.interop :refer [<p!]]
-   [clojure.set :refer [difference]]
+   [clojure.set :refer [difference union]]
    [day8.re-frame.tracing :refer-macros [fn-traced]]))
 
 (def SVG-NAMESPACE "http://www.w3.org/2000/svg")
@@ -28,11 +28,6 @@
  :pdf/no-pages
  (fn [db _]
    (get db :pdf/pages)))
-
-(rf/reg-sub
- :pdf/page-percentage
- (fn [db _]
-   (/ (get db :pdf/pages))))
 
 (rf/reg-sub
  :pdf/loading?
@@ -409,35 +404,23 @@
  (fn [db _]
    (get db :pdf/pagemarks)))
 
-;; (defn merge?
-;;   [p-0 p-1]
-;;   (if (= :schedule (:type p-0) (:type p-1))
-;;     (and
-;;      (= (:schedule p-0) (:schedule p-1))
-;;      (= (calc-bottom p-0) (:top p-1)))
-;;     (and
-;;      (some? p-0)
-;;      (= (:type p-0) (:type p-1))
-
 (defn merge?
   [p-0 p-1]
   (and
    (some? p-0)
    (= (inc (:end-page p-0)) (:start-page p-1))
+   (= 1 (:end-area p-0))
    (= (:type p-0) (:type p-1))
    (and (some? (:schedule p-0)) (= (:schedule p-0) (:schedule p-1)))))
 
-;;      (= (calc-bottom p-0) (:top p-1)))))
-
 (defn merge-pagemarks
-  [{:keys [type schedule start-page _ top height]} p-1]
+  [{:keys [type schedule start-page]} p-1]
   {:type type
    :schedule schedule
    :start-page start-page
    :end-page (:end-page p-1)
-   :top top
-   :height (-> (+ (js/parseFloat height) (js/parseFloat (:height p-1)))
-               (str "%"))})
+   :end-area (:end-area p-1)})
+               
 
 (defn get-type
   [{:keys [done skip schedule]}]
@@ -446,29 +429,18 @@
     skip :skip
     (not= "" schedule) :schedule))
 
-(defn calc-top
-  [start-page page-percentage]
-  (-> (* 100 page-percentage start-page)
-      (str "%")))
-
-(defn calc-height
-  [{:keys [width height]} page-percentage]
-  (-> (* page-percentage (js/parseFloat width) (js/parseFloat height))
-      (/ 100)
-      (str "%")))
-
 (defn group-consecutive-pages
-  [pagemarks page-percentage]
+  [pagemarks]
   (reduce-kv (fn [[head & tail] k v]
-               (let [pagemark {:type (get-type v) ; Can be any type
+               (let [pagemark {:type (get-type v) 
                                :schedule (:schedule v)
                                :start-page (inc k)
                                :end-page (inc k)
-                               :top (calc-top k page-percentage)
-                               :height (calc-height (if (some? (:done v))
-                                                      (:done v)
-                                                      {:width "100%" :height "100%"})
-                                                    page-percentage)}]
+                               :end-area (if (some? (:done v))
+                                           (-> (js/parseFloat (get-in v [:done :width]))
+                                               (* (js/parseFloat (get-in v [:done :height])))
+                                               (/ 10000))
+                                           1)}]
                  (cond
                    (merge? head pagemark) (conj tail (merge-pagemarks head pagemark))
                    (some? head) (conj tail head pagemark)
@@ -477,11 +449,10 @@
              (into (sorted-map) pagemarks)))
 
 (rf/reg-sub
- :pagemarks
+ :pdf/pagemarks-sidebar
  :<- [:pdf/pagemarks]
- :<- [:pdf/page-percentage]
- (fn [[pagemarks page-percentage] _]
-   (group-consecutive-pages pagemarks page-percentage)))
+ (fn [pagemarks _]
+   (group-consecutive-pages pagemarks)))
 
 ;; Events
 
@@ -589,32 +560,44 @@
 
 (defn get-pages
   [start-page end-page]
-  (->> (range (int start-page) (inc (int end-page)))
-       (map dec)))
+  (range (dec (int start-page)) (int end-page)))
 
-; TODO: Refractor
-(rf/reg-event-fx
+; If pagemarks overlap something is wrong
+; Update and add are the same operation since pagemarks can't overlap
+(rf/reg-event-db
  :pagemark/sidebar-add
- (fn [{:keys [db]} [_ {:keys [start-page end-page deadline _]}]]
-   (let [pages (get-pages start-page end-page)
-         skip? (= deadline "")
-         pagemarks (reduce (fn [m page-id]
-                             (let [page-value (get m page-id)]
-                               (if (nil? page-value)
-                                 (assoc m page-id {:done nil
-                                                   :skip skip?
-                                                   :schedule deadline})
-                                 m))) ; Do nothing if page exists TODO: This case should not be possible
-                           (get db :pdf/pagemarks)
-                           pages)]
-     {:db (assoc db :pdf/pagemarks pagemarks)})))
+ (fn [db [_ {:keys [start-page end-page deadline]}]]
+   (as-> (get-pages start-page end-page) pages
+     (update db :pdf/pagemarks into (zipmap pages
+                                            (repeat (count pages)
+                                                    {:done nil ; Can't set :done from the scrollbar
+                                                     :skip (= "" deadline)
+                                                     :schedule deadline}))))))
 
 (rf/reg-event-db
  :pagemark/sidebar-remove
- (fn [db [_ {:keys [start-page end-page _ _]}]]
-   (-> (set (keys (get db :pdf/pagemarks)))
-       (difference (set (get-pages start-page end-page)))
-       (->> (update db :pdf/pagemarks select-keys)))))
+ (fn [db [_ start-page end-page]]
+   (as-> (get-pages start-page end-page) pages
+     (update db :pdf/pagemarks #(apply dissoc % pages)))))
+
+(rf/reg-event-fx
+ :pagemark/sidebar-edit
+ (fn [_ [_ {:keys [start-page end-page deadline edit-start edit-end]}]]
+   {:fx [(when (< (int edit-start) (int start-page))
+           [:dispatch [:pagemark/sidebar-remove edit-start (dec (int start-page))]])
+         (when (< (int end-page) (int edit-end))
+           [:dispatch [:pagemark/sidebar-remove (inc (int end-page)) edit-end]])
+         (when (< (int start-page) (int edit-start))
+           [:dispatch [:pagemark/sidebar-add {:start-page start-page
+                                              :end-page edit-start
+                                              :deadline deadline}]])
+         (when (< (int edit-end) (int end-page))
+           [:dispatch [:pagemark/sidebar-add {:start-page edit-end
+                                              :end-page end-page
+                                              :deadline deadline}]])
+         [:dispatch [:pagemark/sidebar-add {:start-page start-page
+                                            :end-page end-page
+                                            :deadline deadline}]]]}))
 
 (reg-event-fx
  :pagemark/close
