@@ -338,6 +338,7 @@
 (defn resize-handler
   [e]
   (let [target (.-target e)
+        style (.-style target)
         cursor (.. target -style -cursor)
         b-box ^js (.getBBox target)
         page-rect (.getBoundingClientRect (.closest target ".pagemarkLayer"))
@@ -345,18 +346,18 @@
         page-height-px (.-height page-rect)
         width-px (+ (.-width b-box) (.-movementX e))
         height-px (+ (.-height b-box) (.-movementY e))]
-    (set! (.. target -style -width) (if (contains? #{"ew-resize" "nwse-resize"} cursor)
+    (set! (.-width style) (if (contains? #{"ew-resize" "nwse-resize"} cursor)
                                       (cond
                                         (< width-px min-px) (px-to-percentage page-width-px min-px)
-                                        (< page-width-px width-px) "100%"
+                                        (> width-px page-width-px) "100%"
                                         :else (px-to-percentage page-width-px width-px))
-                                      (.. target -style -width)))
-    (set! (.. target -style -height) (if (contains? #{"ns-resize" "nwse-resize"} cursor)
+                                      (.-width style)))
+    (set! (.-height style) (if (contains? #{"ns-resize" "nwse-resize"} cursor)
                                        (cond
                                          (< height-px min-px) (px-to-percentage page-height-px min-px)
-                                         (< page-height-px height-px) "100%"
+                                         (> height-px page-height-px) "100%"
                                          :else (px-to-percentage page-height-px height-px))
-                                       (.. target -style -height)))))
+                                       (.-height style)))))
 
 (defn page-id
   [target]
