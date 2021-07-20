@@ -471,18 +471,14 @@
                           (dispatch [:pagemark-state false]))))
    {:fx [[:dispatch [:pagemark-state true]]]}))
 
-(reg-event-fx
+(rf/reg-event-db
  :pagemark/resize
- (fn [{:keys [db]} [_ target]]
-   (let [width (.. target -style -width)
-         height (.. target -style -height)
-         old-pagemark (get-in db [:pdf/pagemarks (page-id target)])
-         new-pagemark {:done {:width width :height height}
-                       :skip false
-                       :schedule (if (= "100%" width height)
-                                   ""
-                                   (:schedule old-pagemark))}]
-     {:db (assoc-in db [:pdf/pagemarks (page-id target)] new-pagemark)})))
+ (fn [db [_ target]]
+   (assoc-in db
+             [:pdf/pagemarks (page-id target)]
+             {:done {:width (.. target -style -width) :height (.. target -style -height)}
+              :skip false
+              :schedule ""})))
 
 (defn pagemark-done
   [rect pagemark]
