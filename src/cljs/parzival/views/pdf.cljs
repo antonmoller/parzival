@@ -302,6 +302,7 @@
          [button {:on-click handle-delete
                   :type "button"
                   :disabled (or (nil? (:style @state))
+                                (:adding? @state)
                                 (not= (int (:edit-start @state)) (int (:start-page @state)))
                                 (not= (int (:edit-end @state)) (int (:end-page @state))))}
           [:> Close]]
