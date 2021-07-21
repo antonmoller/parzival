@@ -107,6 +107,27 @@
    (set! (.-currentScaleValue (get db :pdf/viewer)) "page-width")
    {}))
 
+;; TODO: Create a more general version by looking at pagemark-resize
+(rf/reg-event-fx
+ :pdf/resize
+ (fn [_ [_ button target pointer-id id]]
+   (when (= 1 button)
+     (let [component-to-resize (.closest target (str "#" id))
+           handle-resize (fn [e]
+                           (set! (.. component-to-resize -style -width)
+                                 (-> (js/parseInt (.. component-to-resize -style -width))
+                                     (- (.-movementX e))
+                                     (str "px"))))]
+       (doto target
+         (.setPointerCapture pointer-id)
+         (.addEventListener "pointermove" handle-resize)
+         (.addEventListener "pointerup" (fn [_]
+                                          (.removeEventListener target "pointermove" handle-resize)
+                                          (.releasePointerCapture target pointer-id)
+                                          (dispatch [:pdf/change-size]))
+                            (js-obj "once" true)))))
+   {}))
+
 ;;; Highlights
 
 ;; Helpers
@@ -163,21 +184,18 @@
         r (js/Range.)]
     (doto group
       (.setAttribute "id" id)
-      (.setAttribute "cursor" "pointer")
-      (.setAttribute "pointer-events" "auto")
-      (.setAttribute "fill" color)
-      (.setAttribute "fill-opacity" opacity)
-      (.addEventListener "click" #(dispatch [:highlight/toolbar-edit group])))
+      (.addEventListener "click" #(dispatch [:highlight/toolbar-edit group]))
+      (.setAttribute "style" (str "cursor: pointer; pointer-events: auto; fill: " color
+                                  "; fill-opacity: " opacity ";")))
     (doseq [i (range y0 (inc y1))]
       (.setStart r (.-firstChild (.item rows i)) (if (== i y0) x0 0))
       (.setEnd r (.-firstChild (.item rows i)) (if (== i y1) x1 (.. (.item rows i) -firstChild -length)))
       (let [coords (.getBoundingClientRect r)
             rect (.createElementNS js/document SVG-NAMESPACE "rect")]
-        (doto rect
-          (.setAttribute "x" (- (.-x coords) (.-x page-rect)))
-          (.setAttribute "y" (- (.-y coords) (.-y page-rect)))
-          (.setAttribute "width" (.-width coords))
-          (.setAttribute "height" (.-height coords)))
+        (.setAttribute rect "style" (str "x: " (- (.-x coords) (.-x page-rect)) "px;"
+                                         "y: " (- (.-y coords) (.-y page-rect)) "px;"
+                                         "width: " (.-width coords) "px;"
+                                         "height: " (.-height coords) "px;"))
         (.append group rect)))
     (.append svg group)))
 
@@ -230,8 +248,7 @@
        (.setAttribute "style" SVG-STYLE))
      (doto pagemark-layer
        (.setAttribute "class" "pagemarkLayer")
-       (.setAttribute "overflow" "visible")
-       (.setAttribute "style" SVG-STYLE))
+       (.setAttribute "style" (str SVG-STYLE " overflow: visible;")))
      {:fx [(.append canvas-wrapper highlight-layer)
            (.append canvas-wrapper pagemark-layer)
            (when (some? highlights)
@@ -270,7 +287,7 @@
              page-id          (dec (.getAttribute page "data-page-number"))
              rows             (.-children text-layer)
              rows-arr         (.from js/Array rows)
-             [end x1] (get-end range-obj)
+             [end x1]         (get-end range-obj)
              highlight        {:color color
                                :opacity opacity
                                :x0 (.-startOffset range-obj)
@@ -310,18 +327,17 @@
                           (dispatch [:highlight/selected nil])
                           (dispatch [:highlight/set-anchor nil])
                           (when (some? selected-highlight)
-                            (.setAttribute selected-highlight
-                                           "fill-opacity"
-                                           (* (.getAttribute selected-highlight "fill-opacity") 2))))
+                            (set! (.. selected-highlight -style -fillOpacity)
+                                           (* (.. selected-highlight -style -fillOpacity) 2))))
                         (js-obj "once" true)))))
 
 (reg-event-fx
  :highlight/toolbar-edit
  (fn [_ [_ target]]
+   (set!  (.. target -style -fillOpacity) (/ (.. target -style -fillOpacity) 2))
    {:fx [[:dispatch [:highlight/selected {:element target
-                                          :color (.getAttribute target "fill")}]]
-         [:dispatch [:highlight/set-anchor (.getBoundingClientRect target)]]
-         (.setAttribute target "fill-opacity" (/ (.getAttribute target "fill-opacity") 2))]}))
+                                          :color (.. target -style -fill)}]]
+         [:dispatch [:highlight/set-anchor (.getBoundingClientRect target)]]]}))
 
 (reg-event-fx
  :highlight/toolbar-create
@@ -492,27 +508,6 @@
              {:done {:width (.. target -style -width) :height (.. target -style -height)}
               :skip false
               :schedule ""})))
-
-;; TODO: Create a more general version by looking at pagemark-resize
-(rf/reg-event-fx
- :pdf/resize
- (fn [_ [_ button target pointer-id id]]
-   (when (= 1 button)
-     (let [component-to-resize (.closest target (str "#" id))
-           handle-resize (fn [e]
-                           (set! (.. component-to-resize -style -width)
-                                 (-> (js/parseInt (.. component-to-resize -style -width))
-                                     (- (.-movementX e))
-                                     (str "px"))))]
-       (doto target
-         (.setPointerCapture pointer-id)
-         (.addEventListener "pointermove" handle-resize)
-         (.addEventListener "pointerup" (fn [_]
-                                          (.removeEventListener target "pointermove" handle-resize)
-                                          (.releasePointerCapture target pointer-id)
-                                          (dispatch [:pdf/change-size]))
-                            (js-obj "once" true)))))
-   {}))
 
 (defn pagemark-done
   [rect pagemark]
