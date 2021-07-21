@@ -347,17 +347,17 @@
         width-px (+ (.-width b-box) (.-movementX e))
         height-px (+ (.-height b-box) (.-movementY e))]
     (set! (.-width style) (if (contains? #{"ew-resize" "nwse-resize"} cursor)
-                                      (cond
-                                        (< width-px min-px) (px-to-percentage page-width-px min-px)
-                                        (> width-px page-width-px) "100%"
-                                        :else (px-to-percentage page-width-px width-px))
-                                      (.-width style)))
+                            (cond
+                              (< width-px min-px) (px-to-percentage page-width-px min-px)
+                              (> width-px page-width-px) "100%"
+                              :else (px-to-percentage page-width-px width-px))
+                            (.-width style)))
     (set! (.-height style) (if (contains? #{"ns-resize" "nwse-resize"} cursor)
-                                       (cond
-                                         (< height-px min-px) (px-to-percentage page-height-px min-px)
-                                         (> height-px page-height-px) "100%"
-                                         :else (px-to-percentage page-height-px height-px))
-                                       (.-height style)))))
+                             (cond
+                               (< height-px min-px) (px-to-percentage page-height-px min-px)
+                               (> height-px page-height-px) "100%"
+                               :else (px-to-percentage page-height-px height-px))
+                             (.-height style)))))
 
 (defn page-id
   [target]
@@ -420,7 +420,7 @@
    :start-page start-page
    :end-page (:end-page p-1)
    :end-area (:end-area p-1)})
-               
+
 (defn get-type
   [{:keys [done skip schedule]}]
   (cond
@@ -431,7 +431,7 @@
 (defn group-consecutive-pages
   [pagemarks]
   (reduce-kv (fn [[head & tail] k v]
-               (let [pagemark {:type (get-type v) 
+               (let [pagemark {:type (get-type v)
                                :schedule (:schedule v)
                                :start-page (inc k)
                                :end-page (inc k)
@@ -551,42 +551,35 @@
   [start-page end-page]
   (range (dec (int start-page)) (int end-page)))
 
-; If pagemarks overlap something is wrong
-; Update and add are the same operation since pagemarks can't overlap
-(rf/reg-event-db
- :pagemark/sidebar-add
- (fn [db [_ {:keys [start-page end-page deadline]}]]
-   (as-> (get-pages start-page end-page) pages
-     (update db :pdf/pagemarks into (zipmap pages
-                                            (repeat (count pages)
-                                                    {:done nil ; Can't set :done from the scrollbar
-                                                     :skip (= "" deadline)
-                                                     :schedule deadline}))))))
-
 (rf/reg-event-db
  :pagemark/sidebar-remove
  (fn [db [_ start-page end-page]]
    (as-> (get-pages start-page end-page) pages
      (update db :pdf/pagemarks #(apply dissoc % pages)))))
 
+(defn add-pages
+  [list start-page end-page]
+  (concat list (range (dec (int start-page)) (int end-page))))
+
 (rf/reg-event-fx
- :pagemark/sidebar-edit
- (fn [_ [_ {:keys [start-page end-page deadline edit-start edit-end]}]]
-   {:fx [(when (< (int edit-start) (int start-page))
-           [:dispatch [:pagemark/sidebar-remove edit-start (dec (int start-page))]])
-         (when (< (int end-page) (int edit-end))
-           [:dispatch [:pagemark/sidebar-remove (inc (int end-page)) edit-end]])
-         (when (< (int start-page) (int edit-start))
-           [:dispatch [:pagemark/sidebar-add {:start-page start-page
-                                              :end-page edit-start
-                                              :deadline deadline}]])
-         (when (< (int edit-end) (int end-page))
-           [:dispatch [:pagemark/sidebar-add {:start-page edit-end
-                                              :end-page end-page
-                                              :deadline deadline}]])
-         [:dispatch [:pagemark/sidebar-add {:start-page start-page
-                                            :end-page end-page
-                                            :deadline deadline}]]]}))
+ :pagemark/sidebar-add-edit
+ (fn [{:keys [db]} [_ {:keys [start-page end-page deadline edit-start edit-end]}]]
+   (let [pages-to-add (cond-> '()
+                        (< (int start-page) (int edit-start)) (add-pages start-page edit-start)
+                        (< (int edit-end) (int end-page)) (add-pages edit-end end-page)
+                        true (add-pages start-page end-page))
+         pages-to-remove (cond-> '()
+                           (< (int edit-start) (int start-page)) (add-pages edit-start
+                                                                            (dec (int start-page)))
+                           (< (int end-page) (int edit-end)) (add-pages (inc (int end-page))
+                                                                        edit-end))]
+     {:db (-> db
+              (update :pdf/pagemarks into (zipmap pages-to-add
+                                                  (repeat (count pages-to-add)
+                                                          {:done nil ; Can't set :done from the scrollbar
+                                                           :skip (= "" deadline)
+                                                           :schedule deadline})))
+              (update :pdf/pagemarks #(apply dissoc % pages-to-remove)))})))
 
 (reg-event-fx
  :pagemark/close
@@ -625,3 +618,7 @@
                         :height height
                         :edit? (not= 0 (.-length (.getElementsByClassName page "pagemark")))
                         :page page}]]]})))
+
+
+;; Quarantine zone
+
