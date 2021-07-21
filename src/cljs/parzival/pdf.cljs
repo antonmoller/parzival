@@ -92,6 +92,7 @@
      (.setViewer link-service pdf-viewer)
      (.setDocument pdf-viewer pdf)
      (.setDocument link-service pdf nil)
+     (.on event-bus "pagesinit" #(set! (.-currentScaleValue pdf-viewer) "page-width"))
      (.on event-bus "textlayerrendered" #(dispatch [:render/page (.. % -source -textLayerDiv -parentNode)])))))
 
 ;;; Highlights

@@ -16,9 +16,9 @@
 (def app-wrapper-style
   {:display "grid"
    :grid-template-areas
-   "'left-header  main-content right-header'
-    'left-sidebar main-content secondary-content'"
-   :grid-template-columns "auto 1fr auto"
+   "'left-header ... main-content ... right-header'
+    'left-sidebar ... main-content ... secondary-content'"
+   :grid-template-columns "auto 2.5rem 1fr 0rem auto"
    :grid-template-rows "auto 1fr"
    :height "100vh"})
 

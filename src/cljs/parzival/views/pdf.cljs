@@ -13,7 +13,7 @@
 (def pdf-container-style
   {:position "absolute"
    :height "100%"
-   :padding-right "50px"
+   :width "100%"
    :overflow-x "hidden"
    :overflow-y "scroll"
    :scrollbar-width "none"
@@ -48,6 +48,6 @@
                                                                          (.-clientY e)]))}]]
         :scroll-container-id "viewerContainer" ; the container where the scrollbar would be
         :container-id "viewer" ; The container that contains the content that will be scrolled
-        :container-width "855px" ; The width of the container
+        :container-width "1000px" ; The width of the container
         :scrollbar-content [pagemark-sidebar]
         :scrollbar-width PDF-SCROLLBAR-WIDTH}])))

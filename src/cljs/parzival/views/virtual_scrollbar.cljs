@@ -1,6 +1,6 @@
 (ns parzival.views.virtual-scrollbar
   (:require
-   [parzival.style :refer [ZINDICES DEPTH-SHADOWS SCROLLBAR]]
+   [parzival.style :refer [ZINDICES SCROLLBAR]]
    [reagent.core :as r]
    [stylefy.core :as stylefy :refer [use-style use-sub-style]]))
 
@@ -11,7 +11,10 @@
    :z-index (:zindex-sticky ZINDICES)
    :width "0px"
    :height "100%"
-   ::stylefy/sub-styles {:scrollbar {:position "absolute"
+   ::stylefy/sub-styles {:content {:position "absolute"
+                                   :inset 0
+                                   :margin "0 1rem"}
+                         :scrollbar {:position "absolute"
                                      :right 0
                                      :height "100%"
                                      :box-sizing "border-box"
@@ -118,7 +121,8 @@
                         [:div#scrollWrapper (merge (use-style scroll-container-style)
                                                    {:style {:width container-width}
                                                     :on-context-menu #(.preventDefault %)})
-                         content
+                         [:div (use-sub-style scroll-container-style :content)
+                          content]
                          [:div#scrollbar.scrollbar (merge (use-sub-style scroll-container-style :scrollbar)
                                                           {:style {:width scrollbar-width}
                                                            :on-pointer-down pointer-down-handler})
