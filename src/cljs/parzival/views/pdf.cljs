@@ -222,23 +222,22 @@
                                           :high-limit high-limit
                                           :adding? false}))))
         handle-click-scrollbar (fn [e]
-                                 (when (= "pagemark-scrollbar-overlay" (.. e -target -id))
-                                   (when-let [[page style low-limit high-limit] (valid-click e @no-pages @pagemarks)]
-                                     (reset-css)
-                                     (set-color "" style)
-                                     (set! (.-top style) (calc-top {:start-page page
-                                                                    :page-percentage page-percentage}))
-                                     (set! (.-width style) "100%")
-                                     (set! (.-height style) (-> (* 100 page-percentage) (str "%")))
-                                     (reset! state {:start-page page
-                                                    :end-page page
-                                                    :edit-start page
-                                                    :edit-end page
-                                                    :deadline ""
-                                                    :style style
-                                                    :low-limit low-limit
-                                                    :high-limit high-limit
-                                                    :adding? true}))))
+                                 (when-let [[page style low-limit high-limit] (valid-click e @no-pages @pagemarks)]
+                                   (reset-css)
+                                   (set-color "" style)
+                                   (set! (.-top style) (calc-top {:start-page page
+                                                                  :page-percentage page-percentage}))
+                                   (set! (.-width style) "100%")
+                                   (set! (.-height style) (-> (* 100 page-percentage) (str "%")))
+                                   (reset! state {:start-page page
+                                                  :end-page page
+                                                  :edit-start page
+                                                  :edit-end page
+                                                  :deadline ""
+                                                  :style style
+                                                  :low-limit low-limit
+                                                  :high-limit high-limit
+                                                  :adding? true})))
         handle-change (fn [value page]
                         (when (some? (:style @state))
                           (set! (.-background (:style @state)) (if (= "" (:deadline @state))
@@ -310,8 +309,7 @@
                   :disabled (nil? (:style @state))}
           [:> Done]]]]
        (into [:div (use-sub-style pagemark-style :change-container
-                                  {:id "pagemark-scrollbar-overlay"
-                                   :on-click handle-click-scrollbar})
+                                  {:on-click handle-click-scrollbar})
               [:div (merge (use-sub-style pagemark-style :edit)
                            {:id "pagemark-tmp"
                             :style {:visibility (if (:adding? @state)
@@ -324,7 +322,9 @@
                     (as-> (pagemark-sidebar-key v) key
                       ^{:key key}
                       [pagemark (merge {:id key
-                                        :on-click #(handle-click (.. % -target -style) v)
+                                        :on-click (fn [e]
+                                                    (.stopPropagation e)
+                                                    (handle-click (.. e -target -style) v))
                                         :style :edit
                                         :edit? true
                                         :page-percentage page-percentage}
