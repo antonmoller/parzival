@@ -1,6 +1,7 @@
 (ns parzival.views.virtual-scrollbar
   (:require
-   [parzival.style :refer [ZINDICES SCROLLBAR]]
+   [parzival.style :refer [color ZINDICES SCROLLBAR]]
+   [re-frame.core :refer [dispatch]]
    [reagent.core :as r]
    [stylefy.core :as stylefy :refer [use-style use-sub-style]]))
 
@@ -36,6 +37,20 @@
                                      :box-shadow (:thumb-shadow SCROLLBAR)}]
                      [:.thumb:active {:background (:thumb-active-color SCROLLBAR)
                                       :box-shadow (:thumb-shadow SCROLLBAR)}]]})
+
+(def resize-dragger-style
+  {:position "absolute"
+   :z-index -1
+   :left 0
+   :top 0
+   :height "100%"
+   :width "5px"
+   :background (color :border-color)
+   :cursor "col-resize"
+   ::stylefy/mode {:hover {:background (color :link-color)
+                           :width "10px"
+                           :transition "width background 0.2s linear"
+                           :transition-delay "0.5s"}}})
 
 ;;; Components
 
@@ -121,6 +136,12 @@
                         [:div#scrollWrapper (merge (use-style scroll-container-style)
                                                    {:style {:width container-width}
                                                     :on-context-menu #(.preventDefault %)})
+                         [:div (merge (use-style resize-dragger-style)
+                                      {:on-pointer-down #(dispatch [:pdf/resize
+                                                                    (.-buttons %)
+                                                                    (.-target %)
+                                                                    (.-pointerId %)
+                                                                    "scrollWrapper"])})]
                          [:div (use-sub-style scroll-container-style :content)
                           content]
                          [:div#scrollbar.scrollbar (merge (use-sub-style scroll-container-style :scrollbar)
@@ -130,3 +151,4 @@
                                              {:style {:top (:top @state)
                                                       :height (str (:thumb-height @state) "px")}})]
                           scrollbar-content]])})))
+

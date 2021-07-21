@@ -14,7 +14,9 @@
    :pagemark/sidebar '() ; {:start-page :end-page :deadline nil/date}
    :theme/dark true
    :pdf nil
+   :pdf/viewer nil
    :pdf/pages 37
+   :pdf/width "1000px"
    :pdf/loading? false
    :pdf/highlights {} ; {:color :opacity :x0 :y0 :x1 :y1}
    :pdf/pagemarks {} ; {:page-id {:done nil/{:width :height} :skip :schedule}}

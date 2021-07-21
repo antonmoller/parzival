@@ -26,6 +26,7 @@
   []
   (let [pdf? (subscribe [:pdf?])
         loading? (subscribe [:pdf/loading?])
+        width (subscribe [:pdf/width])
         url "https://arxiv.org/pdf/2006.06676v2.pdf"
         ; url "http://ltu.diva-portal.org/smash/get/diva2:1512634/FULLTEXT01.pdf"
         ]
@@ -40,6 +41,8 @@
                    [highlight-toolbar]
                    [pagemark-menu]
                    [:div#viewer.pdfViewer {:on-mouse-up #(dispatch [:highlight/toolbar-create])
+                                          ;;  :style {:width "100%"
+                                                    ;; :height "100%"}
                                            :on-context-menu (fn [e]
                                                               (.preventDefault e)
                                                               (dispatch [:pagemark/menu

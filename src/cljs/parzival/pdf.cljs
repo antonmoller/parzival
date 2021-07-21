@@ -34,6 +34,11 @@
  (fn [db _]
    (get db :pdf/loading?)))
 
+(rf/reg-sub
+ :pdf/width
+ (fn [db _]
+   (get db :pdf/width)))
+
 ;;; Events
 
 (rf/reg-event-db
@@ -93,7 +98,13 @@
      (.setDocument pdf-viewer pdf)
      (.setDocument link-service pdf nil)
      (.on event-bus "pagesinit" #(set! (.-currentScaleValue pdf-viewer) "page-width"))
-     (.on event-bus "textlayerrendered" #(dispatch [:render/page (.. % -source -textLayerDiv -parentNode)])))))
+     (.on event-bus "textlayerrendered" #(dispatch [:render/page (.. % -source -textLayerDiv -parentNode)]))
+     {:db (assoc db :pdf/viewer pdf-viewer)})))
+
+(reg-event-fx
+ :pdf/change-size
+ (fn [{:keys [db]} _]
+   (set! (.-currentScaleValue (get db :pdf/viewer)) "page-width")))
 
 ;;; Highlights
 
@@ -480,6 +491,27 @@
              {:done {:width (.. target -style -width) :height (.. target -style -height)}
               :skip false
               :schedule ""})))
+
+;; TODO: Create a more general version by looking at pagemark-resize
+(rf/reg-event-fx
+ :pdf/resize
+ (fn [_ [_ button target pointer-id id]]
+   (when (= 1 button)
+     (let [component-to-resize (.closest target (str "#" id))
+           handle-resize (fn [e]
+                           (set! (.. component-to-resize -style -width)
+                                 (-> (js/parseInt (.. component-to-resize -style -width))
+                                     (- (.-movementX e))
+                                     (str "px"))))]
+       (doto target
+         (.setPointerCapture pointer-id)
+         (.addEventListener "pointermove" handle-resize)
+         (.addEventListener "pointerup" (fn [_]
+                                          (.removeEventListener target "pointermove" handle-resize)
+                                          (.releasePointerCapture target pointer-id)
+                                          (dispatch [:pdf/change-size]))
+                            (js-obj "once" true)))))
+   {}))
 
 (defn pagemark-done
   [rect pagemark]
