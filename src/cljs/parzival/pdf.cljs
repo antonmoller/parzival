@@ -104,7 +104,8 @@
 (reg-event-fx
  :pdf/change-size
  (fn [{:keys [db]} _]
-   (set! (.-currentScaleValue (get db :pdf/viewer)) "page-width")))
+   (set! (.-currentScaleValue (get db :pdf/viewer)) "page-width")
+   {}))
 
 ;;; Highlights
 
