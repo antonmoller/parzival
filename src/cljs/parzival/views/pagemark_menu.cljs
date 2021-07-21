@@ -6,7 +6,7 @@
    ["@material-ui/icons/Remove" :default Remove]
    [re-frame.core :refer [subscribe dispatch]]
    [parzival.style :refer [color ZINDICES DEPTH-SHADOWS]]
-   [stylefy.core :as stylefy :refer [use-style]]))
+   [stylefy.core :as stylefy :refer [use-style use-sub-style]]))
 
 ;;; Styles
 
@@ -22,17 +22,15 @@
    :margin 0
    :background-color (color :background-plus-1-color)
    :box-shadow    (str (:64 DEPTH-SHADOWS) ", 0 0 0 1px " (color :body-text-color :opacity-lower))
-   :list-style-type "none"})
-
-(def item-style
-  {:cursor "pointer"
-   :font-size "16px"
-   :font-weight 500
-   :padding "0.5rem 1rem"
-   :color (color :body-text-color)
-   ::stylefy/mode {:hover {:background-color (color :body-text-color :opacity-low)}}
-   ::stylefy/manual [[:svg {:font-size "16px"
-                            :margin-right "0.5rem"}]]})
+   :list-style-type "none"
+   ::stylefy/sub-styles {:item {:cursor "pointer"
+                                :font-size "16px"
+                                :font-weight 500
+                                :padding "0.5rem 1rem"
+                                :color (color :body-text-color)
+                                ::stylefy/mode {:hover {:background-color (color :body-text-color :opacity-low)}}
+                                ::stylefy/manual [[:svg {:font-size "16px"
+                                                         :margin-right "0.5rem"}]]}}})
 
 ;;; Components
 
@@ -45,20 +43,20 @@
                               {:style {:visibility (if (some? left) "visible" "hidden")
                                        :left left
                                        :top top}})
-     [:li (merge (use-style item-style)
+     [:li (merge (use-sub-style menu-style :item)
                  {:on-mouse-down #(dispatch [:pagemark/add page height])})
       [:> BookmarkBorder]
       [:span "Pagemark to Current Location"]]
-     [:li (merge (use-style item-style)
+     [:li (merge (use-sub-style menu-style :item)
                  {:on-mouse-down #(dispatch [:pagemark/add page "100%"])})
       [:> Bookmark]
       [:span "Mark Entire Page as Read"]]
-     [:li (merge (use-style item-style)
+     [:li (merge (use-sub-style menu-style :item)
                  {:on-mouse-down #(dispatch [:pagemark?])})
       [:> Book]
       [:span "Skip/Schedule Pages"]]
      (when edit?
-       [:li (merge (use-style item-style)
+       [:li (merge (use-sub-style menu-style :item)
                    {:on-mouse-down #(dispatch [:pagemark/remove page])
                     :style {:color "red"}})
         [:> Remove]
