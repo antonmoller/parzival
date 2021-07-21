@@ -125,6 +125,35 @@
        (* 100 page-percentage)
        (str "%"))))
 
+(defn today
+  []
+  (as-> (js/Date.) date
+    (str (.getFullYear date) "-"
+         (.padStart (str (inc (.getMonth date))) 2 "0") "-"
+         (.padStart (str (.getDate date)) 2 "0"))))
+
+(defn calc-limits
+  [start-page end-page no-pages pagemarks]
+  (reduce (fn [m v]
+            (cond-> m
+              (< (:low-limit m) (:end-page v) (int start-page)) (assoc
+                                                                 :low-limit
+                                                                 (inc (:end-page v)))
+              (< (int end-page) (:start-page v)) (assoc
+                                                  :high-limit
+                                                  (dec (:start-page v)))))
+          {:low-limit 1 :high-limit no-pages}
+          pagemarks))
+
+(defn set-color
+  [value style]
+  (let [color (if (= "" value)
+                (:skip PAGEMARK-COLOR)
+                (:schedule PAGEMARK-COLOR))]
+    (set! (.-background style) color)
+    (set! (.-borderTop style) (str "1px solid " color))
+    (set! (.-borderBottom style) (str "1px solid " color))))
+
 ;;; Components
 
 
@@ -154,14 +183,11 @@
                        :deadline ""
                        :style nil
                        :low-limit 1
-                       :high-limit @no-pages})
-        today (as-> (js/Date.) date
-                (str (.getFullYear date) "-"
-                     (.padStart (str (inc (.getMonth date))) 2 "0") "-"
-                     (.padStart (str (.getDate date)) 2 "0")))
+                       :high-limit @no-pages
+                       :adding? true})
         reset-state #(reset! state
                              {:start-page "" :end-page "" :edit-start "" :edit-end ""
-                              :deadline "" :style nil :low-limit 1 :high-limit @no-pages})
+                              :deadline "" :style nil :low-limit 1 :high-limit @no-pages :adding? true})
         reset-css #(when (some? (:style @state))
                      (set! (.-width (:style @state)) width)
                      (set! (.-top (:style @state))
@@ -172,19 +198,10 @@
                                          :end-page (:edit-end @state)
                                          :end-area 1
                                          :page-percentage page-percentage})))
-        calc-limits (fn [start-page end-page]
-                      (reduce (fn [m v]
-                                (cond-> m
-                                  (< (:low-limit m)
-                                     (:end-page v)
-                                     (int start-page)) (assoc :low-limit (inc (:end-page v)))
-                                  (< (int end-page)
-                                     (:start-page v)) (assoc :high-limit (dec (:start-page v)))))
-                              {:low-limit 1 :high-limit @no-pages}
-                              @pagemarks))
         handle-click (fn [style {:keys [type start-page end-page schedule]}]
                        (when (not= :done type)
-                         (let [{:keys [low-limit high-limit]} (calc-limits start-page end-page)]
+                         (let [{:keys [low-limit high-limit]} (calc-limits start-page end-page
+                                                                           @no-pages @pagemarks)]
                            (reset-css)
                            (set! (.-width style) "100%")
                            (reset! state {:start-page start-page
@@ -194,14 +211,8 @@
                                           :deadline schedule
                                           :style style
                                           :low-limit low-limit
-                                          :high-limit high-limit}))))
-        set-color (fn [value style]
-                    (let [color (if (= "" value)
-                                  (:skip PAGEMARK-COLOR)
-                                  (:schedule PAGEMARK-COLOR))]
-                      (set! (.-background style) color)
-                      (set! (.-borderTop style) (str "1px solid " color))
-                      (set! (.-borderBottom style) (str "1px solid " color))))
+                                          :high-limit high-limit
+                                          :adding? false}))))
         handle-click-scrollbar (fn [e]
                                  (when (= "pagemark-scrollbar-overlay" (.. e -target -id))
                                    (let [click-pos (->> (.-target e)
@@ -211,18 +222,14 @@
                                                         (/ (.-clientY e)))
                                          page (inc (int (/ click-pos page-percentage)))
                                          style (.-style (.getElementById js/document "pagemark-tmp"))
-                                         {:keys [low-limit high-limit]} (calc-limits page page)]
+                                         {:keys [low-limit high-limit]} (calc-limits page page
+                                                                                     @no-pages @pagemarks)]
                                      (reset-css)
                                      (set-color "" style)
-                                     (set! (.-top style)
-                                           (calc-top {:start-page page
-                                                      :page-percentage page-percentage}))
+                                     (set! (.-top style) (calc-top {:start-page page
+                                                                    :page-percentage page-percentage}))
                                      (set! (.-width style) "100%")
-                                     (set! (.-height style)
-                                           (calc-height {:start-page page
-                                                         :end-page page
-                                                         :end-area 1
-                                                         :page-percentage page-percentage}))
+                                     (set! (.-height style) (-> (* 100 page-percentage) (str "%")))
                                      (reset! state {:start-page page
                                                     :end-page page
                                                     :edit-start page
@@ -230,7 +237,8 @@
                                                     :deadline ""
                                                     :style style
                                                     :low-limit low-limit
-                                                    :high-limit high-limit}))))
+                                                    :high-limit high-limit
+                                                    :adding? true}))))
         handle-change (fn [value page]
                         (when (some? (:style @state))
                           (set! (.-background (:style @state)) (if (= "" (:deadline @state))
@@ -262,7 +270,6 @@
                         (reset-css)
                         (reset-state))]
     (fn []
-      (js/console.log @state)
       [:div#createPagemark (merge (use-style pagemark-style)
                                   {:on-pointer-down #(.stopPropagation %)})
        [:form (use-style pagemark-card-style
@@ -287,11 +294,10 @@
         [:label (use-sub-style pagemark-card-style :label) "Deadline"]
         [:input (use-sub-style pagemark-card-style :input
                                {:type "date"
-                                :min today
+                                :min (today)
                                 :value (:deadline @state)
                                 :on-change #(handle-date-change (.. % -target -value))
-                                :disabled (nil? (:style @state))
-                                })]
+                                :disabled (nil? (:style @state))})]
         [:div (use-sub-style pagemark-card-style :row-container)
          [button {:on-click handle-delete
                   :type "button"
@@ -303,8 +309,8 @@
                   :disabled (nil? (:style @state))}
           [:> Done]]]]
        (into [:div (use-sub-style pagemark-style :change-container
-                              {:id "pagemark-scrollbar-overlay"
-                               :on-click handle-click-scrollbar})
+                                  {:id "pagemark-scrollbar-overlay"
+                                   :on-click handle-click-scrollbar})
               [:div (merge (use-style pagemark-edit-style)
                            {:id "pagemark-tmp"
                             :style {:width "100%"
