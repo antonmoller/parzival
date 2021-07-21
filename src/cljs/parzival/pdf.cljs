@@ -618,7 +618,3 @@
                         :height height
                         :edit? (not= 0 (.-length (.getElementsByClassName page "pagemark")))
                         :page page}]]]})))
-
-
-;; Quarantine zone
-

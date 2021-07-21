@@ -14,7 +14,7 @@
    [stylefy.core :as stylefy :refer [use-style use-sub-style]]))
 
 
-(def width
+(def WIDTH
   (-> (js/parseInt PDF-SCROLLBAR-WIDTH) ; Don't count left/right borders
       (- 2)
       (str "px")))
@@ -49,27 +49,25 @@
                                             :bottom 1
                                             :height "100%"
                                             :width "68px"
-                                            :border-left (str "1px solid " (color :background-plus-1-color))
-                                            :pointer-events "auto"}
+                                            :pointer-events "auto"
+                                            ::stylefy/mode {:before {:content "''"
+                                                                     :position "absolute"
+                                                                     :top "-1px"
+                                                                     :bottom "-1px"
+                                                                     :width (-> (- 68 (js/parseInt WIDTH))
+                                                                                (str "px"))
+                                                                     :background (color :background-plus-1-color :opacity-high)
+                                                                     :backdrop-filter "blur(8px)"}}}
                          :sidebar {:position "absolute"
                                    :width "30%"
                                    :opacity "0.4"}
                          :edit {:position "absolute"
                                 :right 0
-                                :width width
+                                :width WIDTH
                                 :box-sizing "border-box"
                                 :cursor "not-allowed"
-                                :opacity "0.4"}}
-   })
+                                :opacity "0.4"}}})
 
-(def pagemark-edit-style
-  {:position "absolute"
-   :right 0
-   :width width
-   :box-sizing "border-box"
-   :cursor "not-allowed"
-   :opacity 0.4})
-  
 (def pagemark-card-style
   {:width "200px"
    :padding "1rem"
@@ -103,10 +101,7 @@
                                  :font-size "0.75rem"
                                  :line-height "1.7"}
                          :row-container {:display "flex"
-                                         :justify-content "space-between"}
-                         :line {:height "125px"
-                                :width "20px"
-                                :border "2px solid red"}}})
+                                         :justify-content "space-between"}}})
 
 ;;; Helpers
 
@@ -145,6 +140,21 @@
           {:low-limit 1 :high-limit no-pages}
           pagemarks))
 
+(defn valid-click
+  [e no-pages pagemarks]
+  (let [click-pos (->> (.-target e)
+                       (.getComputedStyle js/window)
+                       (.-height)
+                       (js/parseFloat)
+                       (/ (.-clientY e)))
+        page (inc (int (/ click-pos (/ no-pages))))]
+    (when (every? (fn [{:keys [start-page end-page]}]
+                    (not (<= start-page page end-page)))
+                  pagemarks)
+      (let [style (.-style (.getElementById js/document "pagemark-tmp"))
+            {:keys [low-limit high-limit]} (calc-limits page page no-pages pagemarks)]
+        [page style low-limit high-limit]))))
+
 (defn set-color
   [value style]
   (let [color (if (= "" value)
@@ -155,7 +165,6 @@
     (set! (.-borderBottom style) (str "1px solid " color))))
 
 ;;; Components
-
 
 (defn pagemark
   [{:keys [id on-click style edit?] :as v}]
@@ -185,11 +194,10 @@
                        :low-limit 1
                        :high-limit @no-pages
                        :adding? false})
-        reset-state #(reset! state
-                             {:start-page "" :end-page "" :edit-start "" :edit-end ""
-                              :deadline "" :style nil :low-limit 1 :high-limit @no-pages :adding? true})
+        reset-state #(reset! state {:start-page "" :end-page "" :edit-start "" :edit-end "" :deadline "" 
+                                    :style nil :low-limit 1 :high-limit @no-pages :adding? false})
         reset-css #(when (some? (:style @state))
-                     (set! (.-width (:style @state)) width)
+                     (set! (.-width (:style @state)) WIDTH)
                      (set! (.-top (:style @state))
                            (calc-top {:start-page (:edit-start @state)
                                       :page-percentage page-percentage}))
@@ -215,15 +223,7 @@
                                           :adding? false}))))
         handle-click-scrollbar (fn [e]
                                  (when (= "pagemark-scrollbar-overlay" (.. e -target -id))
-                                   (let [click-pos (->> (.-target e)
-                                                        (.getComputedStyle js/window)
-                                                        (.-height)
-                                                        (js/parseFloat)
-                                                        (/ (.-clientY e)))
-                                         page (inc (int (/ click-pos page-percentage)))
-                                         style (.-style (.getElementById js/document "pagemark-tmp"))
-                                         {:keys [low-limit high-limit]} (calc-limits page page
-                                                                                     @no-pages @pagemarks)]
+                                   (when-let [[page style low-limit high-limit] (valid-click e @no-pages @pagemarks)]
                                      (reset-css)
                                      (set-color "" style)
                                      (set! (.-top style) (calc-top {:start-page page
@@ -270,7 +270,6 @@
                         (reset-css)
                         (reset-state))]
     (fn []
-      (js/console.log @state)
       [:div#createPagemark (merge (use-style pagemark-style)
                                   {:on-pointer-down #(.stopPropagation %)})
        [:form (use-style pagemark-card-style
@@ -313,7 +312,7 @@
        (into [:div (use-sub-style pagemark-style :change-container
                                   {:id "pagemark-scrollbar-overlay"
                                    :on-click handle-click-scrollbar})
-              [:div (merge (use-style pagemark-edit-style)
+              [:div (merge (use-sub-style pagemark-style :edit)
                            {:id "pagemark-tmp"
                             :style {:visibility (if (:adding? @state)
                                                   "visible"
@@ -341,17 +340,17 @@
         no-pages (subscribe [:pdf/no-pages])
         page-percentage (/ @no-pages)]
     (fn []
-      (if-not @pagemark?
+      (if @pagemark?
+        [pagemark-change pagemarks no-pages page-percentage]
         (into [:div]
               (map (fn [v]
                      (as-> (pagemark-sidebar-key v) key
                        ^{:key key}
-                       [pagemark (merge {:style :sidebar 
-                                         :edit? false 
-                                         :page-percentage page-percentage} 
+                       [pagemark (merge {:style :sidebar
+                                         :edit? false
+                                         :page-percentage page-percentage}
                                         v)]))
-                   @pagemarks))
-        [pagemark-change pagemarks no-pages page-percentage]))))
+                   @pagemarks))))))
 
 (defn pdf
   []
