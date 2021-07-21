@@ -246,7 +246,7 @@
                              (set-color value (:style @state))
                              (swap! state assoc :deadline value))
         handle-delete (fn []
-                        (dispatch [:pagemark/sidebar-remove (:start-page @state) (:end-page @state)])
+                        (dispatch [:pagemark/sidebar-remove (:start-page @state) (:end-page @state) (:deadline @state)])
                         (reset-state))
         handle-submit (fn [e]
                         (.preventDefault e)

@@ -514,12 +514,13 @@
 (reg-event-fx
  :pagemark/render
  (fn [_ [_ page pagemark]]
-   (let [svg (.querySelector page ".pagemarkLayer")
-         rect (.createElementNS js/document SVG-NAMESPACE "rect")]
-     (cond
-       (some? (:done pagemark)) (pagemark-done rect (:done pagemark))
-       (:skip pagemark) (pagemark-skip rect))
-     {:fx [(.append svg rect)]})))
+   (when (nil? (.querySelector page "rect.pagemark"))
+     (let [svg (.querySelector page ".pagemarkLayer")
+           rect (.createElementNS js/document SVG-NAMESPACE "rect")]
+       (cond
+         (some? (:done pagemark)) (pagemark-done rect (:done pagemark))
+         (:skip pagemark) (pagemark-skip rect))
+       {:fx [(.append svg rect)]}))))
 
 (reg-event-fx
  :pagemark/add
@@ -535,12 +536,19 @@
       :fx [[:dispatch [:pagemark/render page pagemark]]]})))
 
 (reg-event-fx
+ :pagemark/remove-render
+ (fn [_ [_ page]]
+   (as-> (.querySelector page "rect.pagemark") pagemark
+     {:fx [(when (some? pagemark)
+             (.remove pagemark))]})))
+
+(reg-event-fx
  :pagemark/remove
  (fn [{:keys [db]} [_ page]]
-   (.remove (.item (.getElementsByClassName page "pagemark") 0))
    {:db (->>  (.getAttribute page "data-page-number")
               (dec)
-              (update db :pdf/pagemarks dissoc))}))
+              (update db :pdf/pagemarks dissoc))
+    :fx [[:dispatch [:pagemark/remove-render page]]]}))
 
 (rf/reg-event-db
  :pagemark/set-anchor
@@ -551,23 +559,40 @@
   [start-page end-page]
   (range (dec (int start-page)) (int end-page)))
 
-(rf/reg-event-db
- :pagemark/sidebar-remove
- (fn [db [_ start-page end-page]]
-   (as-> (get-pages start-page end-page) pages
-     (update db :pdf/pagemarks #(apply dissoc % pages)))))
-
 (defn add-pages
   [list start-page end-page]
   (concat list (range (dec (int start-page)) (int end-page))))
+
+(defn page-rendered
+  [page-no]
+  (.querySelector js/document (str "div.page[data-page-number=\"" (inc page-no)
+                                   "\"][data-loaded=\"true\"]")))
+
+(defn create-pagemark-fx
+  [pages fx]
+  (reduce (fn [m v]
+            (if-let [page (page-rendered v)]
+              (conj m [:dispatch [fx page {:done nil :skip true :schedule ""}]])
+              m))
+          []
+          pages))
+
+(rf/reg-event-fx
+ :pagemark/sidebar-remove
+ (fn [{:keys [db]} [_ start-page end-page deadline]]
+   (let [pages (get-pages start-page end-page)]
+     {:db (update db :pdf/pagemarks #(apply dissoc % pages))
+      :fx (if (= "" deadline)
+            (into [] (create-pagemark-fx pages :pagemark/remove-render))
+            [])})))
 
 (rf/reg-event-fx
  :pagemark/sidebar-add-edit
  (fn [{:keys [db]} [_ {:keys [start-page end-page deadline edit-start edit-end]}]]
    (let [pages-to-add (cond-> '()
-                        (< (int start-page) (int edit-start)) (add-pages start-page edit-start)
-                        (< (int edit-end) (int end-page)) (add-pages edit-end end-page)
-                        true (add-pages start-page end-page))
+                        (< (int start-page) (int edit-start)) (add-pages start-page (dec (int edit-start)))
+                        true (add-pages edit-start edit-end)
+                        (< (int edit-end) (int end-page)) (add-pages (inc (int edit-end)) end-page))
          pages-to-remove (cond-> '()
                            (< (int edit-start) (int start-page)) (add-pages edit-start
                                                                             (dec (int start-page)))
@@ -579,7 +604,11 @@
                                                           {:done nil ; Can't set :done from the scrollbar
                                                            :skip (= "" deadline)
                                                            :schedule deadline})))
-              (update :pdf/pagemarks #(apply dissoc % pages-to-remove)))})))
+              (update :pdf/pagemarks #(apply dissoc % pages-to-remove)))
+      :fx (if (= "" deadline)
+            (into [] (concat (create-pagemark-fx pages-to-add :pagemark/render)
+                             (create-pagemark-fx pages-to-remove :pagemark/remove-render)))
+            [])})))
 
 (reg-event-fx
  :pagemark/close
