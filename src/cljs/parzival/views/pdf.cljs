@@ -314,7 +314,10 @@
                                    :on-click handle-click-scrollbar})
               [:div (merge (use-style pagemark-edit-style)
                            {:id "pagemark-tmp"
-                            :style {:width "100%"
+                            :style {:visibility (if (:adding? @state)
+                                                  "visible"
+                                                  "hidden")
+                                    :width "100%"
                                     :cursor "pointer"
                                     :background (:skip PAGEMARK-COLOR)}})]]
              (map (fn [v]
