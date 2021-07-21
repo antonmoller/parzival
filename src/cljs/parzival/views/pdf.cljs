@@ -184,7 +184,7 @@
                        :style nil
                        :low-limit 1
                        :high-limit @no-pages
-                       :adding? true})
+                       :adding? false})
         reset-state #(reset! state
                              {:start-page "" :end-page "" :edit-start "" :edit-end ""
                               :deadline "" :style nil :low-limit 1 :high-limit @no-pages :adding? true})
@@ -270,6 +270,7 @@
                         (reset-css)
                         (reset-state))]
     (fn []
+      (js/console.log @state)
       [:div#createPagemark (merge (use-style pagemark-style)
                                   {:on-pointer-down #(.stopPropagation %)})
        [:form (use-style pagemark-card-style
@@ -328,7 +329,9 @@
                                         :style :edit
                                         :edit? true
                                         :page-percentage page-percentage}
-                                       v)]))
+                                       (if (= :done (:type v))
+                                         (assoc v :end-area 1)
+                                         v))]))
                   @pagemarks))])))
 
 (defn pagemark-sidebar
