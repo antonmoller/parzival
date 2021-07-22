@@ -6,7 +6,7 @@
                                org.clojure/google-closure-library-third-party]]
                  [thheller/shadow-cljs "2.11.23"]
                  [reagent "0.10.0"]
-                 [re-frame "1.1.2"]
+                 [re-frame "1.2.0"]
                  [day8.re-frame/tracing "0.6.0"]
                  [devcards "0.2.7"]
                  [metosin/reitit "0.5.12"]
@@ -33,22 +33,22 @@
                                                   :infer-externs :auto}
                                :modules {:shared {:entries []}
                                          :app {:init-fn parzival.core/init
-                                               :depends-on #{:shared}}
+                                               :depends-on #{:shared}
+                                               :preloads [devtools.preload
+                                                          day8.re-frame-10x.preload]}
                                          :pdf.worker {:init-fn parzival.worker/init
                                                       :depends-on #{:shared}
                                                       :web-worker true}}
                                          ; :pdf.viewer {:init-fn parzival.pdf/init
                                          ;              :depends-on #{:shared}}}
-                               :dev {:compiler-options {:closure-defines {re-frame.trace.trace-enabled? true
-                                                                          day8.re-frame.tracing.trace-enabled? true}}}
                                :release {:build-options
                                          {:ns-aliases
                                           {day8.re-frame.tracing day8.re-frame.tracing-stubs}}}
+                               :dev {:compiler-options {:closure-defines {re-frame.trace.trace-enabled? true
+                                                                          day8.re-frame.tracing.trace-enabled? true}}}
                                :devtools {:http-root "resources/public"
-                                          :http-port 8280 
-                                          ;; :preloads [devtools.preload
-                                                 ;;     day8.re-frame-10x.preload]
-                                          }}
+                                          :http-port 8280
+                                          :console-support false}}
 
                          :renderer {:target :browser
                                     :output-dir "resources/public/js/compiled"
@@ -59,14 +59,15 @@
                                                        :output-feature-set :es-next}
                                     :modules {:shared {:entries []}
                                               :renderer {:init-fn parzival.core/init
-                                                          :depends-on #{:shared}}
+                                                          :depends-on #{:shared}
+                                                         :preloads [devtools.preload
+                                                                    day8.re-frame-10x.preload]}
                                               :pdf.worker {:init-fn parzival.worker/init
                                                             :depends-on #{:shared}
                                                             :web-worker true}}
                                     :dev {:compiler-options {:closure-defines {re-frame.trace.trace-enabled? true
                                                                                day8.re-frame.tracing.trace-enabled? true}}}
-                                    :devtools {:preloads [devtools.preload
-                                                          day8.re-frame-10x.preload]}}
+                                    :devtools {:console-support false}}
 
                          :main {:target :node-script
                                 :output-to "resources/main.js"
@@ -97,7 +98,7 @@
                             ["shell" "echo" "\"DEPRECATED: Please use lein watch instead.\""]
                             ["watch"]]
             "watch"        ["with-profile" "dev" "do"
-                            ["shadow" "watch" "app" ]];"renderer" "main" "devcards" "browser-test" "karma-test"]]
+                            ["shadow" "watch" "app" "renderer" "main" "devcards" "browser-test" "karma-test"]]
 
             "prod"         ["do"
                             ["shell" "echo" "\"DEPRECATED: Please use lein release instead.\""]

@@ -104,7 +104,8 @@
 (reg-event-fx
  :pdf/change-size
  (fn [{:keys [db]} _]
-   (set! (.-currentScaleValue (get db :pdf/viewer)) "page-width")
+   (when-let [pdf-viewer (get db :pdf/viewer)]
+     (set! (.-currentScaleValue pdf-viewer) "page-width"))
    {}))
 
 ;; TODO: Create a more general version by looking at pagemark-resize
