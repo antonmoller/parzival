@@ -1,7 +1,9 @@
 (ns parzival.pdf
   (:require
-   [re-frame.core :as rf :refer [dispatch reg-event-fx reg-fx]]
+   [re-frame.core :as rf :refer [subscribe dispatch reg-event-fx reg-fx reg-sub reg-sub-raw]]
    [parzival.db :as db]
+   [reagent.ratom :as ratom :refer [reaction track]]
+   [datascript.core :as d]
    [parzival.style :refer [PAGEMARK-COLOR]]
    ["pdfjs-dist" :as pdfjs]
    ["pdfjs-dist/web/pdf_viewer.js" :as pdfjs-viewer]
@@ -38,6 +40,64 @@
  :pdf/width
  (fn [db _]
    (get db :pdf/width)))
+
+(defn gen-uid
+  [prefix]
+  (str prefix "-" (random-uuid)))
+
+
+(reg-fx
+ :transact
+ (fn [tx-data]
+   (js/console.log @parzival.db/dsdb)
+   (d/transact! parzival.db/dsdb tx-data)))
+
+;;; Pagemarks/datascript
+;; TODO:
+;; Can this also update??
+(reg-event-fx
+ :pagemark/create
+ (fn [_ [_ pagemark]]
+   {:transact [(merge {:db/id -1 :pagemark/uid (gen-uid "pagemark") :pagemark/pdf 42}
+                                pagemark)]}))
+
+(reg-event-fx
+ :pagemark/delete
+ (fn [_ [_ pagemark-uid]]
+   {:transact [[:db.fn/retractEntitiy [:pagemark/uid pagemark-uid]]]}))
+
+(defn dec-to-percentage
+  [d]
+  (str (* 100 d) "%"))
+
+(defn haha
+  [last? width height]
+  (if last?
+    [(dec-to-percentage width) (dec-to-percentage height)]
+    ["100%" "100%"]))
+
+  ;; {:type type :width width :height height})
+
+; correct pdf
+; correctt page interval
+; correct type
+; last page or not 
+
+(defn get-pagemark
+  [page-no]
+  (d/q '[:find ?type ?width ?height
+         :keys type width height
+         :in $ ?page ?fn
+         :where
+         [?p :pagemark/start-page ?start-page]
+         [?p :pagemark/end-page ?end-page]
+         [(<= ?start-page ?page ?end-page)]
+         [?p :pagemark/type ?type]
+         [(contains? #{:done :skip} ?type)]
+         [(get-else $ ?p :pagemark/end-page-width 1) ?width]
+         [(get-else $ ?p :pagemark/end-page-height 1) ?height]
+         [(?fn (= ?page ?end-page) ?width ?height) [?width ?height]]]
+       @parzival.db/dsdb page-no haha))
 
 ;;; Events
 
@@ -214,48 +274,37 @@
 
 ;; Events
 
-(def SVG-STYLE
-  "position: absolute; inset: 0; width: 100%; height: 100%;
-   mix-blend-mode: multiply; z-index: 1; pointer-events: none;")
-
 (reg-event-fx
  :render/page-highlights
  (fn [{:keys [db]} [_ page]]
    (let [highlights (get-in db [:pdf/highlights (dec (.getAttribute page "data-page-number"))])
          page-rect  (.getBoundingClientRect (.querySelector page "canvas"))
          rows       (.-children (.querySelector page ".textLayer"))
-         svg        (.createElementNS js/document SVG-NAMESPACE "svg")]
-     (doto svg
-       (.setAttribute "class" "highlightLayer")
-       (.setAttribute "style" SVG-STYLE))
+         svg        (.querySelector page ".svgLayer")]
      (run! #(render-highlight (first %) (second %) svg page-rect rows) highlights)
-     (.replaceChild (.querySelector page ".canvasWrapper")
-                    svg
-                    (.querySelector page ".highlightLayer"))
      {})))
 
 
 (reg-event-fx
  :render/page
- (fn [{:keys [db]} [_ page]]
-   (let [page-id (dec (.getAttribute page "data-page-number"))
-         highlights (get-in db [:pdf/highlights page-id])
-         pagemark (get-in db [:pdf/pagemarks page-id])
-         pagemark-layer (.createElementNS js/document SVG-NAMESPACE "svg")
-         highlight-layer (.createElementNS js/document SVG-NAMESPACE "svg")
-         canvas-wrapper (.querySelector page ".canvasWrapper")]
-     (doto highlight-layer
-       (.setAttribute "class" "highlightLayer")
-       (.setAttribute "style" SVG-STYLE))
-     (doto pagemark-layer
-       (.setAttribute "class" "pagemarkLayer")
-       (.setAttribute "style" (str SVG-STYLE " overflow: visible;")))
-     {:fx [(.append canvas-wrapper highlight-layer)
-           (.append canvas-wrapper pagemark-layer)
-           (when (some? highlights)
-             [:dispatch [:render/page-highlights page]])
-           (when (some? pagemark)
-             [:dispatch [:pagemark/render page pagemark]])]})))
+ (fn [_ [_ page]]
+  (let [page-id (.getAttribute page "data-page-number")
+        ;;  highlights (get-in db [:pdf/highlights page-id])
+         svg-layer (.createElementNS js/document SVG-NAMESPACE "svg")
+         canvas-wrapper (.querySelector page ".canvasWrapper")
+        {:keys [type width height]} (first (get-pagemark page-id))
+        ]
+    (js/console.log type width height)
+     (doto svg-layer
+       (.setAttribute "class" "svgLayer")
+       (.setAttribute "style" "position: absolute; inset: 0; width: 100%; height: 100%;
+                               mix-blend-mode: multiply; z-index: 1; pointer-events: none; 
+                               overflow: visible;"))
+     {:fx [(.append canvas-wrapper svg-layer)
+          ;;  (when (some? highlights)
+          ;;    [:dispatch [:render/page-highlights page]])
+           (when (some? type)
+             [:dispatch [:pagemark/render page type width height]])]})))
 
 (reg-event-fx
  :highlight/remove
@@ -371,7 +420,7 @@
         style (.-style target)
         cursor (.. target -style -cursor)
         b-box ^js (.getBBox target)
-        page-rect (.getBoundingClientRect (.closest target ".pagemarkLayer"))
+        page-rect (.getBoundingClientRect (.closest target ".svgLayer"))
         page-width-px (.-width page-rect)
         page-height-px (.-height page-rect)
         width-px (+ (.-width b-box) (.-movementX e))
@@ -511,11 +560,11 @@
               :schedule ""})))
 
 (defn pagemark-done
-  [rect pagemark]
+  [rect width height]
   (doto rect
     (.setAttribute "class" "pagemark")
     (-> (.-style)
-        (set! (str "width: " (:width pagemark) "; height:" (:height pagemark)
+        (set! (str "width: " width "; height:" height
                    "; fill: none; stroke-width:" stroke-width "; stroke:"
                    (:done PAGEMARK-COLOR) "; pointer-events: auto;")))
     (.addEventListener "pointermove" (fn [e]
@@ -543,27 +592,84 @@
 
 (reg-event-fx
  :pagemark/render
- (fn [_ [_ page pagemark]]
+ (fn [_ [_ page type width height]]
    (when (nil? (.querySelector page "rect.pagemark"))
-     (let [svg (.querySelector page ".pagemarkLayer")
+     (let [svg (.querySelector page ".svgLayer")
            rect (.createElementNS js/document SVG-NAMESPACE "rect")]
-       (cond
-         (some? (:done pagemark)) (pagemark-done rect (:done pagemark))
-         (:skip pagemark) (pagemark-skip rect))
+       (case type
+         :done (pagemark-done rect width height)
+         :skip (pagemark-skip rect))
        {:fx [(.append svg rect)]}))))
+
+(defn get-overlapping
+  [start end type]
+  (d/q '[:find ?start-page ?end-page ?width ?height ?type ?p
+         :in $ ?start ?end ?t
+         :where
+         [?p :pagemark/start-page ?start-page]
+         [?p :pagemark/end-page ?end-page]
+         [?p :pagemark/type ?type]
+         [(get-else $ ?p :pagemark/end-page-width 1) ?width]
+         [(get-else $ ?p :pagemark/end-page-height 1) ?height]
+         [(* ?width ?height) ?end-interval]
+         [(+ ?end-page ?end-interval) ?end-interval]
+         (or (and [(= ?type ?t)]
+                  [(<= ?start ?end-interval)]
+                  [(<= ?start-page ?end)])
+             (and [(< ?start ?end-interval)] 
+                  [(< ?start-page ?end)]))]
+       @parzival.db/dsdb start end type))
+
+;; split 
+;; join
 
 (reg-event-fx
  :pagemark/add
- (fn [{:keys [db]} [_ page height]]
-   (let [page-id (dec (.getAttribute page "data-page-number"))
+ (fn [_ [_ page height]]
+   (let [page-id (int (.getAttribute page "data-page-number"))
          old-pagemark (.item (.getElementsByClassName page "pagemark") 0)
-         pagemark {:done {:width "100%" :height height}
-                   :skip false
-                   :schedule ""}]
+         page-height (/ (js/parseFloat height) 100)
+         pagemarks (get-overlapping page-id (+ page-id (* 1 page-height)) :done)
+         new [page-id page-id 1 page-height :done]]
      (when (some? old-pagemark)
        (.remove old-pagemark))
-     {:db (assoc-in db [:pdf/pagemarks page-id] pagemark)
-      :fx [[:dispatch [:pagemark/render page pagemark]]]})))
+     (js/console.log "-----------------------------")
+    ;;  (js/console.log (count pagemarks))
+     (js/console.log pagemarks)
+     (js/console.log (sort-by first pagemarks))
+     (->> (conj pagemarks new)
+          (sort-by first)
+          (reduce (fn [m [start-page end-page width height type entity]]
+                    (js/console.log start-page end-page width height type entity)
+                    m)
+                  {})
+          (js/console.log))
+     
+    ;;  (js/console.log
+    ;;   (reduce (fn [m [start-page end-page width height type entity]]
+    ;;             (js/console.log start-page end-page width height type entity)
+    ;;             m)
+    ;;           {}
+    ;;           (sort-by first (conj pagemarks new))))
+;;     ;;  (js/console.log
+    ;;   (map (fn [{:keys [start-page end-page]}]
+    ;;          (js/console.log start-page " - " end-page)) pagemarks))
+    ;;  (case (count pagemarks)
+    ;;    0 (js/console.log "ADD")
+    ;;    1 (js/console.log "ADD and UPDATE or just UPDATE")
+    ;;    2 (js/console.log "UPDATE and REMOVE"))
+    ;;  (map (fn [[start-page end-page width height type p]]
+    ;;         (js/console.log start-page end-page width height)
+    ;;         ;; (js/console.log start-page end-page width height)
+    ;;         start-page) pagemarks)
+    ;; ;;  (js/console.log )
+     (js/console.log "-----------------------------")
+     {:fx [[:dispatch [:pagemark/render page :done "100%" height]]
+           [:dispatch [:pagemark/create {:pagemark/type :done
+                                         :pagemark/start-page page-id
+                                         :pagemark/end-page page-id
+                                         :pagemark/end-page-width 1
+                                         :pagemark/end-page-height page-height}]]]})))
 
 (reg-event-fx
  :pagemark/remove-render
@@ -602,7 +708,7 @@
   [pages fx]
   (reduce (fn [m v]
             (if-let [page (page-rendered v)]
-              (conj m [:dispatch [fx page {:done nil :skip true :schedule ""}]])
+              (conj m [:dispatch [fx page :skip]])
               m))
           []
           pages))
@@ -677,3 +783,55 @@
                         :height height
                         :edit? (not= 0 (.-length (.getElementsByClassName page "pagemark")))
                         :page page}]]]})))
+
+(defn per-fn
+  [top]
+  (-> (* 100 (/ 37) (dec top)) (str "%")))
+
+(defn calc-height
+  [start-page end-page]
+  (-> (- end-page start-page) (+ 1) (* 100 (/ 37)) (str "%")))
+
+
+;;; Subs
+(reg-sub-raw
+ :pagemark/fetch
+ (fn [_]
+   (ratom/make-reaction (fn []
+                          (d/q '[:find ?uid ?type ?top ?height
+                                 :in $ ?fn ?height-fn
+                                 :where
+                                 [?p :pagemark/uid ?uid]
+                                 [?p :pagemark/type ?type]
+                                 [?p :pagemark/start-page ?start-page]
+                                 [?p :pagemark/end-page ?end-page]
+                                 [(?fn ?start-page) ?top]
+                                 [(?height-fn ?start-page ?end-page) ?height]]
+                               @parzival.db/dsdb  per-fn calc-height)))))
+
+;; TODO it is not this simple, merging necessary in some cases
+(reg-event-fx
+ :pagemark/add-new
+ (fn [_ [_ start-page end-page deadline]]
+   {:fx [[:dispatch [:pagemark/create (cond-> {:pagemark/type :skip
+                                               :pagemark/start-page start-page
+                                               :pagemark/end-page end-page}
+                                        (not= "" deadline) (assoc :pagemark/type :deadline
+                                                                  :pagemark/deadline deadline))]]]}))
+
+;; (reg-event-fx
+;;  :pagemark/add
+;;  (fn [_ [_ page height]]
+;;    (let [page-id (int (.getAttribute page "data-page-number"))
+;;          old-pagemark (.item (.getElementsByClassName page "pagemark") 0)
+;;          page-height (/ (js/parseFloat height) 100)
+;;          pagemarks (get-overlapping page-id (+ page-id (* 1 page-height)) :done)
+;;          new [page-id page-id 1 page-height :done]]
+;;      (when (some? old-pagemark)
+;;        (.remove old-pagemark))
+;;      {:fx [[:dispatch [:pagemark/render page :done "100%" height]]
+;;            [:dispatch [:pagemark/create {:pagemark/type :done
+;;                                          :pagemark/start-page page-id
+;;                                          :pagemark/end-page page-id
+;;                                          :pagemark/end-page-width 1
+;;                                          :pagemark/end-page-height page-height}]]]})))

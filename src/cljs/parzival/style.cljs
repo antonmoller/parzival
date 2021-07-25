@@ -36,6 +36,7 @@
   ;  :left-sidebar-color      "#2C2C2C"
   ;  :body-text-color         "#4333F38"})
 
+;; TODO: highlight-template {:color :opacity :template}
 (def HIGHLIGHT-COLOR
   {;;  :red    "rgba(178, 35, 49, 1)"; 0,5)"
    ;;  :yellow "rgba(255, 200, 101, 0.8)"

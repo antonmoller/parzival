@@ -152,20 +152,20 @@
 ;;; Components
 
 (defn pagemark
-  [{:keys [id on-click style edit?] :as v}]
+  [{:keys [id type top height on-click style edit?]}]
   [:div (merge (use-sub-style pagemark-style style)
                {:id id
                 :on-click on-click
-                :style {:top (calc-top v)
-                        :height (calc-height v)
+                :style {:top top
+                        :height height
                         :border-top (when edit?
-                                      (str "1px solid " ((:type v) PAGEMARK-COLOR)))
+                                      (str "1px solid " (type PAGEMARK-COLOR)))
                         :border-bottom (when edit?
-                                         (str "1px solid " ((:type v) PAGEMARK-COLOR)))
-                        :background ((:type v) PAGEMARK-COLOR)
+                                         (str "1px solid " (type PAGEMARK-COLOR)))
+                        :background (type PAGEMARK-COLOR)
                         :cursor (cond
                                   (not edit?) "default"
-                                  (= :done (:type v)) "not-allowed"
+                                  (= :done type) "not-allowed"
                                   :else "pointer")}})])
 
 (defn pagemark-change
@@ -177,10 +177,10 @@
                        :deadline ""
                        :style nil
                        :low-limit 1
-                       :high-limit @no-pages
+                       :high-limit no-pages
                        :adding? false})
         reset-state #(reset! state {:start-page "" :end-page "" :edit-start "" :edit-end "" :deadline "" 
-                                    :style nil :low-limit 1 :high-limit @no-pages :adding? false})
+                                    :style nil :low-limit 1 :high-limit no-pages :adding? false})
         reset-css #(when (some? (:style @state))
                      (set! (.-width (:style @state)) WIDTH)
                      (set! (.-top (:style @state))
@@ -191,10 +191,10 @@
                                          :end-page (:edit-end @state)
                                          :end-area 1
                                          :page-percentage page-percentage})))
-        handle-click (fn [style {:keys [type start-page end-page schedule]}]
+        handle-click (fn [style type start-page end-page schedule]
                        (when (not= :done type)
                          (let [{:keys [low-limit high-limit]} (calc-limits start-page end-page
-                                                                           @no-pages @pagemarks)]
+                                                                           no-pages pagemarks)]
                            (reset-css)
                            (set! (.-width style) "100%")
                            (reset! state {:start-page start-page
@@ -207,7 +207,7 @@
                                           :high-limit high-limit
                                           :adding? false}))))
         handle-click-scrollbar (fn [e]
-                                 (when-let [[page style low-limit high-limit] (valid-click e @no-pages @pagemarks)]
+                                 (when-let [[page style low-limit high-limit] (valid-click e no-pages pagemarks)]
                                    (reset-css)
                                    (set-color "" style)
                                    (set! (.-top style) (calc-top {:start-page page
@@ -250,10 +250,10 @@
                         (reset-state))
         handle-submit (fn [e]
                         (.preventDefault e)
-                        (dispatch [:pagemark/sidebar-add-edit @state])
+                        (dispatch [:pagemark/add-new (:start-page @state) (:end-page @state) (:deadline @state)])
                         (reset-css)
                         (reset-state))]
-    (fn []
+    (fn [pagemarks]
       [:div#createPagemark (merge (use-style pagemark-style)
                                   {:on-pointer-down #(.stopPropagation %)})
        [:form (use-style pagemark-card-style
@@ -303,36 +303,32 @@
                                     :width "100%"
                                     :cursor "pointer"
                                     :background (:skip PAGEMARK-COLOR)}})]]
-             (map (fn [v]
-                    (as-> (pagemark-sidebar-key v) key
-                      ^{:key key}
-                      [pagemark (merge {:id key
-                                        :on-click (fn [e]
-                                                    (.stopPropagation e)
-                                                    (handle-click (.. e -target -style) v))
-                                        :style :edit
-                                        :edit? true
-                                        :page-percentage page-percentage}
-                                       (if (= :done (:type v))
-                                         (assoc v :end-area 1)
-                                         v))]))
-                  @pagemarks))])))
+             (map (fn [[id type top height]]
+                    ^{:key id}
+                    [pagemark {:id id
+                               :type type
+                               :top top
+                               :height height
+                               :on-click (fn [e]
+                                           (.stopPropagation e))
+                               :style :edit
+                               :edit? true}]) pagemarks))])))
 
 (defn pagemark-sidebar
   []
-  (let [pagemarks (subscribe [:pdf/pagemarks-sidebar])
-        pagemark? (subscribe [:pagemark?])
-        no-pages (subscribe [:pdf/no-pages])
-        page-percentage (/ @no-pages)]
-    (fn []
-      (if @pagemark?
-        [pagemark-change pagemarks no-pages page-percentage]
-        (into [:div]
-              (map (fn [v]
-                     (as-> (pagemark-sidebar-key v) key
-                       ^{:key key}
-                       [pagemark (merge {:style :sidebar
-                                         :edit? false
-                                         :page-percentage page-percentage}
-                                        v)]))
-                   @pagemarks))))))
+  (let [pagemarks @(subscribe [:pagemark/fetch])
+        pagemark? @(subscribe [:pagemark?])
+        no-pages @(subscribe [:pdf/no-pages])
+        page-percentage (/ no-pages)]
+    (if pagemark?
+      [pagemark-change pagemarks no-pages page-percentage]
+      (into [:div]
+            (map (fn [[id type top height]]
+                   ^{:key id}
+                   [pagemark {:id id
+                              :type type
+                              :top top
+                              :height height
+                              :style :sidebar
+                              :edit? false}]))
+            pagemarks))))
