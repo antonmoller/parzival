@@ -250,7 +250,7 @@
                         (reset-state))
         handle-submit (fn [e]
                         (.preventDefault e)
-                        (dispatch [:pagemark/add-new (:start-page @state) (:end-page @state) (:deadline @state)])
+                        (dispatch [:create (:start-page @state) (:end-page @state)])
                         (reset-css)
                         (reset-state))]
     (fn [pagemarks]
@@ -314,21 +314,24 @@
                                :style :edit
                                :edit? true}]) pagemarks))])))
 
+; FIXME
 (defn pagemark-sidebar
   []
-  (let [pagemarks @(subscribe [:pagemark/fetch])
-        pagemark? @(subscribe [:pagemark?])
-        no-pages @(subscribe [:pdf/no-pages])
-        page-percentage (/ no-pages)]
-    (if pagemark?
-      [pagemark-change pagemarks no-pages page-percentage]
-      (into [:div]
-            (map (fn [[id type top height]]
-                   ^{:key id}
-                   [pagemark {:id id
-                              :type type
-                              :top top
-                              :height height
-                              :style :sidebar
-                              :edit? false}]))
-            pagemarks))))
+  (let [;pagemarks @(subscribe [:pagemark/fetch])
+        ;pagemark? @(subscribe [:pagemark?])
+        ;no-pages @(subscribe [:pdf/no-pages])
+        ;page-percentage (/ no-pages)
+        ]
+    [:div]))
+    ;; (if pagemark?
+    ;;   [pagemark-change pagemarks no-pages page-percentage]
+    ;;   (into [:div]
+    ;;         (map (fn [[id type top height]]
+    ;;                ^{:key id}
+    ;;                [pagemark {:id id
+    ;;                           :type type
+    ;;                           :top top
+    ;;                           :height height
+    ;;                           :style :sidebar
+    ;;                           :edit? false}]))
+    ;;         pagemarks))))

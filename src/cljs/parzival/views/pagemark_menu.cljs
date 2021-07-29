@@ -44,11 +44,11 @@
                                        :left left
                                        :top top}})
      [:li (merge (use-sub-style menu-style :item)
-                 {:on-mouse-down #(dispatch [:pagemark/add page height])})
+                 {:on-mouse-down #(dispatch [:pagemark/add 42 page 1 height])})
       [:> BookmarkBorder]
       [:span "Pagemark to Current Location"]]
      [:li (merge (use-sub-style menu-style :item)
-                 {:on-mouse-down #(dispatch [:pagemark/add page "100%"])})
+                 {:on-mouse-down #(dispatch [:pagemark/add 42 page 1 1])})
       [:> Bookmark]
       [:span "Mark Entire Page as Read"]]
      [:li (merge (use-sub-style menu-style :item)

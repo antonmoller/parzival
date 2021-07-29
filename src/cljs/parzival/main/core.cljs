@@ -1,6 +1,6 @@
 (ns parzival.main.core
   (:require
-            ["electron" :refer [app BrowserWindow shell]]))
+   ["electron" :refer [app BrowserWindow shell]]))
 
 (def main-window (atom nil))
 
@@ -25,10 +25,6 @@
 
 (defn main
   []
-  (.on app "window-all-closed" #(when-not (= js/process.platform "darwin")
-                                  (.quit app)))
-  (.on app "activate" (fn []
-                        (when (nil? @main-window)
-                          (init-browser))))
-  (.on  app "ready" (fn []
-                      (init-browser))))
+  (.on app "window-all-closed" #(when-not (= js/process.platform "darwin") (.quit app)))
+  (.on app "activate" #(when (nil? @main-window) (init-browser)))
+  (.on  app "ready" #(init-browser)))
