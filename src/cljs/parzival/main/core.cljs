@@ -9,10 +9,16 @@
   (reset! main-window (BrowserWindow.
                         (clj->js {:width 800
                                   :height 600
+                                  :minWidth 800
+                                  :minHeight 300
+                                  :backgroundColor "#1A1A1A"
                                   :resize true
-                                  :autoHideMenuBar true
-                                  :enableRemoteModule true
-                                  :webPreferences {:nodeIntegration true
+                                  ;; :autoHideMenuBar true
+                                  ;; :frame false
+                                  ;; :titleBarStyle "hidden"
+                                  ;; :trafficLightPosition {:x 19, :y 36}
+                                  :webPreferences {:contextIsolation false
+                                                   :nodeIntegration true
                                                    :worldSafeExecuteJavaScript true
                                                    :enableRemoteModule true
                                                    :nodeIntegrationWorker true}})))

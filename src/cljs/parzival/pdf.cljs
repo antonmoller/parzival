@@ -3,6 +3,7 @@
    [re-frame.core :as rf :refer [subscribe dispatch reg-event-fx reg-fx reg-sub reg-sub-raw]]
    [parzival.db :as db]
    [parzival.style :refer [PAGEMARK-COLOR]]
+   [cljs.spec.alpha :as s]
    ["pdfjs-dist" :as pdfjs]
    ["pdfjs-dist/web/pdf_viewer.js" :as pdfjs-viewer]
    [cljs.core.async :refer [go]]
@@ -145,12 +146,9 @@
       [(.-parentNode end)
        (.-endOffset range-obj)])))
 
-(defn highlight-id
-  [{:keys [_ _ x0 y0 x1 y1]}]
-  (str "highlight-" x0 "-" y0 "-" x1 "-" y1))
-
 (defn is-overlapping?
-  [{x0-0 :x0 y0-0 :y0 x0-1 :x1 y0-1 :y1} {x1-0 :x0 y1-0 :y0 x1-1 :x1 y1-1 :y1}]
+  [{x0-0 :start-offset y0-0 :start x0-1 :end-offset y0-1 :end}
+   {x1-0 :start-offset y1-0 :start x1-1 :end-offset y1-1 :end}]
   (or
    (and (< y0-0 y1-1) (> y0-1 y1-0))
    (and (== y0-0 y0-1 y1-0 y1-1) (and (< x0-0 x1-1) (> x0-1 x1-0)))
@@ -158,50 +156,27 @@
    (and (== y0-0 y1-1) (not= y0-0 y0-1 y1-0 y1-1) (< x0-0 x1-1))))
 
 (defn merge-
-  [{c :color o :opacity x0-0 :x0 y0-0 :y0 x0-1 :x1  y0-1 :y1} {x1-0 :x0 y1-0 :y0 x1-1 :x1  y1-1 :y1}]
+  [{c :color o :opacity x0-0 :start-offset y0-0 :start x0-1 :end-offset y0-1 :end}
+   {x1-0 :start-offset y1-0 :start x1-1 :end-offset y1-1 :end}]
   {:color c
    :opacity o
-   :x0 (cond
-         (< y0-0 y1-0) x0-0
-         (== y0-0 y1-0) (min x0-0 x1-0)
-         :else x1-0)
-   :x1   (cond
-           (> y0-1 y1-1) x0-1
-           (== y0-1 y1-1) (max x0-1 x1-1)
-           :else x1-1)
-   :y0 (min y0-0 y1-0)
-   :y1   (max y0-1 y1-1)})
+   :start (min y0-0 y1-0)
+   :start-offset (cond
+                   (< y0-0 y1-0) x0-0
+                   (== y0-0 y1-0) (min x0-0 x1-0)
+                   :else x1-0)
+   :end (max y0-1 y1-1)
+   :end-offset   (cond
+                   (> y0-1 y1-1) x0-1
+                   (== y0-1 y1-1) (max x0-1 x1-1)
+                   :else x1-1)})
 
-(defn merge-highlights
-  [page highlight]
-  (let [{:keys [merged highlights]} (reduce-kv (fn [m k highlight]
-                                                 (if (is-overlapping? (:merged m) highlight)
-                                                   (assoc m :merged (merge- (:merged m) highlight))
-                                                   (assoc-in m [:highlights k] highlight)))
-                                               {:merged highlight :highlights {}}
-                                               page)]
-    (assoc highlights (highlight-id merged) merged)))
-
-(defn render-highlight
-  [id {:keys [color opacity x0 x1 y0 y1]} svg page-rect rows]
-  (let [group (.createElementNS js/document SVG-NAMESPACE "g")
-        r (js/Range.)]
-    (doto group
-      (.setAttribute "id" id)
-      (.addEventListener "click" #(dispatch [:highlight/toolbar-edit group]))
-      (.setAttribute "style" (str "cursor: pointer; pointer-events: auto; fill: " color
-                                  "; fill-opacity: " opacity ";")))
-    (doseq [i (range y0 (inc y1))]
-      (.setStart r (.-firstChild (.item rows i)) (if (== i y0) x0 0))
-      (.setEnd r (.-firstChild (.item rows i)) (if (== i y1) x1 (.. (.item rows i) -firstChild -length)))
-      (let [coords (.getBoundingClientRect r)
-            rect (.createElementNS js/document SVG-NAMESPACE "rect")]
-        (.setAttribute rect "style" (str "x: " (- (.-x coords) (.-x page-rect)) "px;"
-                                         "y: " (- (.-y coords) (.-y page-rect)) "px;"
-                                         "width: " (.-width coords) "px;"
-                                         "height: " (.-height coords) "px;"))
-        (.append group rect)))
-    (.append svg group)))
+(defn check-spec
+  "Throws an exception if 'data' doesn't match 'a-spec'"
+  [a-spec data]
+  (if (s/valid? a-spec data)
+    data
+    (throw (ex-info (str "spec check failed: " (s/explain-str a-spec data)) {}))))
 
 ;; Subs
 
@@ -222,32 +197,53 @@
 ;; Events
 
 (reg-event-fx
- :render/page-highlights
- (fn [{:keys [db]} [_ page]]
-   (let [highlights (get-in db [:pdf/highlights (dec (.getAttribute page "data-page-number"))])
-         page-rect  (.getBoundingClientRect (.querySelector page "canvas"))
-         rows       (.-children (.querySelector page ".textLayer"))
-         svg        (.querySelector page ".svgLayer")]
-     (run! #(render-highlight (first %) (second %) svg page-rect rows) highlights)
-     {})))
+ :highlight/render
+ (fn [_ [_ {:keys [color opacity start start-offset end end-offset]} highlight-uid svg page-rect rows]]
+   (let [group (.createElementNS js/document SVG-NAMESPACE "g")
+         r (js/Range.)]
+     (doto group
+       (.setAttribute "id" highlight-uid)
+       (.addEventListener "click" #(dispatch [:highlight/toolbar-edit group]))
+       (.setAttribute "style" (str "cursor: pointer; pointer-events: auto; fill: " color
+                                   "; fill-opacity: " opacity ";")))
+     (doseq [i (range start (inc end))]
+       (.setStart r (.-firstChild (.item rows i)) (if (== i start) start-offset 0))
+       (.setEnd r (.-firstChild (.item rows i)) (if (== i end) end-offset (.. (.item rows i) -firstChild -length)))
+       (let [coords (.getBoundingClientRect r)
+             rect (.createElementNS js/document SVG-NAMESPACE "rect")]
+         (.setAttribute rect "style" (str "x: " (- (.-x coords) (.-x page-rect)) "px;"
+                                          "y: " (- (.-y coords) (.-y page-rect)) "px;"
+                                          "width: " (.-width coords) "px;"
+                                          "height: " (.-height coords) "px;"))
+         (.append group rect)))
+     (.append svg group))))
+
+(reg-event-fx
+ :page/render-highlights
+ (fn [{:keys [db]} [_ page-no page svg]]
+   (when-let [highlights (get-in db [:pdf/highlights page-no])]
+     (let [page-rect  (.getBoundingClientRect (.querySelector page "canvas"))
+           containers (.-children (.querySelector page ".textLayer"))]
+       {:fx (into []
+                  (map
+                   #(vector :dispatch [:highlight/render (second %) (first %) svg page-rect containers])
+                   highlights))}))))
 
 
 ;;FIXME
 (reg-event-fx
  :render/page
  (fn [_ [_ page]]
-  (let [page-id (.getAttribute page "data-page-number")
-        ;;  highlights (get-in db [:pdf/highlights page-id])
-         svg-layer (.createElementNS js/document SVG-NAMESPACE "svg")
+   (let [page-no (int (.getAttribute page "data-page-number"))
+         svg (.createElementNS js/document SVG-NAMESPACE "svg")
          canvas-wrapper (.querySelector page ".canvasWrapper")]
-     (doto svg-layer
+     (doto svg
        (.setAttribute "class" "svgLayer")
        (.setAttribute "style" "position: absolute; inset: 0; width: 100%; height: 100%;
                                mix-blend-mode: multiply; z-index: 1; pointer-events: none; 
                                overflow: visible;"))
-     {:fx [(.append canvas-wrapper svg-layer)
-          ;;  (when (some? highlights)
-          ;;    [:dispatch [:render/page-highlights page]])
+     {:fx [(.append canvas-wrapper svg)
+           [:dispatch [:page/render-highlights page-no page svg]]
           ;;  (when (some? type)
             ;;  [:dispatch [:pagemark/render page type width height]])
            ]})))
@@ -257,45 +253,60 @@
  (fn [{:keys [db]} _]
    (let [{:keys [element _ _]} (get db :highlight/selected)
          page (.closest element ".page")]
-     {:db (update-in db [:pdf/highlights (dec (.getAttribute page "data-page-number"))]
+     {:db (update-in db [:pdf/highlights (int (.getAttribute page "data-page-number"))]
                      dissoc (.getAttribute element "id"))
-      :fx [[:dispatch [:render/page-highlights page]]]})))
+      :fx [(.remove element)]})))
+
 
 (reg-event-fx
  :highlight/edit
  (fn [{:keys [db]} [_ color opacity]]
    (let [{:keys [element _ _]} (get db :highlight/selected)
          page (.closest element ".page")]
+     (set! (.. element -style -fill) color)
+     (set! (.. element -style -fillOpacity) opacity)
      {:db (update-in db [:pdf/highlights
-                         (dec (.getAttribute page "data-page-number"))
+                         (int (.getAttribute page "data-page-number"))
                          (.getAttribute element "id")]
-                     assoc :color color :opacity opacity)
-      :fx [[:dispatch [:render/page-highlights page]]]})))
+                     assoc :color color :opacity opacity)})))
+
+(defn merge-highlights
+  [page highlight]
+  (reduce-kv (fn [m k highlight]
+               (if (is-overlapping? (:merged m) highlight)
+                 (do
+                   (.remove (.getElementById js/document k))
+                   (assoc m :merged (merge- (:merged m) highlight)))
+                 (assoc-in m [:highlights k] highlight)))
+             {:merged highlight :highlights {}}
+             page))
 
 (reg-event-fx
  :highlight/add
  (fn [{:keys [db]} [_ color opacity]]
    (let [selection (.getSelection js/document)]
      (when-not (.-isCollapsed selection)
-       (let [range-obj        (.getRangeAt selection 0)
-             text-layer       (.. range-obj -startContainer -parentNode -parentNode)
-             page             (.-parentNode text-layer)
-             page-id          (dec (.getAttribute page "data-page-number"))
-             rows             (.-children text-layer)
-             rows-arr         (.from js/Array rows)
-             [end x1]         (get-end range-obj)
-             highlight        {:color color
-                               :opacity opacity
-                               :x0 (.-startOffset range-obj)
-                               :y0 (.indexOf rows-arr (.. range-obj -startContainer -parentNode))
-                               :x1 x1
-                               :y1 (.indexOf rows-arr end)}]
+       (let [range-obj (.getRangeAt selection 0)
+             start-container (.. range-obj -startContainer -parentNode)
+             page      (.closest start-container ".page")
+             page-id   (int (.getAttribute page "data-page-number"))
+             page-rect (.getBoundingClientRect (.querySelector page "canvas"))
+             svg (.querySelector page ".svgLayer")
+             containers (.-children (.closest start-container ".textLayer"))
+             container-arr (.from js/Array containers)
+             [end-container end-offset]  (get-end range-obj)
+             {:keys [merged highlights]} (merge-highlights (get-in db [:pdf/highlights page-id])
+                                                           {:color color
+                                                            :opacity opacity
+                                                            :start (.indexOf container-arr start-container)
+                                                            :start-offset (.-startOffset range-obj)
+                                                            :end (.indexOf container-arr end-container)
+                                                            :end-offset end-offset})
+             merged-uid (gen-uid "highlight")]
          (.collapse range-obj)
-         {:db (assoc-in db
-                        [:pdf/highlights page-id]
-                        (merge-highlights (get-in db [:pdf/highlights page-id])
-                                          highlight))
-          :fx [[:dispatch [:render/page-highlights page]]]})))))
+         {:db (->> (assoc highlights merged-uid merged)
+                   (assoc-in db [:pdf/highlights page-id]))
+          :fx [[:dispatch [:highlight/render merged merged-uid svg page-rect containers]]]})))))
 
 (reg-event-fx
  :highlight/set-anchor

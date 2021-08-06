@@ -1,4 +1,6 @@
-(ns parzival.db)
+(ns parzival.db
+  (:require
+   [cljs.spec.alpha :as s]))
 
 (defonce default-db
   {:name "re-frame"
@@ -17,9 +19,99 @@
    :pdf/document nil
    :pdf/viewer nil
    :pdf/loading? false
-   :page/active nil
-   :refs {}
-   :pages {}})
+   :pdf/highlights {}
+  ;;  :page/active nil
+  ;;  :refs {}
+  ;;  :pages {}
+   
+   })
+
+;;; Spec
+
+;; ;; UI
+;; (s/def :theme/dark boolean?)
+;; (s/def :left-sidebar/open? boolean?)
+;; (s/def :right-sidebar/open? boolean?)
+;; (s/def :right-sidebar/width pos-int?)
+;; (s/def :settings/open? boolean?)
+;; (s/def :highlight/anchor (s/cat :x (and pos? float?) :y (and pos? float?)))
+;; (s/def :highlight/selected ())
+;; ;; (s/def ::highlight/selected)
+;; ;; (s/def ::pagemark?)
+;; ;; (s/def :pdf/active)
+;; ;; (s/def :pdf/document)
+;; ;; (s/def :pdf/viewer)
+;; ;; (s/def :document/active)
+
+
+;; ;; Pagemarks
+;; (s/def ::pagemark-uid string?) ; FIXME
+;; (s/def ::deadline string?) ; FIXME
+;; (s/def ::skip? true?)
+;; (s/def ::width (s/and float? #(<= 0 % 1)))
+;; (s/def ::height (s/and float? #(<= 0 % 1)))
+;; (s/def ::pagemark (s/keys :req [(or ::deadline ::skip? (and ::width ::height))]))
+;; (s/def ::pagemarks (s/map-of ::pagemark-uid ::pagemark))
+
+;; Highlights
+(s/def ::highlight-uid string?)
+(s/def ::color #{:orange :green :blue :purple})
+(s/def ::opacity #(<= 0.1 % 1))
+(s/def ::start pos-int?)
+(s/def ::end pos-int?)
+(s/def ::start-offset pos-int?)
+(s/def ::end-offset pos-int?)
+(s/def ::highlight (s/keys :req [::color ::opacity ::start ::end ::start-offset ::end-offset]))
+(s/def ::highlights (s/map-of ::highlight-uid ::highlight))
+
+(s/def ::db (s/keys :req []))
+
+;; ;; Pages
+;; (s/def ::page-no pos-int?)
+;; (s/def ::page (s/cat :highlights (s/* ::highlight-uid)
+;;                      :pagemark (s/? ::pagemark)))
+;; (s/def ::pages (s/map-of ::page-no ::page))
+
+;; ;; PDF Meta-Data
+;; (s/def ::file-name string?) ;FIXME
+;; (s/def ::title string?)
+;; (s/def ::authors (s/* string?))
+;; (s/def ::no-pages pos-int?)
+;; (s/def ::active-page pos-int?)
+;; (s/def ::meta (s/keys :req [::file-name ::title ::authors ::no-pages ::active-page]))
+
+;; ;; PDF
+;; (s/def ::pdf (s/keys :req [::meta ::pages ::pagemarks ::highlights]))
+
+;; ;; Blocks
+;; (s/def ::block-uid string?) ;FIXME
+;; (s/def ::open? boolean?)
+;; (s/def ::string string?)
+;; (s/def ::highlight ::highlight-uid)
+;; (s/def ::parent (s/? ::block-uid))
+;; (s/def ::children (s/* ::block-uid))
+;; (s/def ::ref string?)
+;; (s/def ::refs (s/* ::ref))
+;; (s/def ::block (s/keys :req [::block-uid ::open? ::string ::highlight ::parent ::children]))
+;; (s/def ::blocks (s/map-of ::block-uid ::block))
+
+;; ;; Documents
+;; (s/def ::document-uid string?)
+;; (s/def ::root-blocks (s/+ ::block-uid))
+;; (s/def ::document (s/keys :req [::title ::root-blocks ::blocks ::pdf]))
+;; (s/def ::documents (s/map-of ::document-uid ::document))
+
+;; ;; Refs
+;; (s/def ::ref-count pos-int?)
+;; (s/def ::link-name string?)
+;; (s/def ::link (s/keys :req  [::document-uid ::block-uid ::ref-count]))
+;; (s/def ::links (s/map-of ::link-name ::link))
+
+;; ;; App-db
+;; (s/def ::db (s/keys :req [::links ::documents]))
+
+
+
 
 ;; {:refs {ref-name [[:path :to :ref]]};authors ;if empty vector remove editing author edits meta of pdfs
 ;;  :pages {pages-id {:title ""

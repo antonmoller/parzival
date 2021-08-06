@@ -48,7 +48,7 @@
 (def PAGEMARK-COLOR
   {:done "green"
    :skip "red"
-   :schedule "blue"})
+   :deadline "blue"})
 
 (def SCROLLBAR
   {:thumb-color "rgba(30, 30, 30, 0.4)"
