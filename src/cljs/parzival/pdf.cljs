@@ -2,7 +2,7 @@
   (:require
    [re-frame.core :as rf :refer [subscribe dispatch reg-event-fx reg-fx reg-sub after]]
    [parzival.db :as db]
-   [parzival.style :refer [PAGEMARK-COLOR]]
+   [parzival.style :refer [PAGEMARK-COLOR HIGHLIGHT-COLOR]]
    [cljs.spec.alpha :as s]
    ["pdfjs-dist" :as pdfjs]
    ["pdfjs-dist/web/pdf_viewer.js" :as pdfjs-viewer]
@@ -156,10 +156,9 @@
    (and (== y0-0 y1-1) (not= y0-0 y0-1 y1-0 y1-1) (< x0-0 x1-1))))
 
 (defn merge-
-  [{c :color o :opacity x0-0 :start-offset y0-0 :start x0-1 :end-offset y0-1 :end}
+  [{c :color x0-0 :start-offset y0-0 :start x0-1 :end-offset y0-1 :end}
    {x1-0 :start-offset y1-0 :start x1-1 :end-offset y1-1 :end}]
   {:color c
-   :opacity o
    :start (min y0-0 y1-0)
    :start-offset (cond
                    (< y0-0 y1-0) x0-0
@@ -200,14 +199,15 @@
 
 (reg-event-fx
  :highlight/render
- (fn [_ [_ {:keys [color opacity start start-offset end end-offset]} highlight-uid svg page-rect rows]]
+ (fn [_ [_ {:keys [color start start-offset end end-offset]} highlight-uid svg page-rect rows]]
    (let [group (.createElementNS js/document SVG-NAMESPACE "g")
          r (js/Range.)]
      (doto group
        (.setAttribute "id" highlight-uid)
        (.addEventListener "click" #(dispatch [:highlight/toolbar-edit group]))
-       (.setAttribute "style" (str "cursor: pointer; pointer-events: auto; fill: " color
-                                   "; fill-opacity: " opacity ";")))
+       (.setAttribute "style" (str "cursor: pointer; pointer-events: auto; "
+                                    "fill: " (:color (color HIGHLIGHT-COLOR))
+                                    "; fill-opacity: " (:opacity (color HIGHLIGHT-COLOR)) ";")))
      (doseq [i (range start (inc end))]
        (.setStart r (.-firstChild (.item rows i)) (if (== i start) start-offset 0))
        (.setEnd r (.-firstChild (.item rows i)) (if (== i end) end-offset (.. (.item rows i) -firstChild -length)))
@@ -264,15 +264,15 @@
 (reg-event-fx
  :highlight/edit
  [check-spec-interceptor]
- (fn [{:keys [db]} [_ color opacity]]
+ (fn [{:keys [db]} [_ color]]
    (let [{:keys [element _ _]} (get db :highlight/selected)
          page (.closest element ".page")]
-     (set! (.. element -style -fill) color)
-     (set! (.. element -style -fillOpacity) opacity)
+     (set! (.. element -style -fill) (:color (color HIGHLIGHT-COLOR)))
+     (set! (.. element -style -fillOpacity) (:opacity (color HIGHLIGHT-COLOR)))
      {:db (update-in db [:highlights
                          (int (.getAttribute page "data-page-number"))
                          (.getAttribute element "id")]
-                     assoc :color color :opacity opacity)})))
+                     assoc :color color)})))
 
 (defn merge-highlights
   [page highlight]
@@ -288,7 +288,8 @@
 (reg-event-fx
  :highlight/add
  [check-spec-interceptor]
- (fn [{:keys [db]} [_ color opacity]]
+ (fn [{:keys [db]} [_ color]]
+   (js/console.log color)
    (let [selection (.getSelection js/document)]
      (when-not (.-isCollapsed selection)
        (let [range-obj (.getRangeAt selection 0)
@@ -302,7 +303,6 @@
              [end-container end-offset]  (get-end range-obj)
              {:keys [merged highlights]} (merge-highlights (get-in db [:highlights page-id])
                                                            {:color color
-                                                            :opacity opacity
                                                             :start (.indexOf container-arr start-container)
                                                             :start-offset (.-startOffset range-obj)
                                                             :end (.indexOf container-arr end-container)

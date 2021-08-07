@@ -62,14 +62,13 @@
 
 ;; Highlights
 (s/def ::highlight-uid string?) ; FIXME
-;; (s/def ::color #{:orange :green :blue :purple})
-(s/def ::color string?)
-(s/def ::opacity #(<= 0.1 % 1))
+(s/def ::color #{:orange :green :blue :purple})
+;; (s/def ::color string?)
 (s/def ::start nat-int?)
 (s/def ::end nat-int?)
 (s/def ::start-offset nat-int?)
 (s/def ::end-offset nat-int?)
-(s/def ::highlight (s/keys :req-un [::color ::opacity ::start ::start-offset ::end ::end-offset]))
+(s/def ::highlight (s/keys :req-un [::color ::start ::start-offset ::end ::end-offset]))
 (s/def ::highlights (s/map-of ::page-no (s/map-of ::highlight-uid ::highlight)))
 
 ;; App-db

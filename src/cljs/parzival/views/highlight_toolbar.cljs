@@ -74,7 +74,7 @@
                     {:style {:top (str (:top pos) "px")
                              :left (get-position pos)}})
         (doall
-         (for [[_ {:keys [color opacity]}] HIGHLIGHT-COLOR]
+         (for [[k {color :color}] HIGHLIGHT-COLOR]
            (if (and (some? edit?) (= (:color edit?) color))
              [:div (merge (use-style button-style)
                           {:key (str "highlight-" color)
@@ -83,6 +83,6 @@
              [:div (merge (use-style button-style)
                           {:key (str "highlight-" color)
                            :on-mouse-down #(if (nil? edit?)
-                                             (dispatch [:highlight/add color opacity])
-                                             (dispatch [:highlight/edit color opacity]))})
+                                             (dispatch [:highlight/add k])
+                                             (dispatch [:highlight/edit k]))})
               [:> Brightness1Rounded  {:style {:color color}}]])))]])))
