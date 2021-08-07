@@ -340,7 +340,7 @@
                           (dispatch [:highlight/set-anchor nil])
                           (when (some? selected-highlight)
                             (set! (.. selected-highlight -style -fillOpacity)
-                                           (* (.. selected-highlight -style -fillOpacity) 2))))
+                                  (* (.. selected-highlight -style -fillOpacity) 2))))
                         (js-obj "once" true)))))
 
 (reg-event-fx
@@ -574,15 +574,15 @@
 
 (reg-event-fx
  :pagemark/add
- (fn [_ [_  pdf-uid page width height]]
-   (let [page-id (int (.getAttribute page "data-page-number"))
-         old-pagemark (.item (.getElementsByClassName page "pagemark") 0)]
-     (when (some? old-pagemark)
-       (.remove old-pagemark))
-     {:fx [[:dispatch [:pagemark/render page :done 1 height]]]
-      :transact [{:db/add [:pdf/uid pdf-uid], :pdf/pages {:page/no page-id
-                                                          :page/pagemark {:pagemark/uid (gen-uid "pagemark")
-                                                                          :pagemark/data {:type :done :width width :height height}}}}]})))
+ [check-spec-interceptor]
+ (fn [{:keys [db]} [_   page width height]]
+   (let [page-no (int (.getAttribute page "data-page-number"))
+         pagemark-uid (first (first (get-in db [:pagemarks page-no])))]
+     {:db (if (some? pagemark-uid)
+            (assoc-in db [:pagemarks page-no pagemark-uid] {:width width :height height})
+            (assoc-in db [:pagemarks page-no (gen-uid "pagemark")] {:width width :height height}))
+      :fx [[:dispatch [:pagemark/remove-render page]]
+           [:dispatch [:pagemark/render page :done width height]]]})))
 
 (reg-event-fx
  :pagemark/remove-render
@@ -593,10 +593,10 @@
 
 (reg-event-fx
  :pagemark/remove
+ [check-spec-interceptor]
  (fn [{:keys [db]} [_ page]]
-   {:db (->>  (.getAttribute page "data-page-number")
-              (dec)
-              (update db :pdf/pagemarks dissoc))
+   {:db (->>  (int (.getAttribute page "data-page-number"))
+              (update db :pagemarks dissoc))
     :fx [[:dispatch [:pagemark/remove-render page]]]}))
 
 (rf/reg-event-db

@@ -21,7 +21,7 @@
    :highlight/selected nil ; [color page id] [color page id]
   ;;  :page/active nil
   ;;  :refs {}
-   :pages {}
+   :pagemarks (sorted-map)
    :highlights {}})
 
 ;;; Spec
@@ -48,18 +48,20 @@
 ;; ;; (s/def :pdf/viewer)
 ;; ;; (s/def :document/active)
 
+(s/def ::page-no pos-int?)
 
-;; ;; Pagemarks
-;; (s/def ::pagemark-uid string?) ; FIXME
-;; (s/def ::deadline string?) ; FIXME
-;; (s/def ::skip? true?)
-;; (s/def ::width (s/and float? #(<= 0 % 1)))
-;; (s/def ::height (s/and float? #(<= 0 % 1)))
-;; (s/def ::pagemark (s/keys :req [(or ::deadline ::skip? (and ::width ::height))]))
-;; (s/def ::pagemarks (s/map-of ::pagemark-uid ::pagemark))
+;; Pagemarks
+(s/def ::pagemark-uid string?) ; FIXME
+(s/def ::deadline string?) ; FIXME
+(s/def ::skip? true?)
+(s/def ::width (s/and float? #(<= 0 % 1)))
+(s/def ::height (s/and float? #(<= 0 % 1)))
+(s/def ::pagemark (s/keys :req-un [(or ::deadline ::skip? (and ::width ::height))]))
+(s/def ::pagemarks (s/and (s/map-of ::page-no (s/map-of ::pagemark-uid ::pagemark))
+                          #(instance? PersistentTreeMap %)))
 
 ;; Highlights
-(s/def ::highlight-uid string?)
+(s/def ::highlight-uid string?) ; FIXME
 ;; (s/def ::color #{:orange :green :blue :purple})
 (s/def ::color string?)
 (s/def ::opacity #(<= 0.1 % 1))
@@ -68,11 +70,10 @@
 (s/def ::start-offset nat-int?)
 (s/def ::end-offset nat-int?)
 (s/def ::highlight (s/keys :req-un [::color ::opacity ::start ::start-offset ::end ::end-offset]))
-(s/def ::page-no   pos-int?)
 (s/def ::highlights (s/map-of ::page-no (s/map-of ::highlight-uid ::highlight)))
 
 ;; App-db
-(s/def ::db (s/keys :req-un [::highlights]))
+(s/def ::db (s/keys :req-un [::highlights ::pagemarks]))
 
 ;; ;; Pages
 ;; (s/def ::page-no (s/and integer?
