@@ -1,6 +1,6 @@
 (ns parzival.pdf
   (:require
-   [re-frame.core :as rf :refer [subscribe dispatch reg-event-fx reg-fx reg-sub reg-sub-raw]]
+   [re-frame.core :as rf :refer [subscribe dispatch reg-event-fx reg-fx reg-sub after]]
    [parzival.db :as db]
    [parzival.style :refer [PAGEMARK-COLOR]]
    [cljs.spec.alpha :as s]
@@ -171,12 +171,14 @@
                    (== y0-1 y1-1) (max x0-1 x1-1)
                    :else x1-1)})
 
-(defn check-spec
+(defn check-and-throw
   "Throws an exception if 'data' doesn't match 'a-spec'"
-  [a-spec data]
-  (if (s/valid? a-spec data)
-    data
-    (throw (ex-info (str "spec check failed: " (s/explain-str a-spec data)) {}))))
+  [a-spec db]
+  (if (s/valid? a-spec db)
+    db
+    (throw (ex-info (str "spec check failed: " (s/explain-str a-spec db)) {}))))
+
+(def check-spec-interceptor (after (partial check-and-throw :parzival.db/db)))
 
 ;; Subs
 
@@ -221,7 +223,7 @@
 (reg-event-fx
  :page/render-highlights
  (fn [{:keys [db]} [_ page-no page svg]]
-   (when-let [highlights (get-in db [:pdf/highlights page-no])]
+   (when-let [highlights (get-in db [:highlights page-no])]
      (let [page-rect  (.getBoundingClientRect (.querySelector page "canvas"))
            containers (.-children (.querySelector page ".textLayer"))]
        {:fx (into []
@@ -250,22 +252,24 @@
 
 (reg-event-fx
  :highlight/remove
+ [check-spec-interceptor]
  (fn [{:keys [db]} _]
    (let [{:keys [element _ _]} (get db :highlight/selected)
          page (.closest element ".page")]
-     {:db (update-in db [:pdf/highlights (int (.getAttribute page "data-page-number"))]
+     {:db (update-in db [:highlights (int (.getAttribute page "data-page-number"))]
                      dissoc (.getAttribute element "id"))
       :fx [(.remove element)]})))
 
 
 (reg-event-fx
  :highlight/edit
+ [check-spec-interceptor]
  (fn [{:keys [db]} [_ color opacity]]
    (let [{:keys [element _ _]} (get db :highlight/selected)
          page (.closest element ".page")]
      (set! (.. element -style -fill) color)
      (set! (.. element -style -fillOpacity) opacity)
-     {:db (update-in db [:pdf/highlights
+     {:db (update-in db [:highlights
                          (int (.getAttribute page "data-page-number"))
                          (.getAttribute element "id")]
                      assoc :color color :opacity opacity)})))
@@ -283,6 +287,7 @@
 
 (reg-event-fx
  :highlight/add
+ [check-spec-interceptor]
  (fn [{:keys [db]} [_ color opacity]]
    (let [selection (.getSelection js/document)]
      (when-not (.-isCollapsed selection)
@@ -295,7 +300,7 @@
              containers (.-children (.closest start-container ".textLayer"))
              container-arr (.from js/Array containers)
              [end-container end-offset]  (get-end range-obj)
-             {:keys [merged highlights]} (merge-highlights (get-in db [:pdf/highlights page-id])
+             {:keys [merged highlights]} (merge-highlights (get-in db [:highlights page-id])
                                                            {:color color
                                                             :opacity opacity
                                                             :start (.indexOf container-arr start-container)
@@ -305,7 +310,7 @@
              merged-uid (gen-uid "highlight")]
          (.collapse range-obj)
          {:db (->> (assoc highlights merged-uid merged)
-                   (assoc-in db [:pdf/highlights page-id]))
+                   (assoc-in db [:highlights page-id]))
           :fx [[:dispatch [:highlight/render merged merged-uid svg page-rect containers]]]})))))
 
 (reg-event-fx

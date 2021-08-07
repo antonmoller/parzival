@@ -11,29 +11,34 @@
    :right-sidebar/open false
    :right-sidebar/width 32
    :settings/open false
-   :highlight/anchor nil ; [x y]
-   :highlight/selected nil ; [color page id] [color page id]
    :pagemark? false
    :pagemark/anchor nil ;  {:left :top :height :edit :page}
    :pdf nil
    :pdf/document nil
    :pdf/viewer nil
    :pdf/loading? false
-   :pdf/highlights {}
+   :highlight/anchor nil ; [x y]
+   :highlight/selected nil ; [color page id] [color page id]
   ;;  :page/active nil
   ;;  :refs {}
-  ;;  :pages {}
-   
-   })
+   :pages {}
+   :highlights {}})
 
 ;;; Spec
 
 ;; ;; UI
+;; (s/def ::name string?)
+;; (s/def ::current-route keyword?)
 ;; (s/def :theme/dark boolean?)
-;; (s/def :left-sidebar/open? boolean?)
-;; (s/def :right-sidebar/open? boolean?)
+;; (s/def :left-sidebar/open boolean?)
+;; (s/def :right-sidebar/open boolean?)
 ;; (s/def :right-sidebar/width pos-int?)
-;; (s/def :settings/open? boolean?)
+;; (s/def :settings/open boolean?)
+;; (s/def ::pagemark? boolean?)
+;; (s/def :pagemark/anchor (s/or nil?
+;;                               (s/keys :req-un [::left ::top ::height ::edit ::page])))
+;; (s/def :)
+;; (s/def )
 ;; (s/def :highlight/anchor (s/cat :x (and pos? float?) :y (and pos? float?)))
 ;; (s/def :highlight/selected ())
 ;; ;; (s/def ::highlight/selected)
@@ -55,21 +60,25 @@
 
 ;; Highlights
 (s/def ::highlight-uid string?)
-(s/def ::color #{:orange :green :blue :purple})
+;; (s/def ::color #{:orange :green :blue :purple})
+(s/def ::color string?)
 (s/def ::opacity #(<= 0.1 % 1))
-(s/def ::start pos-int?)
-(s/def ::end pos-int?)
-(s/def ::start-offset pos-int?)
-(s/def ::end-offset pos-int?)
-(s/def ::highlight (s/keys :req [::color ::opacity ::start ::end ::start-offset ::end-offset]))
-(s/def ::highlights (s/map-of ::highlight-uid ::highlight))
+(s/def ::start nat-int?)
+(s/def ::end nat-int?)
+(s/def ::start-offset nat-int?)
+(s/def ::end-offset nat-int?)
+(s/def ::highlight (s/keys :req-un [::color ::opacity ::start ::start-offset ::end ::end-offset]))
+(s/def ::page-no   pos-int?)
+(s/def ::highlights (s/map-of ::page-no (s/map-of ::highlight-uid ::highlight)))
 
-(s/def ::db (s/keys :req []))
+;; App-db
+(s/def ::db (s/keys :req-un [::highlights]))
 
 ;; ;; Pages
-;; (s/def ::page-no pos-int?)
+;; (s/def ::page-no (s/and integer?
+                        ;; #(< 1 %)))
 ;; (s/def ::page (s/cat :highlights (s/* ::highlight-uid)
-;;                      :pagemark (s/? ::pagemark)))
+                    ;;  :pagemark (s/? ::pagemark)))
 ;; (s/def ::pages (s/map-of ::page-no ::page))
 
 ;; ;; PDF Meta-Data
