@@ -32,24 +32,21 @@
 
 (defn match-panel
   [route-name]
-   (case route-name
-      :documents document-table
-      :pdf       pdf
-      [:div]))
+  [(case route-name
+     :documents document-table
+     :pdf       pdf
+     :else :div)])
 
 
-(defn main-panel 
+(defn main-panel
   []
   (let [route-name (subscribe [:current-route/name])]
     (fn []
       [:div (use-style app-wrapper-style)
-        [search]
-        ;; [settings]
-        [app-toolbar]
-        [left-sidebar]
-        [:div (use-style main-content-style)
-         [pdf]
-        ;; [match-panel @route-name]
-         ]
-        [right-sidebar]
-       ])))
+       [search]
+      ;;  [settings]
+       [app-toolbar]
+       [left-sidebar]
+       [:div (use-style main-content-style)
+        [match-panel @route-name]]
+       [right-sidebar]])))

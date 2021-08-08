@@ -235,10 +235,11 @@
 ;;FIXME
 (reg-event-fx
  :render/page
- (fn [_ [_ page]]
+ (fn [{:keys [db]} [_ page]]
    (let [page-no (int (.getAttribute page "data-page-number"))
          svg (.createElementNS js/document SVG-NAMESPACE "svg")
-         canvas-wrapper (.querySelector page ".canvasWrapper")]
+         canvas-wrapper (.querySelector page ".canvasWrapper")
+         pagemark (get-in db [:pagemarks page-no])]
      (doto svg
        (.setAttribute "class" "svgLayer")
        (.setAttribute "style" "position: absolute; inset: 0; width: 100%; height: 100%;
@@ -246,9 +247,8 @@
                                overflow: visible;"))
      {:fx [(.append canvas-wrapper svg)
            [:dispatch [:page/render-highlights page-no page svg]]
-          ;;  (when (some? type)
-            ;;  [:dispatch [:pagemark/render page type width height]])
-           ]})))
+           (when (some? pagemark)
+             [:dispatch [:pagemark/render (first (first pagemark)) (second (first pagemark)) svg]])]})))
 
 (reg-event-fx
  :highlight/remove
@@ -376,6 +376,11 @@
       (* 100)
       (str "%")))
 
+(defn percentage-to-float
+  [p]
+  (-> (js/parseFloat p)
+      (/ 100)))
+
 (defn resize-handler
   [e]
   (let [target (.-target e)
@@ -404,7 +409,7 @@
   [target]
   (-> (.closest target ".page")
       (.getAttribute "data-page-number")
-      (dec)))
+      (int)))
 
 (defn set-cursor
   [target x y]
@@ -512,19 +517,22 @@
                           (dispatch [:pagemark-state false]))))
    {:fx [[:dispatch [:pagemark-state true]]]}))
 
+;; TODO: Will always be :done and hence have :width and :height
 (rf/reg-event-db
  :pagemark/resize
+ [check-spec-interceptor]
  (fn [db [_ target]]
+   (js/console.log (.getAttribute target "id"))
    (assoc-in db
-             [:pdf/pagemarks (page-id target)]
-             {:done {:width (.. target -style -width) :height (.. target -style -height)}
-              :skip false
-              :schedule ""})))
+             [:pagemarks (page-id target) (.getAttribute target "id")]
+             {:width (percentage-to-float (.. target -style -width))
+              :height (percentage-to-float (.. target -style -height))})))
 
 (defn pagemark-done
-  [rect width height]
+  [rect width height uid]
   (doto rect
     (.setAttribute "class" "pagemark")
+    (.setAttribute "id" uid)
     (-> (.-style)
         (set! (str "width: " width "; height:" height
                    "; fill: none; stroke-width:" stroke-width "; stroke:"
@@ -546,22 +554,25 @@
                                      (dispatch [:pagemark/resize (.-target e)])))))
 
 (defn pagemark-skip
-  [rect]
+  [rect uid]
   (doto rect
     (.setAttribute "class" "pagemark")
+    (.setAttribute "id" uid)
     (.setAttribute "style" (str "pointer-events: auto; width: 100%; height: 100%;
                                  fill: " (:skip PAGEMARK-COLOR) "; fill-opacity: 0.3;"))))
 
 (reg-event-fx
  :pagemark/render
- (fn [_ [_ page type width height]]
-   (when (nil? (.querySelector page "rect.pagemark"))
-     (let [svg (.querySelector page ".svgLayer")
-           rect (.createElementNS js/document SVG-NAMESPACE "rect")]
-       (case type
-         :done (pagemark-done rect (dec-to-percentage width) (dec-to-percentage height))
-         :skip (pagemark-skip rect))
-       {:fx [(.append svg rect)]}))))
+ (fn [_ [_ pagemark-uid pagemark svg]]
+   (let [rect (.createElementNS js/document SVG-NAMESPACE "rect")]
+     (cond
+       (and (contains? pagemark :width)
+            (contains? pagemark :height)) (pagemark-done rect
+                                                         (dec-to-percentage (:width pagemark))
+                                                         (dec-to-percentage (:height pagemark))
+                                                         pagemark-uid)
+       (contains? pagemark :skip?) (pagemark-skip rect pagemark-uid))
+     {:fx [(.append svg rect)]})))
 
 (defn group-pages
   [pages]
@@ -577,12 +588,12 @@
  [check-spec-interceptor]
  (fn [{:keys [db]} [_   page width height]]
    (let [page-no (int (.getAttribute page "data-page-number"))
-         pagemark-uid (first (first (get-in db [:pagemarks page-no])))]
-     {:db (if (some? pagemark-uid)
-            (assoc-in db [:pagemarks page-no pagemark-uid] {:width width :height height})
-            (assoc-in db [:pagemarks page-no (gen-uid "pagemark")] {:width width :height height}))
+         uid (or (first (first (get-in db [:pagemarks page-no]))) (gen-uid "pagemark"))
+         pagemark {:width width :height height}
+         svg (.querySelector page ".svgLayer")]
+     {:db (assoc-in db [:pagemarks page-no uid] pagemark)
       :fx [[:dispatch [:pagemark/remove-render page]]
-           [:dispatch [:pagemark/render page :done width height]]]})))
+           [:dispatch [:pagemark/render uid pagemark svg]]]})))
 
 (reg-event-fx
  :pagemark/remove-render

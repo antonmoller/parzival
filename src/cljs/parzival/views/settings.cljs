@@ -40,17 +40,17 @@
 (defn settings
   []
   (let [open? (subscribe [:settings/open])]
-   (fn []
-    (when @open?
-     [modal :settings/toggle 
-     [:div {:style {:display "flex"}}
-      [:div (use-style sidebar-style)
-       [:div (use-style item-style) 
-       [:> AccountCircle]
-        [:span "Account"]]
-       [:div (use-style item-style) 
-        [:> Brightness6]
-        [:span "Appearance"]]]
-      [:div (use-style content-style)
-       [:div "testing"]
-       [:div "testing 2"]]]]))))
+    (fn []
+      (when @open?
+        [modal :settings/toggle
+         [:div {:style {:display "flex"}}
+          [:div (use-style sidebar-style)
+           [:div (use-style item-style)
+            [:> AccountCircle]
+            [:span "Account"]]
+           [:div (use-style item-style)
+            [:> Brightness6]
+            [:span "Appearance"]]]
+          [:div (use-style content-style)
+           [:div "testing"]
+           [:div "testing 2"]]]]))))
