@@ -522,7 +522,6 @@
  :pagemark/resize
  [check-spec-interceptor]
  (fn [db [_ target]]
-   (js/console.log (.getAttribute target "id"))
    (assoc-in db
              [:pagemarks (page-id target) (.getAttribute target "id")]
              {:width (percentage-to-float (.. target -style -width))
@@ -713,25 +712,3 @@
 (defn calc-height
   [start-page end-page width height]
   (-> (- end-page start-page) (+ (* width height)) (* 100 (/ 37)) (str "%")))
-
-
-;;; Subs
-
-
-
-;; (reg-event-fx
-;;  :create
-;;  (fn [_ [_ start-page end-page]]
-;;    (js/console.log
-;;     (d/q '[:find ?pagemark 
-;;            :where
-;;            [?p :pdf/uid 42]
-;;            [?p :pdf/pagemark ?pagemark]]
-;;          @parzival.db/dsdb))
-;;    (js/console.log (d/pull @parzival.db/dsdb '[:pdf/pagemark] [:pdf/uid 42]))
-;;     ;; (js/console.log 
-;;     ;;  (d/pull @parzival.db/dsdb '[*]))
-;;    (js/console.log start-page end-page)
-;;    {:transact (->> (range (int start-page) (inc (int end-page)))
-;;                    (map (fn [v] [:db/add [:pdf/uid 42] :pdf/pagemark v]))
-;;                    (into (vector)))}))

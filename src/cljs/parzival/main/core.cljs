@@ -24,6 +24,7 @@
                                                    :nodeIntegrationWorker true}})))
   (.loadURL ^js @main-window (str "file://" js/__dirname "/public/index.html"))
   (.on ^js @main-window "closed" #(reset! main-window nil))
+  ;; (.openDevTools (.-webContents @main-window)) TODO
   (.. ^js @main-window -webContents (on "new-window" (fn [e url]
                                                        (.. e preventDefault)
                                                        (.. shell (openExternal url))))))

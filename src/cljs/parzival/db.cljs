@@ -10,6 +10,8 @@
    :left-sidebar/open true
    :right-sidebar/open false
    :right-sidebar/width 32
+   :search/open? false
+   :filesystem/open? false
    :settings/open false
    :pagemark? false
    :pagemark/anchor nil ;  {:left :top :height :edit :page}

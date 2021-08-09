@@ -48,7 +48,7 @@
   []
   (let [left-open?     (subscribe [:left-sidebar/open])
         right-open?    (subscribe [:right-sidebar/open])
-        search?        (subscribe [:search/anchor])
+        search?        (subscribe [:search/open?])
         settings-open? (subscribe [:settings/open])
         route-name     (subscribe [:current-route/name])]
     [:<>
@@ -66,7 +66,7 @@
        [:div (use-style save-state-style)
         [:> FiberManualRecord]]
        [button {:on-click #(dispatch [:search/toggle])
-                :active (some? @search?)} 
+                :active @search?} 
         [:> Search]]
        [button
         [:> StarBorder]]

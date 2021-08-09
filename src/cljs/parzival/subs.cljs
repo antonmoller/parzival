@@ -1,49 +1,54 @@
 (ns parzival.subs
   (:require
-   [re-frame.core :as re-frame]))
+   [re-frame.core :refer [reg-sub]]))
 
 
-(re-frame/reg-sub
+(reg-sub
  ::name
  (fn [db]
    (:name db)))
 
-(re-frame/reg-sub
+(reg-sub
  :left-sidebar/open
  (fn [db _]
    (:left-sidebar/open db)))
 
-(re-frame/reg-sub
+(reg-sub
  :right-sidebar/open
  (fn [db _]
    (:right-sidebar/open db)))
 
-(re-frame/reg-sub
+(reg-sub
  :right-sidebar/width
  (fn [db _]
    (:right-sidebar/width db)))
 
-(re-frame/reg-sub
+(reg-sub
  :settings/open
  (fn [db _]
    (:settings/open db)))
 
-(re-frame/reg-sub
- :search/anchor
- (fn [db _]
-   (:search/anchor db)))
-
-(re-frame/reg-sub
+(reg-sub
  :theme/dark
  (fn [db _]
    (:theme/dark db)))
 
-(re-frame/reg-sub
+(reg-sub
   :loading/progress
   (fn [db _]
     (:loading/progress db)))
 
-(re-frame/reg-sub
+(reg-sub
   :current-route
   (fn [db _]
-    (get db :current-route)))
+    (:current-route db)))
+
+(reg-sub
+ :search/open?
+ (fn [db _]
+   (:search/open? db)))
+
+(reg-sub
+ :filesystem/open?
+ (fn [db _]
+   (:filesystem/open? db)))

@@ -2,6 +2,7 @@
   (:require
    [parzival.views.right-sidebar :refer [right-sidebar]]
    [parzival.views.settings :refer [settings]]
+   [parzival.views.filesystem :refer [filesystem]]
    [parzival.views.search :refer [search]]
    [parzival.views.app-toolbar :refer [app-toolbar]]
    [parzival.views.pdf :refer [pdf]]
@@ -35,7 +36,7 @@
   [(case route-name
      :documents document-table
      :pdf       pdf
-     :else :div)])
+     :div)])
 
 
 (defn main-panel
@@ -44,6 +45,7 @@
     (fn []
       [:div (use-style app-wrapper-style)
        [search]
+       [filesystem]
       ;;  [settings]
        [app-toolbar]
        [left-sidebar]

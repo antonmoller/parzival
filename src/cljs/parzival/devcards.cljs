@@ -1,17 +1,17 @@
 (ns parzival.devcards
   (:require
-            [parzival.devcards.table]
-            [parzival.devcards.flashcard]
-            [parzival.devcards.app-toolbar]
-            [parzival.devcards.left-sidebar]
-            [parzival.devcards.right-sidebar]
-            [parzival.devcards.tooltip]
-            [parzival.devcards.modal]
-            [devcards.core]
-            [parzival.events :as events]
-            [parzival.subs]
-            [parzival.style :as style]
-            [re-frame.core :refer [dispatch-sync]]))
+   [parzival.devcards.table]
+   [parzival.devcards.flashcard]
+   [parzival.devcards.app-toolbar]
+   [parzival.devcards.left-sidebar]
+   [parzival.devcards.right-sidebar]
+   [parzival.devcards.tooltip]
+   [parzival.devcards.modal]
+   [devcards.core]
+   [parzival.events :as events]
+   [parzival.subs]
+   [parzival.style :as style]
+   [re-frame.core :refer [dispatch-sync]]))
 
 (defn ^:export main
   []

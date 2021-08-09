@@ -1,11 +1,12 @@
 (ns parzival.views.left-sidebar
   (:require
-            [re-frame.core :refer [subscribe]]
-            ["@material-ui/icons/Star" :default Star]
-            ["@material-ui/icons/ChevronRight" :default ChevronRight]
-            [parzival.views.buttons :refer [button]]
-            [parzival.style :refer [color OPACITIES]]
-            [stylefy.core :as stylefy :refer [use-style use-sub-style]]))
+   [re-frame.core :refer [subscribe dispatch]]
+   ["@material-ui/icons/Star" :default Star]
+   ["@material-ui/icons/Add" :default Add]
+   ["@material-ui/icons/ChevronRight" :default ChevronRight]
+   [parzival.views.buttons :refer [button]]
+   [parzival.style :refer [color OPACITIES]]
+   [stylefy.core :as stylefy :refer [use-style use-sub-style]]))
 
 ;;; Styles
 ;TODO
@@ -31,7 +32,7 @@
    :height "100%"
    :width "16rem"
    :box-sizing "border-box"
-   :padding "7.5rem 1.25rem 5rem"})
+   :padding "7.5rem 1.25rem 2.5rem"})
 
 (def shortcut-list-style
   {:flex "1 1 100%"
@@ -120,5 +121,7 @@
               [:li [:div (use-style shortcut-style) [:span "testing"]]]
               [:li [:div (use-style shortcut-style) [:span "testing"]]]]
           [:div (use-style button-container-style)
-            [button {:primary true} [:<> [:span "Start Learning"] [:> ChevronRight]]]
-            [button [:<> [:span "Start Reviewing"] [:> ChevronRight]]]]]]))
+           [button {:primary true} [:<> [:span "Start Learning"] [:> ChevronRight]]]
+           [button [:<> [:span "Start Reviewing"] [:> ChevronRight]]]
+           [button {:on-click #(dispatch [:filesystem/toggle])}
+            [:<> [:span "Upload Files"] [:> Add]]]]]]))

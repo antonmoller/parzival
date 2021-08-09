@@ -2,7 +2,6 @@
   (:require
    [parzival.views.modal :refer [modal]]
    [parzival.style :refer [color OPACITIES]]
-   [re-frame.core :refer [subscribe]]
    [stylefy.core :as stylefy :refer [use-style]]))
 
 ;;; Styles
@@ -22,7 +21,6 @@
    :font-weight "300"
    :line-height "1.3"
    :letter-spacing "-0.03em"
-  ;;  :border-radius "0.25rem 0.25rem 0 0"  TODO:
    :padding "1.5rem 4rem 1.5rem 1.5rem"
    ::stylefy/mode {:focus {:outline "none"}
                    "::placeholder" {:color (color :body-text-color :opacity-low)}}}) 
@@ -43,14 +41,16 @@
 
 (defn search
   []
-  (fn []
-    [modal :search/anchor :search/toggle "search-modal"
-     [:div (use-style search-style)
-      [:input (use-style input-style
-                         {:placeholder "Search"
-                          :auto-focus true})]
-      [:div (use-style result-style)
-       [:div (use-style hint-style)
-        [:span "Press "]
-        [:kbd "shift + enter"]
-        [:span " to open in new tab"]]]]]))
+  [modal
+   {:id  "search-modal"
+    :open? :search/open?
+    :toggle :search/toggle
+    :content [:div (use-style search-style)
+              [:input (use-style input-style
+                                 {:placeholder "Search"
+                                  :auto-focus true})]
+              [:div (use-style result-style)
+               [:div (use-style hint-style)
+                [:span "Press "]
+                [:kbd "shift + enter"]
+                [:span " to open in new tab"]]]]}])

@@ -10,21 +10,19 @@
   {:position "absolute"
    :z-index (:zindex-modal ZINDICES)
    :transform "translate(-50%, -50%)"
-  ;;  :transform "translateX(-50%)"
-   :border-radius "0.25rem"
+   :left "50%"
+   :top "50%"
+   :border-radius "0.25rem 0.25rem 0 0"
    :background-color (color :background-plus-1-color)
    :box-shadow [[(:64 DEPTH-SHADOWS) ", 0 0 0 1px " (color :body-text-color :opacity-lower)]]})
 
 ;;; Components
 
 (defn modal
-  [anchor toggle id content]
-  (let [pos (subscribe [anchor])]
-      (when (some? @pos)
-        (dispatch [:modal/handle-click id toggle])
-        [:div (merge (use-style modal-style)
-                     {:id id
-                      :style {:left (:left @pos)
-                              :top  (:top @pos)}})
-         content])))
+  [{:keys [id open? toggle content]}]
+  (let [visible? @(subscribe [open?])]
+    (when visible?
+      (dispatch [:modal/handle-click id toggle])
+      [:div (use-style modal-style {:id id})
+       content])))
 
