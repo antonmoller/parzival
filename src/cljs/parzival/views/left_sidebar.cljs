@@ -123,5 +123,5 @@
           [:div (use-style button-container-style)
            [button {:primary true} [:<> [:span "Start Learning"] [:> ChevronRight]]]
            [button [:<> [:span "Start Reviewing"] [:> ChevronRight]]]
-           [button {:on-click #(dispatch [:filesystem/toggle])}
+           [button {:on-click #(dispatch [:fs/toggle])}
             [:<> [:span "Upload Files"] [:> Add]]]]]]))

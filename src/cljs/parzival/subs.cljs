@@ -49,6 +49,6 @@
    (:search/open? db)))
 
 (reg-sub
- :filesystem/open?
+ :fs/open?
  (fn [db _]
-   (:filesystem/open? db)))
+   (:fs/open? db)))

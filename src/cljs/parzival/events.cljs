@@ -35,9 +35,9 @@
    (update db :search/open? not)))
 
 (reg-event-db
- :filesystem/toggle
+ :fs/toggle
  (fn [db _]
-   (update db :filesystem/open? not)))
+   (update db :fs/open? not)))
 
 (reg-event-db
  :theme/switch
