@@ -3,9 +3,9 @@
    [cljs.spec.alpha :as s]))
 
 (defonce default-db
-  {:name "re-frame"
+  {:name "parzival"
    :current-route :home
-   :path-to-dir ""
+   :db/filepath nil
    :theme/dark true
    :left-sidebar/open true
    :right-sidebar/open false
@@ -24,7 +24,7 @@
   ;;  :page/active nil
   ;;  :refs {}
    :pagemarks (sorted-map)
-   :highlights {}})
+   :highlights (sorted-map)})
 
 ;;; Spec
 
@@ -70,7 +70,8 @@
 (s/def ::start-offset nat-int?)
 (s/def ::end-offset nat-int?)
 (s/def ::highlight (s/keys :req-un [::color ::start ::start-offset ::end ::end-offset]))
-(s/def ::highlights (s/map-of ::page-no (s/map-of ::highlight-uid ::highlight)))
+(s/def ::highlights (s/and (s/map-of ::page-no (s/map-of ::highlight-uid ::highlight))
+                           #(instance? PersistentTreeMap %)))
 
 ;; App-db
 (s/def ::db (s/keys :req-un [::highlights ::pagemarks]))

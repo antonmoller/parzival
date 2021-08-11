@@ -7,7 +7,7 @@
                  [thheller/shadow-cljs "2.11.23"]
                  [reagent "0.10.0"]
                  [re-frame "1.2.0"]
-                 [datascript "1.2.2"]
+                 [com.cognitect/transit-cljs "0.8.269"]
                  [day8.re-frame/tracing "0.6.0"]
                  [devcards "0.2.7"]
                  [metosin/reitit "0.5.12"]

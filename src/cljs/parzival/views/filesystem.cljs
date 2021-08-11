@@ -3,16 +3,8 @@
    [parzival.views.modal :refer [modal]]
    [parzival.views.buttons :refer [button]]
    ["@material-ui/icons/Save" :default Save]
+   [re-frame.core :refer [dispatch]]
    [stylefy.core :as stylefy :refer [use-style]]))
-
-;; (def electron (js/require "electron"))
-(def app (-> (js/require "electron")
-             (.. -remote -app)))
-
-(def os (js/require "os"))
-
-;; (def remote (.-remote electron))
-;; (def app (.-app remote))
 
 ;;; Styles
 
@@ -44,25 +36,8 @@
                [:h4  "Drag and Drop " [:kbd "PDF Files"] " here to add"]
                [:> Save {:style {:font-size "5em"}}]]
               [button {:on-click (fn [_]
-                                   (.click (.getElementById js/document "file-upload"))
-                                   (js/console.log "hi")
-                                  ;;  (js/console.log electron)
-                                   (js/console.log app)
-                                  ;;  (js/console.log remote)
-                                   (js/console.log (.getPath app "documents"))
-                                   (js/console.log (.homedir os))
-                                  ;;  (js/console.log electron)
-                                  ;;  (js/console.log (.homeDir os))
-                                  ;;  (js/console.log (.. js/window -location -pathName))
-                                  ;;  (js/console.log (.getPath app "documents"))
-                                  ;;  (let [DOC-PATH (.getPath app "documents")]
-                                  ;;    (js/console.log DOC-PATH))
-                                  ;;  (js/console.log path)
-                                  ;;  (js/console.log (.baseName path))
-                                  ;;  (js/console.log (.getPath app "documents"))
-                                  ;;  (js/console.log (str "file://" js/__dirname "/public/index.html"))
-                                    ;; (.join path (js/__dirname, "Documents")))
-
+                                   (dispatch [:fs/pdf-add])
+                                  ;;  (.click (.getElementById js/document "file-upload"))
                                    )
                        :primary "true"
                        :style {:width "7em"}}
