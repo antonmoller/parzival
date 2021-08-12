@@ -23,6 +23,10 @@
    :highlight/selected nil ; [color page id] [color page id]
   ;;  :page/active nil
   ;;  :refs {}
+   :pdf/data nil
+   :pdf/active nil
+   
+   :documents {}
    :pagemarks (sorted-map)
    :highlights (sorted-map)})
 
@@ -53,7 +57,7 @@
 (s/def ::page-no pos-int?)
 
 ;; Pagemarks
-(s/def ::pagemark-uid string?) ; FIXME
+(s/def ::pagemark-uid string?) ; FIXME prefix = pagemark-
 (s/def ::deadline string?) ; FIXME
 (s/def ::skip? true?)
 (s/def ::width (s/and float? #(<= 0 % 1)))
@@ -63,7 +67,7 @@
                           #(instance? PersistentTreeMap %)))
 
 ;; Highlights
-(s/def ::highlight-uid string?) ; FIXME
+(s/def ::highlight-uid string?) ; FIXME prefix = highlight-
 (s/def ::color #{:orange :green :blue :purple})
 (s/def ::start nat-int?)
 (s/def ::end nat-int?)
@@ -73,8 +77,15 @@
 (s/def ::highlights (s/and (s/map-of ::page-no (s/map-of ::highlight-uid ::highlight))
                            #(instance? PersistentTreeMap %)))
 
+;; Documents
+(s/def ::document-uid string?) ; FIXME prefix = document-
+(s/def ::title string?)
+(s/def ::filename string?) ;FIXME Can also be nil if documents has been removed should check that it's a path
+(s/def ::document (s/keys :req-un [::title ::filename]))
+(s/def ::documents (s/map-of ::document-uid ::document))
+
 ;; App-db
-(s/def ::db (s/keys :req-un [::highlights ::pagemarks]))
+(s/def ::db (s/keys :req-un [::highlights ::pagemarks ::documents]))
 
 ;; ;; Pages
 ;; (s/def ::page-no (s/and integer?

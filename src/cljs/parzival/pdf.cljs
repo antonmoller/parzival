@@ -50,6 +50,11 @@
  (fn [db [_ loading?]]
    (assoc db :pdf/loading? loading?)))
 
+(rf/reg-event-db
+ :pdf/set-nil
+ (fn [db _]
+   (assoc db :pdf nil)))
+
 (rf/reg-event-fx
  :pdf/load-success
  (fn [{:keys [db]} [_ pdf]]
@@ -64,24 +69,39 @@
    (js/console.log err)
    {:fx [[:dispatch [:pdf/loading-set false]]]}))
 
+(reg-sub
+ :pdf/active
+ (fn [db _]
+   (:pdf/active db)))
+
+
 (reg-fx
  :pdf/document
- (fn [{:keys [url on-success on-failure]}]
+ (fn [{:keys [data on-success on-failure]}]
    (go
      (try
-       (let [pdf (<p! (.-promise (.getDocument pdfjs (js-obj "url" url
-                                                             "cMapUrl" "../../node_modules/pdfjs-dist/cmaps/"
-                                                             "cMapPacked" true))))]
+       (let [pdf (<p! (.-promise (.getDocument pdfjs (js-obj "data" data
+                                                      ;; "url" url
+                                                      ;;        "cMapUrl" "../../node_modules/pdfjs-dist/cmaps/"
+                                                            ;;  "cMapPacked" true
+                                                             ))))]
          (dispatch (conj on-success pdf)))
        (catch js/Error e (dispatch (conj on-failure (ex-cause e))))))))
 
 (reg-event-fx
  :pdf/load
- (fn [_ [_ url]]
-   (set! (.. pdfjs -GlobalWorkerOptions -workerSrc) "./js/compiled/pdf.worker.js")
-   {:pdf/document {:url url
-                   :on-success [:pdf/load-success]
-                   :on-failure [:pdf/load-failure]}}))
+ (fn [{:keys [db]} [_ pdf-filename]]
+   (let [path (js/require "path")
+         fs (js/require "fs")
+         pdf-file (as-> (get db :db/filepath) p
+                    (.dirname path p)
+                    (.resolve path p "pdfs")
+                    (.resolve path p pdf-filename)
+                    (.readFileSync fs p))]
+     (set! (.. pdfjs -GlobalWorkerOptions -workerSrc) "./js/compiled/pdf.worker.js")
+     {:pdf/document {:data pdf-file
+                     :on-success [:pdf/load-success]
+                     :on-failure [:pdf/load-failure]}})))
 
 (reg-event-fx
  :pdf/view

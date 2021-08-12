@@ -1,13 +1,7 @@
 (ns parzival.events
   (:require
    [re-frame.core :as re-frame :refer [dispatch reg-event-db reg-event-fx]]
-   [parzival.db :as db]
    [day8.re-frame.tracing :refer-macros [fn-traced]]))
-
-(reg-event-db
- ::initialize-db
- (fn [_ _]
-   db/default-db))
 
 (reg-event-db
  :left-sidebar/toggle

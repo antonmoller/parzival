@@ -1,12 +1,13 @@
 (ns parzival.electron
   (:require
    [parzival.db :as db]
+   [parzival.pdf :refer [check-spec-interceptor]]
   ;;  ["electron" :refer [dialog]]
   ;;  ["electron" :refer [remote]]
   ;;  ["electron"]
    [cognitect.transit :as t]
    ["path" :as path]
-   [re-frame.core :refer [reg-event-db reg-event-fx reg-fx reg-cofx]]))
+   [re-frame.core :refer [reg-event-db reg-event-fx reg-fx]]))
 
 (def electron (js/require "electron"))
 (def remote (.-remote electron))
@@ -23,13 +24,48 @@
   (let [doc-path (.getPath app "documents")]
     (.resolve path doc-path "parzival-db")))
 
+(defn gen-uid
+  [prefix]
+  (str prefix "-" (random-uuid)))
+
+(reg-event-db
+ :document/create
+ [check-spec-interceptor]
+ (fn [db [_ title filename]]
+   (assoc-in db [:documents (gen-uid "document")] {:title title :filename filename})))
+
+(defn pdf-dir
+  [db-filepath]
+  (as-> db-filepath p
+    (.dirname path p)
+    (.resolve path p PDFS-DIR-NAME)))
+
+(reg-event-db
+ :pdf/active
+ (fn [db [_ filename]]
+   (assoc db :pdf/active filename)))
+
 (reg-event-fx
  :fs/pdf-add
- (fn [_ _]
-   (let [res (.showOpenDialogSync dialog (clj->js {:properties ["openFile"]
-                                                   :filters [{:name "Pdf" :extensions ["transit"]}]}))]
-     (js/console.log documents-parzival-dir)
-     (js/console.log res))))
+ (fn [{:keys [db]} _]
+   (let [pdf-dir (as-> (get db :db/filepath) p
+                   (.dirname path p)
+                   (.resolve path p PDFS-DIR-NAME))
+         res (.showOpenDialogSync dialog (clj->js {:properties ["openFile"]
+                                                   :filters [{:name "Pdf" :extensions ["pdf"]}]}))
+         pdf-file (first res)
+         pdf-filename (.basename path pdf-file)
+         pdf-filepath (.resolve path pdf-dir pdf-filename)]
+     (.copyFileSync fs pdf-file pdf-filepath)
+     {:fx [[:dispatch [:document/create pdf-filename pdf-filename]]]})))
+
+(reg-event-fx
+ :pdf/full-path
+ (fn [{:keys [db]} [_ pdf-filename]]
+   (let [pdf-dir (pdf-dir (get db :db/filepath))
+         pdf-filepath (.resolve path pdf-dir pdf-filename)]
+     (js/console.log pdf-filepath)
+     {:db (assoc db :pdf/data (.readFileSync fs pdf-filepath))})))
 
 (reg-fx
  :fs/write!
@@ -47,13 +83,6 @@
  :db/update-filepath
  (fn [db filepath]
    (assoc db :db/filepath filepath)))
-
-(reg-event-fx
- :fs/read-db
- (fn [coeffects db-path]
-   (->> (.readFileSync fs db-path)
-        (t/read (t/reader :json))
-        (assoc coeffects :fs/db))))
 
 (reg-event-db
  :fs/load-db

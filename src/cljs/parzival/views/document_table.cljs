@@ -1,6 +1,7 @@
 (ns parzival.views.document-table
   (:require
    [parzival.style :refer [color OPACITIES]]
+   [re-frame.core :refer [subscribe dispatch]]
    [stylefy.core :as stylefy :refer [use-style use-sub-style]]))
 
 (def table-style
@@ -43,22 +44,24 @@
 
 (defn document-table
   []
-  [:table (use-style table-style)
-   [:thead
-    [:tr
-     [:th (use-sub-style table-style :th-title) [:h5 "TITLE"]]
-     [:th (use-sub-style table-style :th-title) [:h5 "LINKS"]]
-     [:th (use-sub-style table-style :th-date) [:h5 "MODIFIED"]]
-     [:th (use-sub-style table-style :th-date) [:h5 "ADDED"]]]]
-   [:tbody
-    [:tr
-     [:td (use-sub-style table-style :td-title) "The Origin of Species"]
-     [:td (use-sub-style table-style :td-tags) 42]
-     [:td (use-sub-style table-style :td-date) "testing 0"]
-     [:td (use-sub-style table-style :td-date) "testing 0"]]
-    [:tr
-     [:td (use-sub-style table-style :td-title) "The Origin of Consciousness in The Breakdown of The Bicameral Mind"]
-     [:td (use-sub-style table-style :td-tags) 43]
-     [:td (use-sub-style table-style :td-date) "testing 0"]
-     [:td (use-sub-style table-style :td-date) "testing 0"]
-     ]]])
+  (let [documents @(subscribe [:documents])]
+    [:table (use-style table-style)
+     [:thead
+      [:tr
+       [:th (use-sub-style table-style :th-title) [:h5 "TITLE"]]
+       [:th (use-sub-style table-style :th-title) [:h5 "LINKS"]]
+       [:th (use-sub-style table-style :th-date) [:h5 "MODIFIED"]]
+       [:th (use-sub-style table-style :th-date) [:h5 "ADDED"]]]]
+     [:tbody
+      (doall
+       (for [[uid {:keys [title filename]}] documents]
+         [:tr
+          {:key uid}
+          [:td (merge (use-sub-style table-style :td-title)
+                      {:on-click (fn []
+                                   (dispatch [:pdf/set-nil])
+                                   (dispatch [:pdf/active filename]))})
+           title]
+          [:td (use-sub-style table-style :td-tags) 42]
+          [:td (use-sub-style table-style :td-date) "testing 0"]
+          [:td (use-sub-style table-style :td-date) "testing 0"]]))]]))

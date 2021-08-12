@@ -22,18 +22,21 @@
 
 ;;; Components
 
+; TODO subscribe to document and use (.setDocument when it changes)
+; Start the viewer when the app launches
 (defn pdf
   []
   (let [pdf? (subscribe [:pdf?])
         loading? (subscribe [:pdf/loading?])
         width (subscribe [:pdf/width])
-        url "https://arxiv.org/pdf/2006.06676v2.pdf"
+        pdf-filename (subscribe [:pdf/active])
+        ;; url "https://arxiv.org/pdf/2006.06676v2.pdf"
         ; url "http://ltu.diva-portal.org/smash/get/diva2:1512634/FULLTEXT01.pdf"
         ]
     (fn []
-      (when (and (not @pdf?) (not @loading?))
+      (when (and (some? @pdf-filename) (not @pdf?) (not @loading?))
         (dispatch [:pdf/loading-set true])
-        (dispatch [:pdf/load url]))
+        (dispatch [:pdf/load @pdf-filename]))
       (when @pdf?
         (dispatch [:pdf/view]))
       [virtual-scrollbar

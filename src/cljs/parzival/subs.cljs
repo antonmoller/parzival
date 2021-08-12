@@ -2,7 +2,6 @@
   (:require
    [re-frame.core :refer [reg-sub]]))
 
-
 (reg-sub
  ::name
  (fn [db]
@@ -52,3 +51,8 @@
  :fs/open?
  (fn [db _]
    (:fs/open? db)))
+
+(reg-sub 
+ :documents
+ (fn [db _]
+   (:documents db)))
