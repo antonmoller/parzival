@@ -105,4 +105,5 @@
            [:fs/create-dir-if-needed! db-pdfs]
            (if (.existsSync fs db-filepath)
              [:dispatch [:fs/load-db db-filepath]]
-             [:dispatch [:fs/create-new-db db-filepath]])]})))
+             [:dispatch [:fs/create-new-db db-filepath]])
+           ]})))

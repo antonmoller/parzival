@@ -15,16 +15,12 @@
    :settings/open false
    :pagemark? false
    :pagemark/anchor nil ;  {:left :top :height :edit :page}
-   :pdf nil
-   :pdf/document nil
    :pdf/viewer nil
-   :pdf/loading? false
+   :pdf/worker nil
    :highlight/anchor nil ; [x y]
    :highlight/selected nil ; [color page id] [color page id]
   ;;  :page/active nil
   ;;  :refs {}
-   :pdf/data nil
-   :pdf/active nil
    
    :documents {}
    :pagemarks (sorted-map)

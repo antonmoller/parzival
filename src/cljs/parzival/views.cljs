@@ -38,7 +38,6 @@
      :pdf       pdf
      :div)])
 
-
 (defn main-panel
   []
   (let [route-name (subscribe [:current-route/name])]
@@ -50,5 +49,6 @@
        [app-toolbar]
        [left-sidebar]
        [:div (use-style main-content-style)
-        [match-panel @route-name]]
+        [document-table (= :documents @route-name)]
+        [pdf (= :pdf @route-name)]]
        [right-sidebar]])))

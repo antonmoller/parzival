@@ -1,6 +1,6 @@
 (ns parzival.pdf
   (:require
-   [re-frame.core :as rf :refer [subscribe dispatch reg-event-fx reg-fx reg-sub after]]
+   [re-frame.core :as rf :refer [subscribe dispatch reg-event-fx reg-fx reg-event-db reg-sub after]]
    [parzival.db :as db]
    [parzival.style :refer [PAGEMARK-COLOR HIGHLIGHT-COLOR]]
    [cljs.spec.alpha :as s]
@@ -11,6 +11,9 @@
    [day8.re-frame.tracing :refer-macros [fn-traced]]))
 
 (def SVG-NAMESPACE "http://www.w3.org/2000/svg")
+
+(def path (js/require "path"))
+(def fs (js/require "fs"))
 
 ;;; Subs
 
@@ -45,85 +48,71 @@
 
 ;;; Events
 
-(rf/reg-event-db
- :pdf/loading-set
- (fn [db [_ loading?]]
-   (assoc db :pdf/loading? loading?)))
-
-(rf/reg-event-db
- :pdf/set-nil
- (fn [db _]
-   (assoc db :pdf nil)))
-
 (rf/reg-event-fx
  :pdf/load-success
- (fn [{:keys [db]} [_ pdf]]
-   {:db (assoc db :pdf pdf)
-    :fx [[:dispatch [:pdf/loading-set false]]]}))
+ (fn [_ [_ pdf-viewer pdf]]
+   (.setDocument pdf-viewer pdf)
+   (.setDocument ^js (.-linkService pdf-viewer) pdf nil)))
 
 ;TODO: Change error handling so it's actually useful
-; Is this called everytime :pdf is called????
 (reg-event-fx
  :pdf/load-failure
  (fn [_ [_ err]]
-   (js/console.log err)
-   {:fx [[:dispatch [:pdf/loading-set false]]]}))
+   (js/console.log err)))
 
-(reg-sub
- :pdf/active
- (fn [db _]
-   (:pdf/active db)))
-
-
+; destroy previously opened document 
 (reg-fx
  :pdf/document
- (fn [{:keys [data on-success on-failure]}]
+ (fn [{:keys [data viewer worker on-success on-failure]}]
    (go
      (try
        (let [pdf (<p! (.-promise (.getDocument pdfjs (js-obj "data" data
-                                                      ;; "url" url
-                                                      ;;        "cMapUrl" "../../node_modules/pdfjs-dist/cmaps/"
-                                                            ;;  "cMapPacked" true
-                                                             ))))]
-         (dispatch (conj on-success pdf)))
+                                                             "worker" worker))))]
+         (js/console.log pdf)
+         (dispatch (conj on-success viewer pdf)))
        (catch js/Error e (dispatch (conj on-failure (ex-cause e))))))))
 
 (reg-event-fx
  :pdf/load
  (fn [{:keys [db]} [_ pdf-filename]]
-   (let [path (js/require "path")
-         fs (js/require "fs")
+   (let [pdf-viewer (get db :pdf/viewer)
+         pdf-worker (get db :pdf/worker)
          pdf-file (as-> (get db :db/filepath) p
                     (.dirname path p)
                     (.resolve path p "pdfs")
                     (.resolve path p pdf-filename)
                     (.readFileSync fs p))]
-     (set! (.. pdfjs -GlobalWorkerOptions -workerSrc) "./js/compiled/pdf.worker.js")
      {:pdf/document {:data pdf-file
+                     :worker pdf-worker
+                     :viewer pdf-viewer
                      :on-success [:pdf/load-success]
                      :on-failure [:pdf/load-failure]}})))
 
 (reg-event-fx
- :pdf/view
+ :pdf/init-viewer
  (fn [{:keys [db]} _]
-   (let [pdf (get db :pdf)
-         container (.getElementById js/document "viewerContainer")
+   (let [container (.getElementById js/document "viewerContainer")
          viewer    (.getElementById js/document "viewer")
          event-bus (pdfjs-viewer/EventBus.)
          link-service (pdfjs-viewer/PDFLinkService. (js-obj "eventBus" event-bus "externalLinkTarget" 2))
-          ; find-controller (pdfjs-viewer/PDFFindController. (js-obj "eventBus" event-bus "linkService" link-service))
+        ;;  download-manager (pdfjs-viewer/DownloadManager.)
+        ;;  find-controller (pdfjs-viewer/PDFFindController. (js-obj "eventBus" event-bus "linkService" link-service))
          pdf-viewer (pdfjs-viewer/PDFViewer. (js-obj "container" container
                                                      "viewer" viewer
                                                      "eventBus" event-bus
                                                      "linkService" link-service
-                                                      ; "findController" find-controller
+                                                    ;;  "downloadManager" download-manager
+                                                    ;;  "findController" find-controller
                                                      "textLayerMode" 2))]
+     (js/console.log pdfjs)
+     (js/console.log pdfjs-viewer)
+     (set! (.. pdfjs -GlobalWorkerOptions -workerSrc) "./js/compiled/pdf.worker.js")
      (.setViewer link-service pdf-viewer)
-     (.setDocument pdf-viewer pdf)
-     (.setDocument link-service pdf nil)
      (.on event-bus "pagesinit" #(set! (.-currentScaleValue pdf-viewer) "page-width"))
      (.on event-bus "textlayerrendered" #(dispatch [:render/page (.. % -source -textLayerDiv -parentNode)]))
-     {:db (assoc db :pdf/viewer pdf-viewer)})))
+     {:db (-> db
+              (assoc :pdf/viewer pdf-viewer)
+              (assoc :pdf/worker (pdfjs/PDFWorker. "pdf-worker")))})))
 
 (reg-event-fx
  :pdf/change-size

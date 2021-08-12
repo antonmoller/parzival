@@ -27,8 +27,7 @@
                                    :opacity (:opacity-high OPACITIES)
                                    :font-size "0.75em"
                                    :min-width "9em"}}
-   ::stylefy/manual [
-                     ;[:thead
+   ::stylefy/manual [;[:thead
                       ;; [:th [:&:hover {:color "green"}]]]
                      [:tbody
                       {:vertical-align "top"}
@@ -37,15 +36,16 @@
                        [:&:hover {:background-color (color :background-plus-1-color :opacity-lower)}]]]
                      [:td :th {:padding "0.5rem"}]
                      [:th [:h5 {:opacity (:opacity-med OPACITIES)}
-                      [:&:hover {:color (color :background-color)
-                                 :opacity 1}]
-                           ]
-                      ]]})
+                           [:&:hover {:color (color :background-color)
+                                      :opacity 1}]]]]})
+
+        ;; [button {:on-click #(dispatch [:navigate :pdf])
 
 (defn document-table
-  []
+  [display?]
   (let [documents @(subscribe [:documents])]
-    [:table (use-style table-style)
+    [:table (merge (use-style table-style)
+                   (if display? {} {:style {:display "none"}}))
      [:thead
       [:tr
        [:th (use-sub-style table-style :th-title) [:h5 "TITLE"]]
@@ -59,8 +59,8 @@
           {:key uid}
           [:td (merge (use-sub-style table-style :td-title)
                       {:on-click (fn []
-                                   (dispatch [:pdf/set-nil])
-                                   (dispatch [:pdf/active filename]))})
+                                   (dispatch [:navigate :pdf])
+                                   (dispatch [:pdf/load filename]))})
            title]
           [:td (use-sub-style table-style :td-tags) 42]
           [:td (use-sub-style table-style :td-date) "testing 0"]

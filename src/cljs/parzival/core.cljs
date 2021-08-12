@@ -16,7 +16,7 @@
   (when config/debug?
     (println "dev mode")))
 
-(defn ^:dev/after-load mount-root 
+(defn ^:dev/after-load mount-root
   []
   (rf/clear-subscription-cache!)
   (router/init-routes!)
@@ -24,12 +24,13 @@
     (rdom/unmount-component-at-node root-el)
     (rdom/render [views/main-panel] root-el)))
 
-(defn init 
+(defn init
   []
   (style/init)
   (stylefy/tag "body" style/app-styles)
   (rf/dispatch-sync [:boot/desktop])
   (dev-setup)
-  (mount-root))
+  (mount-root)
+  (rf/dispatch [:pdf/init-viewer]))
 
 
