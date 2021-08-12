@@ -72,7 +72,8 @@
 (reg-fx
  :fs/write!
  (fn [[db db-filepath]]
-   (->> (t/write (t/writer :json) db)
+   (->> (dissoc db :pdf/viewer nil :pdf/worker nil)
+        (t/write (t/writer :json))
         (.writeFileSync fs db-filepath))))
 
 (reg-fx
@@ -108,5 +109,4 @@
            [:fs/create-dir-if-needed! db-pdfs]
            (if (.existsSync fs db-filepath)
              [:dispatch [:fs/load-db db-filepath]]
-             [:dispatch [:fs/create-new-db db-filepath]])
-           ]})))
+             [:dispatch [:fs/create-new-db db-filepath]])]})))
