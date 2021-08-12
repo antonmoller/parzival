@@ -45,17 +45,19 @@
  (fn [db [_ filename]]
    (assoc db :pdf/active filename)))
 
+;; TODO check if res returns something
 (reg-event-fx
  :fs/pdf-add
  (fn [{:keys [db]} _]
    (let [pdf-dir (as-> (get db :db/filepath) p
                    (.dirname path p)
                    (.resolve path p PDFS-DIR-NAME))
-         res (.showOpenDialogSync dialog (clj->js {:properties ["openFile"]
+         res (.showOpenDialogSync dialog (clj->js {:properties ["openFile" "multiSelections"]
                                                    :filters [{:name "Pdf" :extensions ["pdf"]}]}))
          pdf-file (first res)
          pdf-filename (.basename path pdf-file)
          pdf-filepath (.resolve path pdf-dir pdf-filename)]
+     (js/console.log res)
      (.copyFileSync fs pdf-file pdf-filepath)
      {:fx [[:dispatch [:document/create pdf-filename pdf-filename]]]})))
 
@@ -93,8 +95,9 @@
 (reg-event-fx
  :fs/create-new-db
  (fn [_ [_ db-filepath]]
-   {:db (assoc db/default-db :db/filepath db-filepath)
-    :fs/write! [db/default-db db-filepath]}))
+   (as-> (assoc db/default-db :db/filepath db-filepath) db
+     {:db db
+      :fs/write! [db db-filepath]})))
 
 (reg-event-fx
  :boot/desktop

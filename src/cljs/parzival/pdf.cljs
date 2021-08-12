@@ -67,8 +67,12 @@
    (go
      (try
        (let [pdf (<p! (.-promise (.getDocument pdfjs (js-obj "data" data
-                                                             "worker" worker))))]
+                                                             "worker" worker))))
+             metadata (<p! (.getMetadata pdf))]
          (js/console.log pdf)
+         (js/console.log metadata)
+         (js/console.log (.. metadata -info -Author))
+         (js/console.log (.. metadata -info -Title))
          (dispatch (conj on-success viewer pdf)))
        (catch js/Error e (dispatch (conj on-failure (ex-cause e))))))))
 

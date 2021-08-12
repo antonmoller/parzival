@@ -35,11 +35,8 @@
               [:div (use-style drop-style)
                [:h4  "Drag and Drop " [:kbd "PDF Files"] " here to add"]
                [:> Save {:style {:font-size "5em"}}]]
-              [button {:on-click (fn [_]
-                                   (dispatch [:fs/pdf-add])
-                                  ;;  (.click (.getElementById js/document "file-upload"))
-                                   )
+              [button {:on-click #(dispatch [:fs/pdf-add])
+
                        :primary "true"
                        :style {:width "7em"}}
-               [:span "Browse Files"]]
-              [:input {:id "file-upload" :type "file" :style {:display "none"}}]]}])
+               [:span "Browse Files"]]]}])
