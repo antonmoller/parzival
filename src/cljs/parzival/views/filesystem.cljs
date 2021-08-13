@@ -31,7 +31,13 @@
    {:id "filesystem-modal"
     :open? :fs/open?
     :toggle :fs/toggle
-    :content [:div (use-style filesystem-style)
+    :content [:div (use-style filesystem-style
+                              ;; {:on-drop (fn [e] ;TODO
+                              ;;             (js/console.log e)
+                                          ;; (.preventDefault e)
+                                          ;; (.stopPropagation e))
+                                                ;;}
+                              )
               [:div (use-style drop-style)
                [:h4  "Drag and Drop " [:kbd "PDF Files"] " here to add"]
                [:> Save {:style {:font-size "5em"}}]]

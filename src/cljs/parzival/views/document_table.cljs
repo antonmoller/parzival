@@ -3,6 +3,7 @@
    [parzival.style :refer [color OPACITIES]]
    [parzival.utils :refer [date-string]]
    [re-frame.core :refer [subscribe dispatch]]
+   [clojure.string :refer [join]]
    [stylefy.core :as stylefy :refer [use-style use-sub-style]]))
 
 (def table-style
@@ -22,15 +23,12 @@
                                     :font-weight "500"
                                     :font-size "1.3125em"
                                     :line-height "1.28"}
-                         :td-tags {:text-align "center"
-                                   :font-size "1em"}
                          :td-date {:text-align "right"
                                    :opacity (:opacity-high OPACITIES)
                                    :font-size "0.75em"
-                                   :min-width "9em"}}
-   ::stylefy/manual [;[:thead
-                      ;; [:th [:&:hover {:color "green"}]]]
-                     [:tbody
+                                   :min-width "9em"
+                                   :width "9em"}}
+   ::stylefy/manual [[:tbody
                       {:vertical-align "top"}
                       [:tr {:transition "background 0.1s ease"}
                        [:td {:border-top (str "1px solid " (color :border-color :opacity-low))}]
@@ -40,8 +38,6 @@
                            [:&:hover {:color (color :background-color)
                                       :opacity 1}]]]]})
 
-        ;; [button {:on-click #(dispatch [:navigate :pdf])
-
 (defn document-table
   [display?]
   (let [documents @(subscribe [:documents])]
@@ -50,12 +46,12 @@
      [:thead
       [:tr
        [:th (use-sub-style table-style :th-title) [:h5 "TITLE"]]
-       [:th (use-sub-style table-style :th-title) [:h5 "LINKS"]]
+       [:th (use-sub-style table-style :th-title) [:h5 "AUTHORS"]]
        [:th (use-sub-style table-style :th-date) [:h5 "MODIFIED"]]
        [:th (use-sub-style table-style :th-date) [:h5 "ADDED"]]]]
      [:tbody
       (doall
-       (for [[uid {:keys [title filename modified added]}] documents]
+       (for [[uid {:keys [title authors filename modified added]}] documents]
          [:tr
           {:key uid}
           [:td (merge (use-sub-style table-style :td-title)
@@ -63,6 +59,6 @@
                                    (dispatch [:navigate :pdf])
                                    (dispatch [:pdf/load filename]))})
            title]
-          [:td (use-sub-style table-style :td-tags) 42]
+          [:td (join ", " authors)]
           [:td (use-sub-style table-style :td-date) (date-string modified)]
           [:td (use-sub-style table-style :td-date) (date-string added)]]))]]))

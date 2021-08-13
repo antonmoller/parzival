@@ -7,7 +7,10 @@
   ;;  ["electron"]
    [cognitect.transit :as t]
    ["path" :as path]
-   [re-frame.core :refer [reg-event-db reg-event-fx reg-fx]]))
+   ["pdfjs-dist" :as pdfjs]
+   [cljs.core.async :refer [go]]
+   [cljs.core.async.interop :refer [<p!]]
+   [re-frame.core :refer [dispatch reg-event-db reg-event-fx reg-fx]]))
 
 (def electron (js/require "electron"))
 (def remote (.-remote electron))
@@ -28,11 +31,13 @@
   [prefix]
   (str prefix "-" (random-uuid)))
 
+;; TODO also add authors to links (ref-count)
 (reg-event-db
  :document/create
- (fn [db [_ title filename]]
+ (fn [db [_ title authors filename]]
    (as-> (.getTime (js/Date.)) timestamp
      (assoc-in db [:documents (gen-uid "document")] {:title title
+                                                     :authors authors
                                                      :filename filename
                                                      :modified timestamp
                                                      :added timestamp}))))
@@ -54,6 +59,42 @@
    (.copyFileSync fs file-path copy-file-path)))
 
 (reg-event-fx
+ :fs/write!
+ (fn [_ [_ filepath file]]
+   (.writeFileSync fs filepath file)))
+
+(reg-fx
+ :fs/create-dir-if-needed!
+ (fn [dir]
+   (when-not (.existsSync fs dir)
+     (.mkdirSync fs dir))))
+
+(reg-fx
+ :fs/write-db!
+ (fn [[db db-filepath]]
+   (->> (dissoc db :pdf/viewer nil :pdf/worker nil)
+        (t/write (t/writer :json))
+        (.writeFileSync fs db-filepath))))
+
+(reg-fx
+ :pdf/create
+ (fn [{:keys [filename filepath data worker]}]
+   (go
+     (try
+       (let [pdf (<p! (.-promise (.getDocument pdfjs (js-obj "data" data
+                                                             "worker" worker))))
+             meta (<p! (.getMetadata pdf))
+             title (.. meta -info -Title)
+             author (.. meta -info -Author)]
+         (dispatch [:document/create
+                    (if (and (some? title) (not= "" title)) title filename)
+                    (if (and (some? author) (not= "" author)) [author] [])
+                    filename])
+         (dispatch [:fs/write! filepath data])
+         (<p! (.destroy (.-loadingTask pdf))))
+       (catch js/Error e (js/console.log (ex-cause e)))))))
+
+(reg-event-fx
  :fs/pdf-add
  [check-spec-interceptor]
  (fn [{:keys [db]} [_ pdf-files]]
@@ -61,15 +102,15 @@
      (let [pdf-dir (as-> (get db :db/filepath) p
                      (.dirname path p)
                      (.resolve path p PDFS-DIR-NAME))
-           pdfs (.readdirSync fs pdf-dir)]
+           pdfs (.readdirSync fs pdf-dir)
+           worker (get db :pdf/worker)]
        {:fx (reduce (fn [m v]
                       (let [pdf-filename (.basename path v)
                             pdf-filepath (.resolve path pdf-dir pdf-filename)]
                         (if (.includes pdfs pdf-filename) ; Don't allow adding duplicate files
                           m
-                          (conj m
-                                [:fs/copy! [v pdf-filepath]]
-                                [:dispatch [:document/create pdf-filename pdf-filename]]))))
+                          (conj m [:pdf/create {:filename pdf-filename :filepath pdf-filepath
+                                                :data (.readFileSync fs v) :worker worker}]))))
                     []
                     pdf-files)}))))
 
@@ -86,19 +127,6 @@
    (let [pdf-dir (pdf-dir (get db :db/filepath))
          pdf-filepath (.resolve path pdf-dir pdf-filename)]
      {:db (assoc db :pdf/data (.readFileSync fs pdf-filepath))})))
-
-(reg-fx
- :fs/write!
- (fn [[db db-filepath]]
-   (->> (dissoc db :pdf/viewer nil :pdf/worker nil)
-        (t/write (t/writer :json))
-        (.writeFileSync fs db-filepath))))
-
-(reg-fx
- :fs/create-dir-if-needed!
- (fn [dir]
-   (when-not (.existsSync fs dir)
-     (.mkdirSync fs dir))))
 
 (reg-event-db
  :db/update-filepath
@@ -117,7 +145,7 @@
  (fn [_ [_ db-filepath]]
    (as-> (assoc db/default-db :db/filepath db-filepath) db
      {:db db
-      :fs/write! [db db-filepath]})))
+      :fs/write-db! [db db-filepath]})))
 
 (reg-event-fx
  :boot/desktop

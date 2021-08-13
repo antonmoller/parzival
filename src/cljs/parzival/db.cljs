@@ -76,10 +76,11 @@
 ;; Documents
 (s/def ::document-uid string?) ; FIXME prefix = document-
 (s/def ::title string?)
+(s/def ::authors (s/coll-of string? :kind vector?))
 (s/def ::filename string?) ;FIXME Can also be nil if documents has been removed should check that it's a path
 (s/def ::modified pos-int?)
 (s/def ::added pos-int?)
-(s/def ::document (s/keys :req-un [::title ::filename ::modified ::added]))
+(s/def ::document (s/keys :req-un [::title ::authors ::filename ::modified ::added]))
 (s/def ::documents (s/map-of ::document-uid ::document))
 
 ;; App-db
