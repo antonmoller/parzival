@@ -1,6 +1,7 @@
 (ns parzival.views.document-table
   (:require
    [parzival.style :refer [color OPACITIES]]
+   [parzival.utils :refer [date-string]]
    [re-frame.core :refer [subscribe dispatch]]
    [stylefy.core :as stylefy :refer [use-style use-sub-style]]))
 
@@ -54,7 +55,7 @@
        [:th (use-sub-style table-style :th-date) [:h5 "ADDED"]]]]
      [:tbody
       (doall
-       (for [[uid {:keys [title filename]}] documents]
+       (for [[uid {:keys [title filename modified added]}] documents]
          [:tr
           {:key uid}
           [:td (merge (use-sub-style table-style :td-title)
@@ -63,5 +64,5 @@
                                    (dispatch [:pdf/load filename]))})
            title]
           [:td (use-sub-style table-style :td-tags) 42]
-          [:td (use-sub-style table-style :td-date) "testing 0"]
-          [:td (use-sub-style table-style :td-date) "testing 0"]]))]]))
+          [:td (use-sub-style table-style :td-date) (date-string modified)]
+          [:td (use-sub-style table-style :td-date) (date-string added)]]))]]))

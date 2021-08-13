@@ -30,9 +30,12 @@
 
 (reg-event-db
  :document/create
- [check-spec-interceptor]
  (fn [db [_ title filename]]
-   (assoc-in db [:documents (gen-uid "document")] {:title title :filename filename})))
+   (as-> (.getTime (js/Date.)) timestamp
+     (assoc-in db [:documents (gen-uid "document")] {:title title
+                                                     :filename filename
+                                                     :modified timestamp
+                                                     :added timestamp}))))
 
 (defn pdf-dir
   [db-filepath]
@@ -52,6 +55,7 @@
 
 (reg-event-fx
  :fs/pdf-add
+ [check-spec-interceptor]
  (fn [{:keys [db]} [_ pdf-files]]
    (when pdf-files
      (let [pdf-dir (as-> (get db :db/filepath) p
@@ -81,7 +85,6 @@
  (fn [{:keys [db]} [_ pdf-filename]]
    (let [pdf-dir (pdf-dir (get db :db/filepath))
          pdf-filepath (.resolve path pdf-dir pdf-filename)]
-     (js/console.log pdf-filepath)
      {:db (assoc db :pdf/data (.readFileSync fs pdf-filepath))})))
 
 (reg-fx
@@ -110,6 +113,7 @@
 
 (reg-event-fx
  :fs/create-new-db
+ [check-spec-interceptor]
  (fn [_ [_ db-filepath]]
    (as-> (assoc db/default-db :db/filepath db-filepath) db
      {:db db
