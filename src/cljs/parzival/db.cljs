@@ -21,10 +21,7 @@
    :highlight/selected nil ; [color page id] [color page id]
   ;;  :page/active nil
    :links {}
-   
-   :documents {}
-   :pagemarks (sorted-map)
-   :highlights (sorted-map)})
+   :documents {}})
 
 ;;; Spec
 
@@ -59,8 +56,7 @@
 (s/def ::width (s/and float? #(<= 0 % 1)))
 (s/def ::height (s/and float? #(<= 0 % 1)))
 (s/def ::pagemark (s/keys :req-un [(or ::deadline ::skip? (and ::width ::height))]))
-(s/def ::pagemarks (s/and (s/map-of ::page-no (s/map-of ::pagemark-uid ::pagemark))
-                          #(instance? PersistentTreeMap %)))
+(s/def ::pagemarks (s/map-of ::page-no (s/map-of ::pagemark-uid ::pagemark)))
 
 ;; Highlights
 (s/def ::highlight-uid string?) ; FIXME prefix = highlight-
@@ -70,8 +66,7 @@
 (s/def ::start-offset nat-int?)
 (s/def ::end-offset nat-int?)
 (s/def ::highlight (s/keys :req-un [::color ::start ::start-offset ::end ::end-offset]))
-(s/def ::highlights (s/and (s/map-of ::page-no (s/map-of ::highlight-uid ::highlight))
-                           #(instance? PersistentTreeMap %)))
+(s/def ::highlights (s/map-of ::page-no (s/map-of ::highlight-uid ::highlight)))
 
 ;; Documents
 (s/def ::document-uid string?) ; FIXME prefix = document-
@@ -80,7 +75,7 @@
 (s/def ::filename string?) ;FIXME Can also be nil if documents has been removed should check that it's a path
 (s/def ::modified pos-int?)
 (s/def ::added pos-int?)
-(s/def ::document (s/keys :req-un [::title ::authors ::filename ::modified ::added]))
+(s/def ::document (s/keys :req-un [::title ::authors ::filename ::modified ::added ::highlights ::pagemarks]))
 (s/def ::documents (s/map-of ::document-uid ::document))
 
 ;; Blocks
@@ -92,7 +87,7 @@
 (s/def ::links (s/map-of ::link-name (s/+ ::link)))
 
 ;; App-db
-(s/def ::db (s/keys :req-un [::highlights ::pagemarks ::documents ::links]))
+(s/def ::db (s/keys :req-un [::documents ::links]))
 
 ;; ;; Pages
 ;; (s/def ::page-no (s/and integer?

@@ -39,7 +39,8 @@
    (let [uid (gen-uid "document")
          timestamp (.getTime (js/Date.))]
      {:db (assoc-in db [:documents uid] {:title title :authors authors :filename filename
-                                         :modified timestamp :added timestamp})
+                                         :modified timestamp :added timestamp
+                                         :highlights {} :pagemarks {}})
       :fx [(when-not (= [] authors)
              [:dispatch [:link/create (first authors) [:documents uid :authors 0]]])]})))
 
@@ -136,6 +137,7 @@
 
 (reg-event-db
  :fs/load-db
+ [check-spec-interceptor]
  (fn [_ [_ db-filepath]]
    (->> (.readFileSync fs db-filepath)
         (t/read (t/reader :json)))))
@@ -150,7 +152,6 @@
 
 (reg-event-fx
  :boot/desktop
-;;  [check-spec-interceptor]
  (fn []
    (let [db-filepath (.resolve path documents-parzival-dir DB-INDEX)
          db-pdfs (.resolve path documents-parzival-dir PDFS-DIR-NAME)]
