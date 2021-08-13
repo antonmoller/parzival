@@ -56,13 +56,16 @@
    (when pdf-files
      (let [pdf-dir (as-> (get db :db/filepath) p
                      (.dirname path p)
-                     (.resolve path p PDFS-DIR-NAME))]
+                     (.resolve path p PDFS-DIR-NAME))
+           pdfs (.readdirSync fs pdf-dir)]
        {:fx (reduce (fn [m v]
                       (let [pdf-filename (.basename path v)
                             pdf-filepath (.resolve path pdf-dir pdf-filename)]
-                        (conj m
-                              [:fs/copy! [v pdf-filepath]]
-                              [:dispatch [:document/create pdf-filename pdf-filename]])))
+                        (if (.includes pdfs pdf-filename) ; Don't allow adding duplicate files
+                          m
+                          (conj m
+                                [:fs/copy! [v pdf-filepath]]
+                                [:dispatch [:document/create pdf-filename pdf-filename]]))))
                     []
                     pdf-files)}))))
 
