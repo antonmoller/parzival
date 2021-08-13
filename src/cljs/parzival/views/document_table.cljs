@@ -12,6 +12,7 @@
    :max-width "70rem"
    :text-align "left"
    :border-collapse "collapse"
+   :overflow "auto"
    ::stylefy/sub-styles {:th-title {:cursor "pointer"}
                          :th-date {:text-align "right"
                                    :cursor "pointer"}

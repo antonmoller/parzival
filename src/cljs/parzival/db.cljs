@@ -20,7 +20,7 @@
    :highlight/anchor nil ; [x y]
    :highlight/selected nil ; [color page id] [color page id]
   ;;  :page/active nil
-  ;;  :refs {}
+   :links {}
    
    :documents {}
    :pagemarks (sorted-map)
@@ -83,8 +83,16 @@
 (s/def ::document (s/keys :req-un [::title ::authors ::filename ::modified ::added]))
 (s/def ::documents (s/map-of ::document-uid ::document))
 
+;; Blocks
+(s/def ::block-uid string?)
+
+;; Links 
+(s/def ::link-name string?)
+(s/def ::link (s/tuple #{:documents} ::document-uid (or (s/and #{:authors} pos-int?) (s/and #{:blocks} ::block-uid))))
+(s/def ::links (s/map-of ::link-name (s/+ ::link)))
+
 ;; App-db
-(s/def ::db (s/keys :req-un [::highlights ::pagemarks ::documents]))
+(s/def ::db (s/keys :req-un [::highlights ::pagemarks ::documents ::links]))
 
 ;; ;; Pages
 ;; (s/def ::page-no (s/and integer?
@@ -125,5 +133,7 @@
 ;; ;; Refs
 ;; (s/def ::ref-count pos-int?)
 ;; (s/def ::link-name string?)
+;; (s/def ::link [:documents ::document-uid ::authors idx])
+;; (s/def ::link [:documents ::document-uid :blocks ::block-uid])
 ;; (s/def ::link (s/keys :req  [::document-uid ::block-uid ::ref-count]))
 ;; (s/def ::links (s/map-of ::link-name ::link))

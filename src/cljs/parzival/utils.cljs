@@ -7,3 +7,7 @@
                                                                "year" "numeric"
                                                                "hour" "numeric"
                                                                "minute" "numeric"))))
+
+(defn gen-uid
+  [prefix]
+  (str prefix "-" (random-uuid)))

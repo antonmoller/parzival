@@ -5,6 +5,7 @@
   ;;  ["electron" :refer [dialog]]
   ;;  ["electron" :refer [remote]]
   ;;  ["electron"]
+   [parzival.utils :refer [gen-uid]]
    [cognitect.transit :as t]
    ["path" :as path]
    ["pdfjs-dist" :as pdfjs]
@@ -27,20 +28,20 @@
   (let [doc-path (.getPath app "documents")]
     (.resolve path doc-path "parzival-db")))
 
-(defn gen-uid
-  [prefix]
-  (str prefix "-" (random-uuid)))
-
-;; TODO also add authors to links (ref-count)
 (reg-event-db
+ :link/create
+ (fn [db [_ link-name link]]
+   (update-in db [:links link-name] conj link)))
+
+(reg-event-fx
  :document/create
- (fn [db [_ title authors filename]]
-   (as-> (.getTime (js/Date.)) timestamp
-     (assoc-in db [:documents (gen-uid "document")] {:title title
-                                                     :authors authors
-                                                     :filename filename
-                                                     :modified timestamp
-                                                     :added timestamp}))))
+ (fn [{:keys [db]} [_ title authors filename]]
+   (let [uid (gen-uid "document")
+         timestamp (.getTime (js/Date.))]
+     {:db (assoc-in db [:documents uid] {:title title :authors authors :filename filename
+                                         :modified timestamp :added timestamp})
+      :fx [(when-not (= [] authors)
+             [:dispatch [:link/create (first authors) [:documents uid :authors 0]]])]})))
 
 (defn pdf-dir
   [db-filepath]
