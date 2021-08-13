@@ -45,21 +45,33 @@
  (fn [db [_ filename]]
    (assoc db :pdf/active filename)))
 
-;; TODO check if res returns something
+(reg-fx
+ :fs/copy!
+ (fn [[file-path copy-file-path]]
+   (.copyFileSync fs file-path copy-file-path)))
+
 (reg-event-fx
  :fs/pdf-add
- (fn [{:keys [db]} _]
-   (let [pdf-dir (as-> (get db :db/filepath) p
-                   (.dirname path p)
-                   (.resolve path p PDFS-DIR-NAME))
-         res (.showOpenDialogSync dialog (clj->js {:properties ["openFile" "multiSelections"]
-                                                   :filters [{:name "Pdf" :extensions ["pdf"]}]}))
-         pdf-file (first res)
-         pdf-filename (.basename path pdf-file)
-         pdf-filepath (.resolve path pdf-dir pdf-filename)]
-     (js/console.log res)
-     (.copyFileSync fs pdf-file pdf-filepath)
-     {:fx [[:dispatch [:document/create pdf-filename pdf-filename]]]})))
+ (fn [{:keys [db]} [_ pdf-files]]
+   (when pdf-files
+     (let [pdf-dir (as-> (get db :db/filepath) p
+                     (.dirname path p)
+                     (.resolve path p PDFS-DIR-NAME))]
+       {:fx (reduce (fn [m v]
+                      (let [pdf-filename (.basename path v)
+                            pdf-filepath (.resolve path pdf-dir pdf-filename)]
+                        (conj m
+                              [:fs/copy! [v pdf-filepath]]
+                              [:dispatch [:document/create pdf-filename pdf-filename]])))
+                    []
+                    pdf-files)}))))
+
+(reg-event-fx
+ :fs/pdf-dialog
+ (fn []
+   (let [pdf-files (.showOpenDialogSync dialog (clj->js {:properties ["openFile" "multiSelections"]
+                                                         :filters [{:name "Pdf" :extensions ["pdf"]}]}))]
+     {:dispatch [:fs/pdf-add pdf-files]})))
 
 (reg-event-fx
  :pdf/full-path
@@ -102,6 +114,7 @@
 
 (reg-event-fx
  :boot/desktop
+;;  [check-spec-interceptor]
  (fn []
    (let [db-filepath (.resolve path documents-parzival-dir DB-INDEX)
          db-pdfs (.resolve path documents-parzival-dir PDFS-DIR-NAME)]
