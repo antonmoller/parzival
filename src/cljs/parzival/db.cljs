@@ -5,6 +5,8 @@
 (defonce default-db
   {:name "parzival"
    :current-route :home
+   :db/synced? true
+   :db/sync-time 15
    :db/filepath nil
    :theme/dark true
    :left-sidebar/open true

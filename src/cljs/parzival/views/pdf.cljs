@@ -23,8 +23,6 @@
 
 ;;; Components
 
-; TODO subscribe to document and use (.setDocument when it changes)
-; Start the viewer when the app launches
 (defn pdf
   [display?]
   [:div (if display? {} {:style {:display "none"}})

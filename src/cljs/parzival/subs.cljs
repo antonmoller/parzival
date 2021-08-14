@@ -56,3 +56,13 @@
  :documents
  (fn [db _]
    (:documents db)))
+
+(reg-sub
+ :db/synced?
+ (fn [db _]
+   (:db/synced? db)))
+
+(reg-sub
+ :db/sync-time
+ (fn [db _]
+   (:db/sync-time db)))

@@ -10,6 +10,7 @@
    ["path" :as path]
    ["pdfjs-dist" :as pdfjs]
    [cljs.core.async :refer [go]]
+   [goog.functions :refer [debounce]]
    [cljs.core.async.interop :refer [<p!]]
    [re-frame.core :refer [dispatch reg-event-db reg-event-fx reg-fx]]))
 
@@ -74,9 +75,10 @@
 (reg-fx
  :fs/write-db!
  (fn [[db db-filepath]]
-   (->> (dissoc db :pdf/viewer nil :pdf/worker nil)
+   (->> (dissoc db :current-route :pdf/viewer :pdf/worker)
         (t/write (t/writer :json))
-        (.writeFileSync fs db-filepath))))
+        (.writeFileSync fs db-filepath))
+   (dispatch [:db/synced])))
 
 (reg-fx
  :pdf/create
@@ -98,23 +100,25 @@
 
 (reg-event-fx
  :fs/pdf-add
- [check-spec-interceptor]
+;;  [check-spec-interceptor]
  (fn [{:keys [db]} [_ pdf-files]]
    (when pdf-files
-     (let [pdf-dir (as-> (get db :db/filepath) p
+     (let [sync-time (get db :db/sync-time)
+           pdf-dir (as-> (get db :db/filepath) p
                      (.dirname path p)
                      (.resolve path p PDFS-DIR-NAME))
            pdfs (.readdirSync fs pdf-dir)
            worker (get db :pdf/worker)]
-       {:fx (reduce (fn [m v]
-                      (let [pdf-filename (.basename path v)
-                            pdf-filepath (.resolve path pdf-dir pdf-filename)]
-                        (if (.includes pdfs pdf-filename) ; Don't allow adding duplicate files
-                          m
-                          (conj m [:pdf/create {:filename pdf-filename :filepath pdf-filepath
-                                                :data (.readFileSync fs v) :worker worker}]))))
-                    []
-                    pdf-files)}))))
+       {:fx (-> (reduce (fn [m v]
+                          (let [pdf-filename (.basename path v)
+                                pdf-filepath (.resolve path pdf-dir pdf-filename)]
+                            (if (.includes pdfs pdf-filename) ; Don't allow adding duplicate files
+                              m
+                              (conj m [:pdf/create {:filename pdf-filename :filepath pdf-filepath
+                                                    :data (.readFileSync fs v) :worker worker}]))))
+                        []
+                        pdf-files)
+                (conj [:dispatch [:db/not-synced]] [:dispatch-debounce [:fs/pdf-add [:db/sync] sync-time]]))}))))
 
 (reg-event-fx
  :fs/pdf-dialog
@@ -137,10 +141,11 @@
 
 (reg-event-db
  :fs/load-db
- [check-spec-interceptor]
+;;  [check-spec-interceptor]
  (fn [_ [_ db-filepath]]
-   (->> (.readFileSync fs db-filepath)
-        (t/read (t/reader :json)))))
+   (as-> (.readFileSync fs db-filepath) db
+     (t/read (t/reader :json) db)
+     (assoc db :current-route :home))))
 
 (reg-event-fx
  :fs/create-new-db
@@ -150,11 +155,41 @@
      {:db db
       :fs/write-db! [db db-filepath]})))
 
+(reg-event-db
+ :db/not-synced
+ (fn [db _]
+   (assoc db :db/synced? false)))
+
+(reg-event-db
+ :db/synced
+ (fn [db _]
+   (assoc db :db/synced? true)))
+
+(reg-event-fx
+ :db/sync
+ (fn [{:keys [db]} _]
+   (let [db-filepath (get db :db/filepath)]
+     {:fs/write-db! [db db-filepath]})))
+
+(defonce timeouts
+  (atom {}))
+
+(reg-fx
+ :dispatch-debounce
+ (fn [[id event-vec s]]
+   (js/clearTimeout (@timeouts id))
+   (swap! timeouts assoc id
+          (js/setTimeout (fn []
+                           (dispatch event-vec)
+                           (swap! timeouts dissoc id))
+                         (* 1000 s)))))
+
 (reg-event-fx
  :boot/desktop
  (fn []
    (let [db-filepath (.resolve path documents-parzival-dir DB-INDEX)
          db-pdfs (.resolve path documents-parzival-dir PDFS-DIR-NAME)]
+     (js/console.log db-filepath)
      {:fx [[:fs/create-dir-if-needed! documents-parzival-dir]
            [:fs/create-dir-if-needed! db-pdfs]
            (if (.existsSync fs db-filepath)

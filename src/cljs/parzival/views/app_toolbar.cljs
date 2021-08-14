@@ -39,8 +39,7 @@
 
 (def save-state-style
   {:padding-right "0.625rem"
-   :padding-top "0.375rem"
-   :color "green"})
+   :padding-top "0.375rem"})
 
 ;;; Components
 
@@ -50,29 +49,30 @@
         right-open?    (subscribe [:right-sidebar/open])
         search?        (subscribe [:search/open?])
         settings-open? (subscribe [:settings/open])
-        route-name     (subscribe [:current-route/name])]
+        route-name     (subscribe [:current-route/name])
+        synced?        (subscribe [:db/synced?])]
     [:<>
-      [:header (use-style left-toolbar-style)
-        [button {:on-click #(dispatch [:left-sidebar/toggle])
-                 :active @left-open?}
-         [:> Menu]]
-        [button {:on-click #(dispatch [:navigate :documents])
-                 :active (= @route-name :documents)}
-          [:> FileCopy]]
-        [button {:on-click #(dispatch [:navigate :pdf])
-                 :active (= @route-name :pdf)}
-         [:> InsertDriveFile]]]
-        [:header (use-style right-toolbar-style)
-       [:div (use-style save-state-style)
-        [:> FiberManualRecord]]
-       [button {:on-click #(dispatch [:search/toggle])
-                :active @search?} 
-        [:> Search]]
-       [button
-        [:> StarBorder]]
-       [button {:on-click #(dispatch [:settings/toggle])
-                :active @settings-open?} 
-        [:> Settings]] 
-       [button {:on-click #(dispatch [:right-sidebar/toggle])
-                :active @right-open?} 
-        [:> VerticalSplit]]]]))
+     [:header (use-style left-toolbar-style)
+      [button {:on-click #(dispatch [:left-sidebar/toggle])
+               :active @left-open?}
+       [:> Menu]]
+      [button {:on-click #(dispatch [:navigate :documents])
+               :active (= @route-name :documents)}
+       [:> FileCopy]]
+      [button {:on-click #(dispatch [:navigate :pdf])
+               :active (= @route-name :pdf)}
+       [:> InsertDriveFile]]]
+     [:header (use-style right-toolbar-style)
+      [:div (use-style save-state-style)
+       [:> FiberManualRecord {:style {:color (if @synced? "green" "yellow")}}]]
+      [button {:on-click #(dispatch [:search/toggle])
+               :active @search?}
+       [:> Search]]
+      [button
+       [:> StarBorder]]
+      [button {:on-click #(dispatch [:settings/toggle])
+               :active @settings-open?}
+       [:> Settings]]
+      [button {:on-click #(dispatch [:right-sidebar/toggle])
+               :active @right-open?}
+       [:> VerticalSplit]]]]))
