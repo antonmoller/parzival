@@ -12,7 +12,7 @@
    [cljs.core.async :refer [go]]
    [goog.functions :refer [debounce]]
    [cljs.core.async.interop :refer [<p!]]
-   [re-frame.core :refer [dispatch reg-event-db reg-event-fx reg-fx]]))
+   [re-frame.core :refer [dispatch dispatch-sync reg-event-db reg-event-fx reg-fx]]))
 
 (def electron (js/require "electron"))
 (def remote (.-remote electron))
@@ -185,11 +185,17 @@
                          (* 1000 s)))))
 
 (reg-event-fx
+ :stop-all-debounce
+ (fn []
+   (run! (fn [[_ v]] (js/clearTimeout v)) @timeouts)
+   (reset! timeouts nil)
+   {}))
+
+(reg-event-fx
  :boot/desktop
  (fn []
    (let [db-filepath (.resolve path documents-parzival-dir DB-INDEX)
          db-pdfs (.resolve path documents-parzival-dir PDFS-DIR-NAME)]
-     (js/console.log db-filepath)
      {:fx [[:fs/create-dir-if-needed! documents-parzival-dir]
            [:fs/create-dir-if-needed! db-pdfs]
            (if (.existsSync fs db-filepath)

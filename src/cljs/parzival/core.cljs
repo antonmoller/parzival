@@ -4,6 +4,7 @@
    [re-frame.core :as rf]
    [parzival.style :as style]
    [parzival.events]
+   [parzival.listeners]
    [parzival.pdf]
    [parzival.electron]
    [parzival.views :as views]
@@ -28,6 +29,7 @@
   []
   (style/init)
   (stylefy/tag "body" style/app-styles)
+  (rf/dispatch-sync [:listeners/init])
   (rf/dispatch-sync [:boot/desktop])
   (dev-setup)
   (mount-root)
