@@ -120,13 +120,17 @@
  (fn [db filepath]
    (assoc db :db/filepath filepath)))
 
-(reg-event-db
+(reg-event-fx
  :fs/load-db
 ;;  [check-spec-interceptor]
  (fn [_ [_ db-filepath]]
-   (as-> (.readFileSync fs db-filepath) db
-     (t/read (t/reader :json) db)
-     (assoc db :current-route :home :modal/content nil))))
+   (let [db-file (.readFileSync fs db-filepath)
+         bkp-filename (str (.getTime (js/Date.)) "-index.transit.bkp")
+         bkp-filepath (.resolve path (.dirname path db-filepath) bkp-filename)]
+
+     {:db (-> (t/read (t/reader :json) db-file)
+              (assoc :current-route :home :modal/content nil))
+      :fx [[:fs/copy! [db-filepath bkp-filepath]]]})))
 
 (reg-event-fx
  :fs/create-new-db
