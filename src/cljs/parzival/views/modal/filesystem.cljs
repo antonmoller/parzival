@@ -1,6 +1,5 @@
 (ns parzival.views.filesystem
   (:require
-   [parzival.views.modal :refer [modal]]
    [parzival.views.buttons :refer [button]]
    ["@material-ui/icons/Save" :default Save]
    [re-frame.core :refer [dispatch]]
@@ -27,15 +26,17 @@
 
 (defn filesystem
   []
-  [modal
-   {:id "filesystem-modal"
-    :open? :fs/open?
-    :toggle :fs/toggle
-    :content [:div (use-style filesystem-style)
-              [:div (use-style drop-style)
-               [:h4  "Drag and Drop " [:kbd "PDF Files"] " here to add"]
-               [:> Save {:style {:font-size "5em"}}]]
-              [button {:on-click #(dispatch [:fs/pdf-add])
-                       :primary "true"
-                       :style {:width "7em"}}
-               [:span "Browse Files"]]]}])
+  [:div (use-style filesystem-style)
+   [:div (use-style drop-style)
+    [:h4  "Drag and Drop " [:kbd "PDF Files"] " here to add"]
+    [:> Save {:style {:font-size "5em"}}]]
+   [button {:on-click #(dispatch [:fs/pdf-add])
+            :primary "true"
+            :style {:width "7em"}}
+    [:span "Browse Files"]]])
+
+  ;; [modal
+  ;;  {:id "filesystem-modal"
+  ;;   :open? :fs/open?
+  ;;   :toggle :fs/toggle
+  ;;   :content }])

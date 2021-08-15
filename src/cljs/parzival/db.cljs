@@ -9,12 +9,10 @@
    :db/sync-time 15
    :db/filepath nil
    :theme/dark true
+   :modal/content nil
    :left-sidebar/open true
    :right-sidebar/open false
    :right-sidebar/width 32
-   :search/open? false
-   :fs/open? false
-   :settings/open false
    :pagemark? false
    :pagemark/anchor nil ;  {:left :top :height :edit :page}
    :pdf/viewer nil

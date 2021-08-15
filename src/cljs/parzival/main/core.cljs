@@ -21,12 +21,10 @@
                                   ;; :trafficLightPosition {:x 19, :y 36}
                                  :webPreferences {:contextIsolation false
                                                   :nodeIntegration true
-                                                  :worldSafeExecuteJavaScript true
-                                                  :enableRemoteModule true
-                                                  :nodeIntegrationWorker true}})))
+                                                  :nodeIntegrationInWorker true}})))
   (.loadURL ^js @main-window (str "file://" js/__dirname "/public/index.html"))
   (.on ^js @main-window "closed" #(reset! main-window nil))
-  ;; (.openDevTools (.-webContents @main-window)) TODO
+  ;; (.openDevTools (.-webContents ^js @main-window)) ;TODO
   (.. ^js @main-window -webContents (on "new-window" (fn [e url]
                                                        (.. e preventDefault)
                                                        (.. shell (openExternal url))))))

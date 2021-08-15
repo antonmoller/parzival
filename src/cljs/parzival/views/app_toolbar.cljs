@@ -47,10 +47,9 @@
   []
   (let [left-open?     (subscribe [:left-sidebar/open])
         right-open?    (subscribe [:right-sidebar/open])
-        search?        (subscribe [:search/open?])
-        settings-open? (subscribe [:settings/open])
-        route-name     (subscribe [:current-route/name])
-        synced?        (subscribe [:db/synced?])]
+        synced?        (subscribe [:db/synced?])
+        modal-content  (subscribe [:modal/content])
+        route-name     (subscribe [:current-route/name])]
     [:<>
      [:header (use-style left-toolbar-style)
       [button {:on-click #(dispatch [:left-sidebar/toggle])
@@ -65,13 +64,13 @@
      [:header (use-style right-toolbar-style)
       [:div (use-style save-state-style)
        [:> FiberManualRecord {:style {:color (if @synced? "green" "yellow")}}]]
-      [button {:on-click #(dispatch [:search/toggle])
-               :active @search?}
+      [button {:on-click #(dispatch [:modal/set-content :search])
+               :active (= :search @modal-content)}
        [:> Search]]
       [button
        [:> StarBorder]]
-      [button {:on-click #(dispatch [:settings/toggle])
-               :active @settings-open?}
+      [button {:on-click #(dispatch [:modal/set-content :settings])
+               :active (= :setting @modal-content)}
        [:> Settings]]
       [button {:on-click #(dispatch [:right-sidebar/toggle])
                :active @right-open?}

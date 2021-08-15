@@ -2,9 +2,6 @@
   (:require
    [parzival.db :as db]
    [parzival.pdf :refer [check-spec-interceptor]]
-  ;;  ["electron" :refer [dialog]]
-  ;;  ["electron" :refer [remote]]
-  ;;  ["electron" :refer ]
    [parzival.utils :refer [gen-uid]]
    [cognitect.transit :as t]
    ["path" :as path]
@@ -67,7 +64,7 @@
 (reg-fx
  :fs/write-db!
  (fn [[db db-filepath]]
-   (->> (dissoc db :current-route :pdf/viewer :pdf/worker)
+   (->> (dissoc db :current-route :pdf/viewer :pdf/worker :modal/content)
         (t/write (t/writer :json))
         (.writeFileSync fs db-filepath))))
 
@@ -129,7 +126,7 @@
  (fn [_ [_ db-filepath]]
    (as-> (.readFileSync fs db-filepath) db
      (t/read (t/reader :json) db)
-     (assoc db :current-route :home))))
+     (assoc db :current-route :home :modal/content nil))))
 
 (reg-event-fx
  :fs/create-new-db

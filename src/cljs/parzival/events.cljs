@@ -19,21 +19,6 @@
    (assoc db :right-sidebar/width width)))
 
 (reg-event-db
- :settings/toggle
- (fn [db _]
-   (update db :settings/open not)))
-
-(reg-event-db
- :search/toggle
- (fn [db _]
-   (update db :search/open? not)))
-
-(reg-event-db
- :fs/toggle
- (fn [db _]
-   (update db :fs/open? not)))
-
-(reg-event-db
  :theme/switch
  (fn [db _]
    (update db :theme/dark not)))
@@ -43,11 +28,16 @@
  (fn [db prog]
    (assoc db :loading/progress prog)))
 
+(reg-event-db
+ :modal/set-content
+ (fn [db [_ content]]
+   (assoc db :modal/content content)))
+
 (reg-event-fx
  :modal/handle-click
- (fn [_ [_ id toggle]]
-   (let [modal (.getElementById js/document id)]
+ (fn []
+   (let [modal (.getElementById js/document "modal")]
      (.addEventListener js/document "mousedown" (fn handle-click [e]
                                                   (when-not (.contains modal (.-target e))
                                                     (.removeEventListener js/document "mousedown" handle-click)
-                                                    (dispatch [toggle])))))))
+                                                    (dispatch [:modal/set-content nil])))))))

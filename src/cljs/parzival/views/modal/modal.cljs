@@ -1,5 +1,8 @@
 (ns parzival.views.modal
   (:require
+   [parzival.views.search :refer [search]]
+   [parzival.views.filesystem :refer [filesystem]]
+   [parzival.views.settings :refer [settings]]
    [re-frame.core :refer [subscribe dispatch]]
    [parzival.style :refer [color ZINDICES DEPTH-SHADOWS]]
    [stylefy.core :as stylefy :refer [use-style]]))
@@ -19,10 +22,13 @@
 ;;; Components
 
 (defn modal
-  [{:keys [id open? toggle content]}]
-  (let [visible? @(subscribe [open?])]
-    (when visible?
-      (dispatch [:modal/handle-click id toggle])
-      [:div (use-style modal-style {:id id})
-       content])))
+  []
+  (let [content @(subscribe [:modal/content])]
+    (when (some? content)
+      (dispatch [:modal/handle-click])
+      [:div (use-style modal-style {:id "modal"})
+       [(case content
+          :search search
+          :filesystem filesystem
+          :settings settings)]])))
 

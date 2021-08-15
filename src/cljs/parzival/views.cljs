@@ -1,16 +1,14 @@
 (ns parzival.views
   (:require
+   [parzival.views.modal :refer [modal]]
    [parzival.views.right-sidebar :refer [right-sidebar]]
-   [parzival.views.settings :refer [settings]]
-   [parzival.views.filesystem :refer [filesystem]]
-   [parzival.views.search :refer [search]]
    [parzival.views.app-toolbar :refer [app-toolbar]]
    [parzival.views.pdf :refer [pdf]]
    [parzival.views.document-table :refer [document-table]]
    [parzival.views.left-sidebar :refer [left-sidebar]]
    [stylefy.core :as stylefy :refer [use-style]]
-   [re-frame.core :as rf :refer [subscribe]]
-   [parzival.subs :as subs]))
+   [parzival.subs]
+   [re-frame.core :refer [subscribe]]))
 
 ;; Styles
 
@@ -31,21 +29,12 @@
 
 ;; Components
 
-(defn match-panel
-  [route-name]
-  [(case route-name
-     :documents document-table
-     :pdf       pdf
-     :div)])
-
 (defn main-panel
   []
   (let [route-name (subscribe [:current-route/name])]
     (fn []
       [:div (use-style app-wrapper-style)
-       [search]
-       [filesystem]
-      ;;  [settings]
+       [modal]
        [app-toolbar]
        [left-sidebar]
        [:div (use-style main-content-style)

@@ -1,6 +1,5 @@
 (ns parzival.views.search
   (:require
-   [parzival.views.modal :refer [modal]]
    [parzival.style :refer [color OPACITIES]]
    [stylefy.core :as stylefy :refer [use-style]]))
 
@@ -41,16 +40,17 @@
 
 (defn search
   []
-  [modal
-   {:id  "search-modal"
-    :open? :search/open?
-    :toggle :search/toggle
-    :content [:div (use-style search-style)
-              [:input (use-style input-style
-                                 {:placeholder "Search"
-                                  :auto-focus true})]
-              [:div (use-style result-style)
-               [:div (use-style hint-style)
-                [:span "Press "]
-                [:kbd "shift + enter"]
-                [:span " to open in new tab"]]]]}])
+  [:div (use-style search-style)
+   [:input (use-style input-style
+                      {:placeholder "Search"
+                       :auto-focus true})]
+   [:div (use-style result-style)
+    [:div (use-style hint-style)
+     [:span "Press "]
+     [:kbd "shift + enter"]
+     [:span " to open in new tab"]]]])
+  ;; [modal
+  ;;  {:id  "search-modal"
+  ;;   :open? :search/open?
+  ;;   :toggle :search/toggle
+  ;;   :content }])

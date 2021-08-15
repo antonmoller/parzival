@@ -23,10 +23,10 @@
    (:right-sidebar/width db)))
 
 (reg-sub
- :settings/open
+ :modal/content
  (fn [db _]
-   (:settings/open db)))
-
+   (:modal/content db)))
+   
 (reg-sub
  :theme/dark
  (fn [db _]
@@ -41,16 +41,6 @@
   :current-route
   (fn [db _]
     (:current-route db)))
-
-(reg-sub
- :search/open?
- (fn [db _]
-   (:search/open? db)))
-
-(reg-sub
- :fs/open?
- (fn [db _]
-   (:fs/open? db)))
 
 (reg-sub 
  :documents
