@@ -1,14 +1,14 @@
 (ns parzival.views
   (:require
-   [parzival.views.modal :refer [modal]]
+   [parzival.views.modal.modal :refer [modal]]
    [parzival.views.right-sidebar :refer [right-sidebar]]
    [parzival.views.app-toolbar :refer [app-toolbar]]
-   [parzival.views.pdf :refer [pdf]]
+   [parzival.views.pdf.pdf :refer [pdf]]
    [parzival.views.document-table :refer [document-table]]
    [parzival.views.left-sidebar :refer [left-sidebar]]
    [stylefy.core :as stylefy :refer [use-style]]
-   [parzival.subs]
-   [re-frame.core :refer [subscribe]]))
+   [re-frame.core :refer [subscribe]]
+   [parzival.subs]))
 
 ;; Styles
 

@@ -1,8 +1,8 @@
-(ns parzival.views.modal
+(ns parzival.views.modal.modal
   (:require
-   [parzival.views.search :refer [search]]
-   [parzival.views.filesystem :refer [filesystem]]
-   [parzival.views.settings :refer [settings]]
+   [parzival.views.modal.search :refer [search]]
+   [parzival.views.modal.filesystem :refer [filesystem]]
+   [parzival.views.modal.settings :refer [settings]]
    [re-frame.core :refer [subscribe dispatch]]
    [parzival.style :refer [color ZINDICES DEPTH-SHADOWS]]
    [stylefy.core :as stylefy :refer [use-style]]))

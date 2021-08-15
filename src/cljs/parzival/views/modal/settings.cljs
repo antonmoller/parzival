@@ -1,4 +1,4 @@
-(ns parzival.views.settings
+(ns parzival.views.modal.settings
   (:require
    [parzival.style :refer [color]]
    ["@material-ui/icons/AccountCircle" :default AccountCircle]
@@ -27,11 +27,11 @@
    ::stylefy/mode [[:hover {:background-color (color :body-text-color :opacity-lower)}]]})
 
 (def content-style
- {:display "flex"
-  :flex-direction "column"
-  :padding "2.5rem"
-  :width "30rem"
-  :height "100%"})
+  {:display "flex"
+   :flex-direction "column"
+   :padding "2.5rem"
+   :width "30rem"
+   :height "100%"})
 
 ;;; Components
    

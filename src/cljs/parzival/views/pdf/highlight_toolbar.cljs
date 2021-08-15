@@ -1,4 +1,4 @@
-(ns parzival.views.highlight-toolbar
+(ns parzival.views.pdf.highlight-toolbar
   (:require
    [re-frame.core :refer [dispatch subscribe]]
    ["@material-ui/icons/CancelRounded" :default CancelRounded]

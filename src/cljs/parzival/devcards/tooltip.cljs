@@ -1,7 +1,7 @@
 (ns parzival.devcards.tooltip
   (:require
    [parzival.views.tooltip :refer [tooltip]]
-   [parzival.views.highlight-toolbar :refer [highlight-toolbar]]
+   [parzival.views.pdf.highlight-toolbar :refer [highlight-toolbar]]
    [devcards.core :refer [defcard-rg]]))
 
 

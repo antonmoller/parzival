@@ -1,4 +1,4 @@
-(ns parzival.views.filesystem
+(ns parzival.views.modal.filesystem
   (:require
    [parzival.views.buttons :refer [button]]
    ["@material-ui/icons/Save" :default Save]
@@ -34,9 +34,3 @@
             :primary "true"
             :style {:width "7em"}}
     [:span "Browse Files"]]])
-
-  ;; [modal
-  ;;  {:id "filesystem-modal"
-  ;;   :open? :fs/open?
-  ;;   :toggle :fs/toggle
-  ;;   :content }])

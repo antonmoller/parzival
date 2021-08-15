@@ -1,9 +1,9 @@
-(ns parzival.views.pdf
+(ns parzival.views.pdf.pdf
   (:require
    [re-frame.core :refer [dispatch]]
-   [parzival.views.pagemark-sidebar :refer [pagemark-sidebar]]
-   [parzival.views.highlight-toolbar :refer [highlight-toolbar]]
-   [parzival.views.pagemark-menu :refer [pagemark-menu]]
+   [parzival.views.pdf.pagemark-sidebar :refer [pagemark-sidebar]]
+   [parzival.views.pdf.highlight-toolbar :refer [highlight-toolbar]]
+   [parzival.views.pdf.pagemark-menu :refer [pagemark-menu]]
    [parzival.views.virtual-scrollbar :refer [virtual-scrollbar]]
    [parzival.style :refer [PDF-SCROLLBAR-WIDTH]]
    [stylefy.core :as stylefy :refer [use-style]]))

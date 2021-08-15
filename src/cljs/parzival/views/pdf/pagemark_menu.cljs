@@ -1,4 +1,4 @@
-(ns parzival.views.pagemark-menu
+(ns parzival.views.pdf.pagemark-menu
   (:require
    ["@material-ui/icons/Book" :default Book]
    ["@material-ui/icons/Bookmark" :default Bookmark]

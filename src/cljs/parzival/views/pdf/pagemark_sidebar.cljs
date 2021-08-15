@@ -1,4 +1,4 @@
-(ns parzival.views.pagemark-sidebar
+(ns parzival.views.pdf.pagemark-sidebar
   (:require
    ["@material-ui/icons/Close" :default Close]
    ["@material-ui/icons/Done" :default Done]

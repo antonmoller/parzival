@@ -1,4 +1,4 @@
-(ns parzival.views.search
+(ns parzival.views.modal.search
   (:require
    [parzival.style :refer [color OPACITIES]]
    [stylefy.core :as stylefy :refer [use-style]]))
@@ -49,8 +49,3 @@
      [:span "Press "]
      [:kbd "shift + enter"]
      [:span " to open in new tab"]]]])
-  ;; [modal
-  ;;  {:id  "search-modal"
-  ;;   :open? :search/open?
-  ;;   :toggle :search/toggle
-  ;;   :content }])

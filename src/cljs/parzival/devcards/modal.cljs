@@ -1,9 +1,9 @@
 (ns parzival.devcards.modal
   (:require
-   [parzival.views.settings :refer [settings]]
+   [parzival.views.modal.settings :refer [settings]]
    [parzival.views.menu :refer [menu]]
-   [parzival.views.search :refer [search]]
-   [parzival.views.filesystem :refer [filesystem]]
+   [parzival.views.modal.search :refer [search]]
+   [parzival.views.modal.filesystem :refer [filesystem]]
    [parzival.views.buttons :refer [button]]
    [re-frame.core :refer [dispatch]]
    [devcards.core :refer [defcard-rg]]))
