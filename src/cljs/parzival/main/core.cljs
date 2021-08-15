@@ -2,6 +2,7 @@
   (:require
   ;;  [cljs.core.async :refer [go]]
   ;;  [cljs.core.async.interop :refer [<p!]]
+   ["path" :as path]
    ["electron" :refer [app BrowserWindow shell ipcMain dialog]]))
 
 (def main-window (atom nil))
@@ -20,14 +21,15 @@
                                   ;; :titleBarStyle "hidden"
                                   ;; :trafficLightPosition {:x 19, :y 36}
                                  :webPreferences {:contextIsolation false
+                                                  ;; :preload (.join path (.getAppPath app) "preload.js")
                                                   :nodeIntegration true
-                                                  :nodeIntegrationInWorker true}})))
+                                                  }})))
   (.loadURL ^js @main-window (str "file://" js/__dirname "/public/index.html"))
   (.on ^js @main-window "closed" #(reset! main-window nil))
-  ;; (.openDevTools (.-webContents ^js @main-window)) ;TODO
+  (.openDevTools (.-webContents ^js @main-window)) 
   (.. ^js @main-window -webContents (on "new-window" (fn [e url]
-                                                       (.. e preventDefault)
-                                                       (.. shell (openExternal url))))))
+                                                       (.preventDefault e)
+                                                       (.openExternal shell url)))))
 
 
 (defn main

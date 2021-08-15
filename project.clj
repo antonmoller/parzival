@@ -53,7 +53,7 @@
 
                          :renderer {:target :browser
                                     :output-dir "resources/public/js/compiled"
-                                    :asset-path "/js/compiled"
+                                    :asset-path "./js/compiled"
                                     :compiler-options {:closure-warnings {:global-this :off}
                                                        :infer-externs :auto
                                                        :closure-defines {re-frame.trace.trace-enabled? true}
