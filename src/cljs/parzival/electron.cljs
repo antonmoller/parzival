@@ -19,6 +19,7 @@
 
 (def app (.-app remote))
 (def dialog (.-dialog remote))
+(def ipcRenderer (.-ipcRenderer (js/require "electron")))
 
 (def fs (js/require "fs"))
 
@@ -77,8 +78,7 @@
  (fn [[db db-filepath]]
    (->> (dissoc db :current-route :pdf/viewer :pdf/worker)
         (t/write (t/writer :json))
-        (.writeFileSync fs db-filepath))
-   (dispatch [:db/synced])))
+        (.writeFileSync fs db-filepath))))
 
 (reg-fx
  :pdf/create
@@ -153,7 +153,8 @@
  (fn [_ [_ db-filepath]]
    (as-> (assoc db/default-db :db/filepath db-filepath) db
      {:db db
-      :fs/write-db! [db db-filepath]})))
+      :fx [[:fs/write-db! [db db-filepath]]
+           [:dispatch [:db/synced]]]})))
 
 (reg-event-db
  :db/not-synced
@@ -169,7 +170,13 @@
  :db/sync
  (fn [{:keys [db]} _]
    (let [db-filepath (get db :db/filepath)]
-     {:fs/write-db! [db db-filepath]})))
+     {:fx [[:fs/write-db! [db db-filepath]]
+           [:dispatch [:db/synced]]]})))
+
+(reg-fx
+ :electron/quit!
+ (fn [_]
+   (.send ipcRenderer "exit-app")))
 
 (defonce timeouts
   (atom {}))
@@ -184,12 +191,11 @@
                            (swap! timeouts dissoc id))
                          (* 1000 s)))))
 
-(reg-event-fx
+(reg-fx
  :stop-all-debounce
- (fn []
+ (fn [_]
    (run! (fn [[_ v]] (js/clearTimeout v)) @timeouts)
-   (reset! timeouts nil)
-   {}))
+   (reset! timeouts nil)))
 
 (reg-event-fx
  :boot/desktop
@@ -201,3 +207,12 @@
            (if (.existsSync fs db-filepath)
              [:dispatch [:fs/load-db db-filepath]]
              [:dispatch [:fs/create-new-db db-filepath]])]})))
+
+(reg-event-fx
+ :quit/desktop
+ (fn [{:keys [db]} _]
+   (let [db-filepath (get db :db/filepath)]
+     {:fx [[:stop-all-debounce]
+        ;;  [:dispatch [:modal/close-all]]
+           [:fs/write-db! [(assoc db :db/synced? true) db-filepath]]
+           [:electron/quit!]]})))

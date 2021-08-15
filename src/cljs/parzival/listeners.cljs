@@ -1,18 +1,15 @@
 (ns parzival.listeners
   (:require
-   [re-frame.core :refer [dispatch-sync subscribe reg-fx reg-event-fx]]))
-
+   [re-frame.core :refer [dispatch reg-fx reg-event-fx]]))
 
 (reg-fx
  :fs/save-before-quit!
  (fn [_]
-   (.addEventListener js/window "beforeunload" #(let [synced? @(subscribe [:db/synced?])]
-                                                  (when-not synced?
-                                                    (dispatch-sync [:stop-all-debounce])
-                                                    (dispatch-sync [:db/synced])
-                                                    (dispatch-sync [:db/sync]))))))
+   (.addEventListener js/window "beforeunload" (fn [e]
+                                                 (dispatch [:quit/desktop])
+                                                 (set! (.-returnValue e) false)))))
 
 (reg-event-fx
  :listeners/init
- (fn []
-   {:fs/save-before-quit! []}))
+ (fn [_ _]
+   {:fx [[:fs/save-before-quit!]]}))

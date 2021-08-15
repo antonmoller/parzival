@@ -1,11 +1,14 @@
 (ns parzival.main.core
   (:require
-   ["electron" :refer [app BrowserWindow shell]]))
+  ;;  [cljs.core.async :refer [go]]
+  ;;  [cljs.core.async.interop :refer [<p!]]
+   ["electron" :refer [app BrowserWindow shell ipcMain]]))
 
 (def main-window (atom nil))
 
 (defn init-browser
   []
+  (js/console.log (.getPath app "documents"))
   (reset! main-window (BrowserWindow.
                         (clj->js {:width 800
                                   :height 600
@@ -32,6 +35,7 @@
 
 (defn main
   []
-  (.on app "window-all-closed" #(when-not (= js/process.platform "darwin") (.quit app)))
+  (.on ipcMain "exit-app" #(.exit app))
+  ;; (.on app "window-all-closed" #(when-not (= js/process.platform "darwin") (.quit app)))
   (.on app "activate" #(when (nil? @main-window) (init-browser)))
   (.on  app "ready" #(init-browser)))
