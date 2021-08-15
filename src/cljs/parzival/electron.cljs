@@ -4,31 +4,22 @@
    [parzival.pdf :refer [check-spec-interceptor]]
   ;;  ["electron" :refer [dialog]]
   ;;  ["electron" :refer [remote]]
-  ;;  ["electron"]
+  ;;  ["electron" :refer ]
    [parzival.utils :refer [gen-uid]]
    [cognitect.transit :as t]
    ["path" :as path]
+  ;;  ["fs" :as fs]
+  ;;  ["electron" :refer [ipcRenderer]]
    ["pdfjs-dist" :as pdfjs]
    [cljs.core.async :refer [go]]
-   [goog.functions :refer [debounce]]
    [cljs.core.async.interop :refer [<p!]]
-   [re-frame.core :refer [dispatch dispatch-sync reg-event-db reg-event-fx reg-fx]]))
+   [re-frame.core :refer [dispatch reg-event-db reg-event-fx reg-fx]]))
 
-(def electron (js/require "electron"))
-(def remote (.-remote electron))
-
-(def app (.-app remote))
-(def dialog (.-dialog remote))
 (def ipcRenderer (.-ipcRenderer (js/require "electron")))
-
 (def fs (js/require "fs"))
 
 (def DB-INDEX "index.transit")
 (def PDFS-DIR-NAME "pdfs")
-
-(def documents-parzival-dir
-  (let [doc-path (.getPath app "documents")]
-    (.resolve path doc-path "parzival-db")))
 
 (reg-event-db
  :link/create
@@ -101,8 +92,8 @@
 (reg-event-fx
  :fs/pdf-add
 ;;  [check-spec-interceptor]
- (fn [{:keys [db]} [_ pdf-files]]
-   (when pdf-files
+ (fn [{:keys [db]} _]
+   (when-let [pdf-files (.sendSync ipcRenderer "open-pdf-dialog")]
      (let [sync-time (get db :db/sync-time)
            pdf-dir (as-> (get db :db/filepath) p
                      (.dirname path p)
@@ -119,13 +110,6 @@
                         []
                         pdf-files)
                 (conj [:dispatch [:db/not-synced]] [:dispatch-debounce [:fs/pdf-add [:db/sync] sync-time]]))}))))
-
-(reg-event-fx
- :fs/pdf-dialog
- (fn []
-   (let [pdf-files (.showOpenDialogSync dialog (clj->js {:properties ["openFile" "multiSelections"]
-                                                         :filters [{:name "Pdf" :extensions ["pdf"]}]}))]
-     {:dispatch [:fs/pdf-add pdf-files]})))
 
 (reg-event-fx
  :pdf/full-path
@@ -200,9 +184,11 @@
 (reg-event-fx
  :boot/desktop
  (fn []
-   (let [db-filepath (.resolve path documents-parzival-dir DB-INDEX)
-         db-pdfs (.resolve path documents-parzival-dir PDFS-DIR-NAME)]
-     {:fx [[:fs/create-dir-if-needed! documents-parzival-dir]
+   (let [db-dir (as-> (.sendSync ipcRenderer "document-filepath") documents
+                  (.resolve path documents "parzival-db"))
+         db-filepath (.resolve path db-dir DB-INDEX)
+         db-pdfs (.resolve path db-dir PDFS-DIR-NAME)]
+     {:fx [[:fs/create-dir-if-needed! db-dir]
            [:fs/create-dir-if-needed! db-pdfs]
            (if (.existsSync fs db-filepath)
              [:dispatch [:fs/load-db db-filepath]]

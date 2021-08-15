@@ -31,20 +31,11 @@
    {:id "filesystem-modal"
     :open? :fs/open?
     :toggle :fs/toggle
-    :content [:div (use-style filesystem-style
-                              ;; {:on-drop (fn [e] ;TODO
-                              ;;             (js/console.log e)
-                                          ;; (.preventDefault e)
-                                          ;; (.stopPropagation e))
-                                                ;;}
-                              )
+    :content [:div (use-style filesystem-style)
               [:div (use-style drop-style)
                [:h4  "Drag and Drop " [:kbd "PDF Files"] " here to add"]
                [:> Save {:style {:font-size "5em"}}]]
-              [button {:on-click (fn [_]
-                                   (dispatch [:fs/pdf-dialog])
-                                  ;;  (.click (.getElementById js/document "file-upload"))
-                                   )
+              [button {:on-click #(dispatch [:fs/pdf-add])
                        :primary "true"
                        :style {:width "7em"}}
                [:span "Browse Files"]]]}])

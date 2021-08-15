@@ -1,7 +1,6 @@
 (ns parzival.views.pdf
   (:require
-   [reagent.core :as r]
-   [re-frame.core :refer [dispatch subscribe]]
+   [re-frame.core :refer [dispatch]]
    [parzival.views.pagemark-sidebar :refer [pagemark-sidebar]]
    [parzival.views.highlight-toolbar :refer [highlight-toolbar]]
    [parzival.views.pagemark-menu :refer [pagemark-menu]]
