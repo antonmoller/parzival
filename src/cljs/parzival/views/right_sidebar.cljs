@@ -1,8 +1,9 @@
 (ns parzival.views.right-sidebar
   (:require
-   [re-frame.core :refer [subscribe dispatch]]
-   [parzival.style :refer [color ZINDICES]]
-   [stylefy.core :as stylefy :refer [use-style]]))
+            [re-frame.core :refer [subscribe dispatch]]
+            [reagent.core :as r]
+            [parzival.style :refer [color ZINDICES]]
+            [stylefy.core :as stylefy :refer [use-style]]))
 
 ;;; Styles
 
@@ -68,18 +69,39 @@
 
 ;;; Components
 
+;TODO: Should I move the resize logic to a event handler instead??? 
 (defn right-sidebar
   []
-  (let [open? @(subscribe [:right-sidebar/open])
-        width @(subscribe [:right-sidebar/width])]
-    [:div#right-sidebar (merge (use-style sidebar-style
-                                          {:class (if open? "is-open" "is-closed")})
-                               {:style (if open? {:width width} {})})
-     [:div (use-style right-sidebar-dragger-style {:on-pointer-down (fn [e]
-                                                                      (.setPointerCapture (.. e -target -parentElement) (.-pointerId e))
-                                                                      (dispatch [:resize
-                                                                                 "right-sidebar"
-                                                                                 "w-resize"
-                                                                                 [:right-sidebar/set-width]]))})]
-     [:div (use-style sidebar-content-style {:class (if open? "is-open" "is-closed")})
-      [:div (use-style page-style {:content-editable "true"})]]]))
+  (let [open? (subscribe [:right-sidebar/open])
+        width (r/atom @(subscribe [:right-sidebar/width]))
+        dragging? (r/atom false)
+        handle-mousemove (fn [e]
+                           (when @dragging?
+                             (.. e preventDefault)
+                             (let [x (.-clientX e)
+                                   inner-w js/window.innerWidth
+                                   new-width (-> (- inner-w x)
+                                                 (/ inner-w)
+                                                 (* 100))]
+                               (reset! width new-width))))
+        handle-mouseup (fn []
+                         (when @dragging?
+                           (reset! dragging? false)
+                           (dispatch [:right-sidebar/set-width @width])))]
+    (r/create-class
+     {:display-name "right-sidebar"
+      :component-did-mount (fn []
+                             (js/document.addEventListener "mousemove" handle-mousemove)
+                             (js/document.addEventListener "mouseup" handle-mouseup))
+      :component-will-unmount (fn []
+                                (js/document.removeEventListener "mousemove" handle-mousemove)
+                                (js/document.removeEventListener "mouseup" handle-mouseup))
+      :reagent-render (fn []
+                        [:div (merge (use-style sidebar-style
+                                                {:class (if @open? "is-open" "is-closed")})
+                                     {:style (cond-> {}
+                                               @dragging? (assoc :transition-duration "0s")
+                                               @open? (assoc :width (str @width "vw")))})
+                         [:div (use-style right-sidebar-dragger-style {:on-mouse-down #(reset! dragging? true)})]
+                         [:div (use-style sidebar-content-style {:class (if @open? "is-open" "is-closed")})
+                          [:div (use-style page-style {:content-editable "true"})]]])})))

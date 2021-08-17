@@ -5,14 +5,14 @@
 (defonce default-db
   {:name "parzival"
    :current-route :home
-   :db/filepath nil
    :db/synced? true
-   :db/sync-time 15 ; Setting
+   :db/sync-time 15
+   :db/filepath nil
    :theme/dark true
    :modal/content nil
    :left-sidebar/open true
    :right-sidebar/open false
-   :right-sidebar/width "32vw"
+   :right-sidebar/width 32
    :pagemark? false
    :pagemark/anchor nil ;  {:left :top :height :edit :page}
    :pdf/viewer nil
