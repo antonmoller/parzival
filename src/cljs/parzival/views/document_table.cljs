@@ -41,7 +41,7 @@
 
 (defn document-table
   [display?]
-  (let [documents @(subscribe [:documents])]
+  (let [pages @(subscribe [:pages])]
     [:table (merge (use-style table-style)
                    (if display? {} {:style {:display "none"}}))
      [:thead
@@ -52,14 +52,15 @@
        [:th (use-sub-style table-style :th-date) [:h5 "ADDED"]]]]
      [:tbody
       (doall
-       (for [[uid {:keys [title authors filename modified added]}] documents]
+       (for [[uid {:keys [title authors filename modified added]}] pages]
          [:tr
           {:key uid}
           [:td (merge (use-sub-style table-style :td-title)
                       {:on-click (fn []
                                    (dispatch [:navigate :pdf])
-                                   (dispatch [:pdf/load filename]))})
+                                   (dispatch [:pdf/load uid filename]))})
            title]
-          [:td (join ", " authors)]
+          [:td authors ;(join ", " authors)
+           ]
           [:td (use-sub-style table-style :td-date) (date-string modified)]
           [:td (use-sub-style table-style :td-date) (date-string added)]]))]]))

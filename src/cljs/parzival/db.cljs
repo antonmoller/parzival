@@ -19,33 +19,10 @@
    :pdf/worker nil
    :highlight/anchor nil ; [x y]
    :highlight/selected nil ; [color page id] [color page id]
-  ;;  :page/active nil
-   :links {}
-   :documents {}})
+   :page/active nil
+   :pages {}})
 
 ;;; Spec
-
-;; ;; UI
-;; (s/def ::name string?)
-;; (s/def ::current-route keyword?)
-;; (s/def :theme/dark boolean?)
-;; (s/def :left-sidebar/open boolean?)
-;; (s/def :right-sidebar/open boolean?)
-;; (s/def :right-sidebar/width pos-int?)
-;; (s/def :settings/open boolean?)
-;; (s/def ::pagemark? boolean?)
-;; (s/def :pagemark/anchor (s/or nil?
-;;                               (s/keys :req-un [::left ::top ::height ::edit ::page])))
-;; (s/def :)
-;; (s/def )
-;; (s/def :highlight/anchor (s/cat :x (and pos? float?) :y (and pos? float?)))
-;; (s/def :highlight/selected ())
-;; ;; (s/def ::highlight/selected)
-;; ;; (s/def ::pagemark?)
-;; ;; (s/def :pdf/active)
-;; ;; (s/def :pdf/document)
-;; ;; (s/def :pdf/viewer)
-;; ;; (s/def :document/active)
 
 (s/def ::page-no pos-int?)
 
@@ -68,26 +45,24 @@
 (s/def ::highlight (s/keys :req-un [::color ::start ::start-offset ::end ::end-offset]))
 (s/def ::highlights (s/map-of ::page-no (s/map-of ::highlight-uid ::highlight)))
 
-;; Documents
-(s/def ::document-uid string?) ; FIXME prefix = document-
-(s/def ::title string?)
-(s/def ::authors (s/coll-of string? :kind vector?))
-(s/def ::filename string?) ;FIXME Can also be nil if documents has been removed should check that it's a path
-(s/def ::modified pos-int?)
-(s/def ::added pos-int?)
-(s/def ::document (s/keys :req-un [::title ::authors ::filename ::modified ::added ::highlights ::pagemarks]))
-(s/def ::documents (s/map-of ::document-uid ::document))
-
 ;; Blocks
 (s/def ::block-uid string?)
 
-;; Links 
-(s/def ::link-name string?)
-(s/def ::link (s/tuple #{:documents} ::document-uid (or (s/and #{:authors} pos-int?) (s/and #{:blocks} ::block-uid))))
-(s/def ::links (s/map-of ::link-name (s/+ ::link)))
+;; Documents
+(s/def ::page-uid string?) ; FIXME prefix = page-
+(s/def ::title string?)
+(s/def ::authors string?)
+(s/def ::filename string?) 
+(s/def ::refs (s/coll-of ::block-uid :kind vector?))
+(s/def ::modified pos-int?)
+(s/def ::added pos-int?)
+(s/def :page/active (s/or ::page-uid nil?)) ; FIXME prefix = page-
+(s/def ::page (s/keys :req-un [::title ::modified ::added ::refs] 
+                      :opt-un [::filename ::authors ::highlights ::pagemarks]))
+(s/def ::pages (s/map-of ::page-uid ::page))
 
 ;; App-db
-(s/def ::db (s/keys :req-un [::documents ::links]))
+(s/def ::db (s/keys :req-un [::pages :page/active]))
 
 ;; ;; Pages
 ;; (s/def ::page-no (s/and integer?
@@ -100,8 +75,7 @@
 ;; (s/def ::file-name string?) ;FIXME
 ;; (s/def ::title string?)
 ;; (s/def ::authors (s/* string?))
-;; (s/def ::no-pages pos-int?)
-;; (s/def ::active-page pos-int?)
+ ;; (s/def ::active-page pos-i
 ;; (s/def ::meta (s/keys :req [::file-name ::title ::authors ::no-pages ::active-page]))
 
 ;; ;; PDF

@@ -1,4 +1,6 @@
-(ns parzival.utils)
+(ns parzival.utils
+  (:require
+   [clojure.spec.alpha :as s]))
 
 (defn date-string
   [timestamp]
@@ -11,3 +13,10 @@
 (defn gen-uid
   [prefix]
   (str prefix "-" (random-uuid)))
+
+(defn check-spec
+  "Throws and exception if 'data' doesn't match 'spec'"
+  [spec value]
+  (if (s/valid? spec value)
+    value
+    (throw (ex-info (str "spec-check-faild: " (s/explain-str spec value)) {}))))

@@ -43,9 +43,9 @@
     (:current-route db)))
 
 (reg-sub 
- :documents
+ :pages
  (fn [db _]
-   (:documents db)))
+   (:pages db)))
 
 (reg-sub
  :db/synced?

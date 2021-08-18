@@ -1,9 +1,7 @@
 (ns parzival.pdf
   (:require
    [re-frame.core :as rf :refer [subscribe dispatch reg-event-fx reg-fx reg-event-db reg-sub after]]
-   [parzival.db :as db]
    [parzival.style :refer [PAGEMARK-COLOR HIGHLIGHT-COLOR]]
-   [cljs.spec.alpha :as s]
    ["pdfjs-dist" :as pdfjs]
    ["pdfjs-dist/web/pdf_viewer.js" :as pdfjs-viewer]
    [cljs.core.async :refer [go]]
@@ -67,18 +65,23 @@
    (go
      (try
        (let [pdf (<p! (.-promise (.getDocument pdfjs (js-obj "data" data
-                                                             "worker" worker))))
-             metadata (<p! (.getMetadata pdf))]
-         (js/console.log pdf)
-         (js/console.log metadata)
-         (js/console.log (.. metadata -info -Author))
-         (js/console.log (.. metadata -info -Title))
+                                                             "worker" worker))))]
          (dispatch (conj on-success viewer pdf)))
        (catch js/Error e (dispatch (conj on-failure (ex-cause e))))))))
 
+(reg-sub
+ :page/active
+ (fn [db _]
+   (:page/active db)))
+
+(reg-event-db
+ :page/set-active
+ (fn [db [_ uid]]
+   (assoc db :page/active uid)))
+
 (reg-event-fx
  :pdf/load
- (fn [{:keys [db]} [_ pdf-filename]]
+ (fn [{:keys [db]} [_ uid pdf-filename]]
    (let [pdf-viewer (get db :pdf/viewer)
          pdf-worker (get db :pdf/worker)
          pdf-file (as-> (get db :db/filepath) p
@@ -86,11 +89,12 @@
                     (.resolve path p "pdfs")
                     (.resolve path p pdf-filename)
                     (.readFileSync fs p))]
-     {:pdf/document {:data pdf-file
-                     :worker pdf-worker
-                     :viewer pdf-viewer
-                     :on-success [:pdf/load-success]
-                     :on-failure [:pdf/load-failure]}})))
+     {:fx [[:dispatch [:page/set-active uid]]
+           [:pdf/document {:data pdf-file
+                           :worker pdf-worker
+                           :viewer pdf-viewer
+                           :on-success [:pdf/load-success]
+                           :on-failure [:pdf/load-failure]}]]})))
 
 (reg-event-fx
  :pdf/init-viewer
@@ -108,8 +112,6 @@
                                                     ;;  "downloadManager" download-manager
                                                     ;;  "findController" find-controller
                                                      "textLayerMode" 2))]
-     (js/console.log pdfjs)
-     (js/console.log pdfjs-viewer)
      (set! (.. pdfjs -GlobalWorkerOptions -workerSrc) "./js/compiled/pdf.worker.js")
      (.setViewer link-service pdf-viewer)
      (.on event-bus "pagesinit" #(set! (.-currentScaleValue pdf-viewer) "page-width"))
@@ -183,15 +185,6 @@
                    (== y0-1 y1-1) (max x0-1 x1-1)
                    :else x1-1)})
 
-(defn check-and-throw
-  "Throws an exception if 'data' doesn't match 'a-spec'"
-  [a-spec db]
-  (if (s/valid? a-spec db)
-    db
-    (throw (ex-info (str "spec check failed: " (s/explain-str a-spec db)) {}))))
-
-(def check-spec-interceptor (after (partial check-and-throw :parzival.db/db)))
-
 ;; Subs
 
 (rf/reg-sub
@@ -236,7 +229,8 @@
 (reg-event-fx
  :page/render-highlights
  (fn [{:keys [db]} [_ page-no page svg]]
-   (when-let [highlights (get-in db [:highlights page-no])]
+   (when-let [highlights (as-> (get db :page/active) page-uid
+                           (get-in db [:pages page-uid :highlights page-no]))]
      (let [page-rect  (.getBoundingClientRect (.querySelector page "canvas"))
            containers (.-children (.querySelector page ".textLayer"))]
        {:fx (into []
@@ -249,10 +243,11 @@
 (reg-event-fx
  :render/page
  (fn [{:keys [db]} [_ page]]
-   (let [page-no (int (.getAttribute page "data-page-number"))
+   (let [page-uid (get db :pdf/active)
+         page-no (int (.getAttribute page "data-page-number"))
          svg (.createElementNS js/document SVG-NAMESPACE "svg")
          canvas-wrapper (.querySelector page ".canvasWrapper")
-         pagemark (get-in db [:pagemarks page-no])]
+         pagemark (get-in db [:pages page-uid :pagemarks page-no])]
      (doto svg
        (.setAttribute "class" "svgLayer")
        (.setAttribute "style" "position: absolute; inset: 0; width: 100%; height: 100%;
@@ -265,24 +260,24 @@
 
 (reg-event-fx
  :highlight/remove
- [check-spec-interceptor]
  (fn [{:keys [db]} _]
    (let [{:keys [element _ _]} (get db :highlight/selected)
+         page-uid (get db :page/active)
          page (.closest element ".page")]
-     {:db (update-in db [:highlights (int (.getAttribute page "data-page-number"))]
+     {:db (update-in db [:pages page-uid :highlights (int (.getAttribute page "data-page-number"))]
                      dissoc (.getAttribute element "id"))
       :fx [(.remove element)]})))
 
 
 (reg-event-fx
  :highlight/edit
- [check-spec-interceptor]
  (fn [{:keys [db]} [_ color]]
    (let [{:keys [element _ _]} (get db :highlight/selected)
+         page-uid (get db :page/active)
          page (.closest element ".page")]
      (set! (.. element -style -fill) (:color (color HIGHLIGHT-COLOR)))
      (set! (.. element -style -fillOpacity) (:opacity (color HIGHLIGHT-COLOR)))
-     {:db (update-in db [:highlights
+     {:db (update-in db [:pages page-uid :highlights
                          (int (.getAttribute page "data-page-number"))
                          (.getAttribute element "id")]
                      assoc :color color)})))
@@ -300,12 +295,11 @@
 
 (reg-event-fx
  :highlight/add
- [check-spec-interceptor]
  (fn [{:keys [db]} [_ color]]
-   (js/console.log color)
    (let [selection (.getSelection js/document)]
      (when-not (.-isCollapsed selection)
-       (let [range-obj (.getRangeAt selection 0)
+       (let [page-uid (get db :page/active)
+             range-obj (.getRangeAt selection 0)
              start-container (.. range-obj -startContainer -parentNode)
              page      (.closest start-container ".page")
              page-id   (int (.getAttribute page "data-page-number"))
@@ -314,7 +308,7 @@
              containers (.-children (.closest start-container ".textLayer"))
              container-arr (.from js/Array containers)
              [end-container end-offset]  (get-end range-obj)
-             {:keys [merged highlights]} (merge-highlights (get-in db [:highlights page-id])
+             {:keys [merged highlights]} (merge-highlights (get-in db [:pages page-uid :highlights page-id])
                                                            {:color color
                                                             :start (.indexOf container-arr start-container)
                                                             :start-offset (.-startOffset range-obj)
@@ -323,7 +317,7 @@
              merged-uid (gen-uid "highlight")]
          (.collapse range-obj)
          {:db (->> (assoc highlights merged-uid merged)
-                   (assoc-in db [:highlights page-id]))
+                   (assoc-in db [:pages page-uid :highlights page-id]))
           :fx [[:dispatch [:highlight/render merged merged-uid svg page-rect containers]]]})))))
 
 (reg-event-fx
@@ -533,10 +527,9 @@
 ;; TODO: Will always be :done and hence have :width and :height
 (rf/reg-event-db
  :pagemark/resize
- [check-spec-interceptor]
  (fn [db [_ target]]
    (assoc-in db
-             [:pagemarks (page-id target) (.getAttribute target "id")]
+             [:pages (get db :page/active) :pagemarks (page-id target) (.getAttribute target "id")]
              {:width (percentage-to-float (.. target -style -width))
               :height (percentage-to-float (.. target -style -height))})))
 
@@ -597,15 +590,15 @@
 
 (reg-event-fx
  :pagemark/add
- [check-spec-interceptor]
  (fn [{:keys [db]} [_   page width height]]
    (let [page-no (int (.getAttribute page "data-page-number"))
-         uid (or (first (first (get-in db [:pagemarks page-no]))) (gen-uid "pagemark"))
+         page-uid (get db :page/active)
+         pagemark-uid (or (first (first (get-in db [:pages page-uid :pagemarks page-no]))) (gen-uid "pagemark"))
          pagemark {:width width :height height}
          svg (.querySelector page ".svgLayer")]
-     {:db (assoc-in db [:pagemarks page-no uid] pagemark)
+     {:db (assoc-in db [:pages page-uid :pagemarks page-no pagemark-uid] pagemark)
       :fx [[:dispatch [:pagemark/remove-render page]]
-           [:dispatch [:pagemark/render uid pagemark svg]]]})))
+           [:dispatch [:pagemark/render pagemark-uid pagemark svg]]]})))
 
 (reg-event-fx
  :pagemark/remove-render
@@ -616,11 +609,11 @@
 
 (reg-event-fx
  :pagemark/remove
- [check-spec-interceptor]
  (fn [{:keys [db]} [_ page]]
-   {:db (->>  (int (.getAttribute page "data-page-number"))
-              (update db :pagemarks dissoc))
-    :fx [[:dispatch [:pagemark/remove-render page]]]}))
+ (let [page-uid (get db :page/active)
+       page-no (int (.getAttribute page "data-page-number"))]
+   {:db (update-in db [:pages page-uid :pagemarks] dissoc page-no)
+    :fx [[:dispatch [:pagemark/remove-render page]]]})))
 
 (rf/reg-event-db
  :pagemark/set-anchor

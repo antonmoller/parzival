@@ -31,7 +31,8 @@
 (defn main
   []
   (doto ipcMain
-    (.on "exit-app" #(when-not (= js/process.platform "darwin") (.exit app)))
+    (.on "exit-app" #(.exit app))
+                      ;; when-not (= js/process.platform "darwin") (.exit app)))
     (.on "document-filepath" #(->> (.getPath app "documents") (set! (.-returnValue %))))
     (.on "open-pdf-dialog" #(->> (.showOpenDialogSync dialog (clj->js {:properties ["openFile" "multiSelections"]
                                                                        :filters [{:name "Pdf" :extensions ["pdf"]}]}))

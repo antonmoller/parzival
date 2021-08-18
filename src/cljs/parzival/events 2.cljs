@@ -1,7 +1,6 @@
 (ns parzival.events
   (:require
-   [parzival.utils :refer [check-spec]] 
-   [re-frame.core :as re-frame :refer [dispatch reg-event-db reg-event-fx after]]
+   [re-frame.core :as re-frame :refer [dispatch reg-event-db reg-event-fx]]
    [day8.re-frame.tracing :refer-macros [fn-traced]]))
 
 (reg-event-db
@@ -42,5 +41,3 @@
                                                   (when-not (.contains modal (.-target e))
                                                     (.removeEventListener js/document "mousedown" handle-click)
                                                     (dispatch [:modal/set-content nil])))))))
-
-(def check-db (after (partial check-spec :parzival.db/db)))
