@@ -9,7 +9,6 @@
    [parzival.devcards.modal]
    [devcards.core]
    [parzival.events :as events]
-   [parzival.subs]
    [parzival.style :as style]
    [re-frame.core :refer [dispatch-sync]]))
 

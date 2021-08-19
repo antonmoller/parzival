@@ -1,33 +1,57 @@
 (ns parzival.events
   (:require
-   [parzival.utils :refer [check-spec]] 
-   [re-frame.core :as re-frame :refer [dispatch reg-event-db reg-event-fx after]]
+   [parzival.utils :refer [gen-uid check-spec]] 
+   [re-frame.core :as re-frame :refer [dispatch reg-event-db reg-event-fx reg-sub]]
    [day8.re-frame.tracing :refer-macros [fn-traced]]))
+
+;;; left-sidebar
+(reg-sub
+ :left-sidebar/open?
+ (fn [db _]
+   (:left-sidebar/open? db)))
 
 (reg-event-db
  :left-sidebar/toggle
  (fn [db _]
-   (update db :left-sidebar/open not)))
+   (update db :left-sidebar/open? not)))
+
+;;; right-sidebar
+(reg-sub
+ :right-sidebar/open?
+ (fn [db _]
+   (:right-sidebar/open? db)))
 
 (reg-event-db
  :right-sidebar/toggle
  (fn [db _]
-   (update db :right-sidebar/open not)))
+   (update db :right-sidebar/open? not)))
+
+(reg-sub
+ :right-sidebar/width
+ (fn [db _]
+   (:right-sidebar/width db)))
 
 (reg-event-db
  :right-sidebar/set-width
  (fn [db [_ width]]
    (assoc db :right-sidebar/width width)))
 
+;;; theme
+(reg-sub
+ :theme/dark?
+ (fn [db _]
+   (:theme/dark db)))
+
 (reg-event-db
  :theme/switch
  (fn [db _]
-   (update db :theme/dark not)))
+   (update db :theme/dark? not)))
 
-(reg-event-db
- :loading/progress
- (fn [db prog]
-   (assoc db :loading/progress prog)))
+;;; modal
+(reg-sub
+ :modal/content
+ (fn [db _]
+   (:modal/content db)))
 
 (reg-event-db
  :modal/set-content
@@ -43,4 +67,19 @@
                                                     (.removeEventListener js/document "mousedown" handle-click)
                                                     (dispatch [:modal/set-content nil])))))))
 
-(def check-db (after (partial check-spec :parzival.db/db)))
+;;; pages
+(reg-sub
+ :pages
+ (fn [db _]
+   (:pages db)))
+
+(reg-event-fx
+ :page/create
+ (fn [{:keys [db]} [_ {:keys [title authors filename]}]]
+   (let [uid (gen-uid "page")
+         timestamp (.getTime (js/Date.))
+         data (cond-> {:title title :modified timestamp :added timestamp :refs []}
+                (some? filename) (assoc :filename filename :authors authors
+                                        :highlights {} :pagemarks {}))]
+     {:db (->> (check-spec :parzival.db/page data)
+               (assoc-in db [:pages uid]))})))

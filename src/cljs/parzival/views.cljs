@@ -7,8 +7,7 @@
    [parzival.views.document-table :refer [document-table]]
    [parzival.views.left-sidebar :refer [left-sidebar]]
    [stylefy.core :as stylefy :refer [use-style]]
-   [re-frame.core :refer [subscribe]]
-   [parzival.subs]))
+   [re-frame.core :refer [subscribe]]))
 
 ;; Styles
 

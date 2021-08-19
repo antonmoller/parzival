@@ -72,7 +72,7 @@
 
 (defn left-sidebar
   []
-  (let [open? (subscribe [:left-sidebar/open])]
+  (let [open? (subscribe [:left-sidebar/open?])]
     [:div (use-style left-sidebar-style {:class (if @open? "is-open" "is-closed")})
      [:div (use-style left-sidebar-content-style)
       [:h2 (use-style headline-style)

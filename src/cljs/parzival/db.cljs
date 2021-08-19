@@ -3,26 +3,47 @@
    [cljs.spec.alpha :as s]))
 
 (defonce default-db
-  {:name "parzival"
+  {;;; Router
    :current-route :home
+
+   ;;; db/filesystem
    :db/synced? true
    :db/sync-time 15
    :db/filepath nil
-   :theme/dark true
+
+   ;;; UI
+   :theme/dark? true
    :modal/content nil
-   :left-sidebar/open true
-   :right-sidebar/open false
+   :left-sidebar/open? true
+   :right-sidebar/open? false
    :right-sidebar/width 32
    :pagemark? false
    :pagemark/anchor nil ;  {:left :top :height :edit :page}
-   :pdf/viewer nil
-   :pdf/worker nil
    :highlight/anchor nil ; [x y]
    :highlight/selected nil ; [color page id] [color page id]
    :page/active nil
+
+   ;;; PDF   
+   :pdf/viewer nil
+   :pdf/worker nil
+
+   ;;; Data
    :pages {}})
 
 ;;; Spec
+
+;; Filesystem
+;; (s/def :db/synced? boolean?)
+;; (s/def :db/sync-time pos-int?)
+;; (s/def :db/filepath string?) ;; FIXME actually chech that it's a valid filepath
+
+;; UI
+;; (s/def :theme/dark? boolean?) ;; FIXME change in db to 
+;; (s/def :modal/content (or nil? keyword?))
+;; (s/def :left-sidebar/open? boolean?)
+;; (s/def :right-sidebar/open? boolean?)
+;; (s/def :right-sidebar/width pos-int?)
+;; (s/def ::pagemark? boolean?)
 
 (s/def ::page-no pos-int?)
 

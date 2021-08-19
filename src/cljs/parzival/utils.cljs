@@ -1,5 +1,6 @@
 (ns parzival.utils
   (:require
+   [re-frame.core :refer [after]] 
    [clojure.spec.alpha :as s]))
 
 (defn date-string
@@ -20,3 +21,6 @@
   (if (s/valid? spec value)
     value
     (throw (ex-info (str "spec-check-faild: " (s/explain-str spec value)) {}))))
+
+
+(def check-db (after (partial check-spec :parzival.db/db)))

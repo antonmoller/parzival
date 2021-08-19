@@ -1,8 +1,6 @@
 (ns parzival.electron
   (:require
    [parzival.db :as db]
-   [parzival.events :refer [check-db]]
-   [parzival.utils :refer [check-spec gen-uid]]
    ["path" :as path]
   ;;  ["fs" :as fs]
   ;;  ["electron" :refer [ipcRenderer]]
@@ -10,7 +8,7 @@
    [cljs.core.async :refer [go]]
    [cljs.core.async.interop :refer [<p!]]
    [cognitect.transit :as t]
-   [re-frame.core :refer [dispatch reg-event-db reg-event-fx reg-fx]]))
+   [re-frame.core :refer [dispatch reg-event-db reg-event-fx reg-fx reg-sub]]))
 
 (def ipcRenderer (.-ipcRenderer (js/require "electron")))
 (def fs (js/require "fs"))
@@ -18,16 +16,7 @@
 (def DB-INDEX "index.transit")
 (def PDFS-DIR-NAME "pdfs")
 
-(reg-event-fx
- :page/create
- (fn [{:keys [db]} [_ {:keys [title authors filename]}]]
-   (let [uid (gen-uid "page")
-         timestamp (.getTime (js/Date.))
-         data (cond-> {:title title :modified timestamp :added timestamp :refs []}
-                (some? filename) (assoc :filename filename :authors authors
-                                        :highlights {} :pagemarks {}))]
-     {:db (->> (check-spec :parzival.db/page data)
-               (assoc-in db [:pages uid]))})))
+
 
 (defn pdf-dir
   [db-filepath]
@@ -139,6 +128,16 @@
    (let [db-filepath (get db :db/filepath)]
      {:fx [[:fs/write-db! [db db-filepath]]
            [:dispatch [:db/synced]]]})))
+
+(reg-sub
+ :db/synced?
+ (fn [db _]
+   (:db/synced? db)))
+
+(reg-sub
+ :db/sync-time
+ (fn [db _]
+   (:db/sync-time db)))
 
 (reg-fx
  :electron/quit!

@@ -45,8 +45,8 @@
 
 (defn app-toolbar
   []
-  (let [left-open?     (subscribe [:left-sidebar/open])
-        right-open?    (subscribe [:right-sidebar/open])
+  (let [left-open?     (subscribe [:left-sidebar/open?])
+        right-open?    (subscribe [:right-sidebar/open?])
         synced?        (subscribe [:db/synced?])
         modal-content  (subscribe [:modal/content])
         route-name     (subscribe [:current-route/name])]

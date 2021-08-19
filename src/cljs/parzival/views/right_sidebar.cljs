@@ -72,7 +72,7 @@
 ;TODO: Should I move the resize logic to a event handler instead??? 
 (defn right-sidebar
   []
-  (let [open? (subscribe [:right-sidebar/open])
+  (let [open? (subscribe [:right-sidebar/open?])
         width (r/atom @(subscribe [:right-sidebar/width]))
         dragging? (r/atom false)
         handle-mousemove (fn [e]
