@@ -15,7 +15,7 @@
   (str prefix "-" (random-uuid)))
 
 (defn check-spec
-  "Throws and exception if 'data' doesn't match 'spec'"
+  "Throws and exception if 'value' doesn't match 'spec'"
   [spec value]
   (if (s/valid? spec value)
     value

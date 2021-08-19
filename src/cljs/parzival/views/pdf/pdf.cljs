@@ -3,7 +3,7 @@
    [re-frame.core :refer [dispatch]]
    [parzival.views.pdf.pagemark-sidebar :refer [pagemark-sidebar]]
    [parzival.views.pdf.highlight-toolbar :refer [highlight-toolbar]]
-   [parzival.views.pdf.pagemark-menu :refer [pagemark-menu]]
+   [parzival.views.pdf.pdf-menu :refer [pdf-menu]]
    [parzival.views.virtual-scrollbar :refer [virtual-scrollbar]]
    [parzival.style :refer [PDF-SCROLLBAR-WIDTH]]
    [stylefy.core :as stylefy :refer [use-style]]))
@@ -28,7 +28,7 @@
    [virtual-scrollbar
     {:content  [:div#viewerContainer (use-style pdf-container-style)
                 [highlight-toolbar]
-                [pagemark-menu]
+                [pdf-menu]
                 [:div#viewer.pdfViewer {:on-mouse-up #(dispatch [:highlight/toolbar-create])
                                         :on-context-menu (fn [e]
                                                            (.preventDefault e)

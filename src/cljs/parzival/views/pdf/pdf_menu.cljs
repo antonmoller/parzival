@@ -1,4 +1,4 @@
-(ns parzival.views.pdf.pagemark-menu
+(ns parzival.views.pdf.pdf-menu
   (:require
    ["@material-ui/icons/Book" :default Book]
    ["@material-ui/icons/Bookmark" :default Bookmark]
@@ -34,7 +34,7 @@
 
 ;;; Components
 
-(defn pagemark-menu
+(defn pdf-menu
   []
   (let [{:keys [left top height edit? page]} @(subscribe [:pagemark/anchor])]
     (when (some? left)
