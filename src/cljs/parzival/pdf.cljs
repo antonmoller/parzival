@@ -228,9 +228,8 @@
 
 (reg-event-fx
  :page/render-highlights
- (fn [{:keys [db]} [_ page-no page svg]]
-   (when-let [highlights (as-> (get db :page/active) page-uid
-                           (get-in db [:pages page-uid :highlights page-no]))]
+ (fn [{:keys [db]} [_ page-uid page-no page svg]]
+   (when-let [highlights (get-in db [:pages page-uid :highlights page-no])]
      (let [page-rect  (.getBoundingClientRect (.querySelector page "canvas"))
            containers (.-children (.querySelector page ".textLayer"))]
        {:fx (into []
@@ -238,12 +237,10 @@
                    #(vector :dispatch [:highlight/render (second %) (first %) svg page-rect containers])
                    highlights))}))))
 
-
-;;FIXME
 (reg-event-fx
  :render/page
  (fn [{:keys [db]} [_ page]]
-   (let [page-uid (get db :pdf/active)
+   (let [page-uid (get db :page/active)
          page-no (int (.getAttribute page "data-page-number"))
          svg (.createElementNS js/document SVG-NAMESPACE "svg")
          canvas-wrapper (.querySelector page ".canvasWrapper")
@@ -254,7 +251,7 @@
                                mix-blend-mode: multiply; z-index: 1; pointer-events: none; 
                                overflow: visible;"))
      {:fx [(.append canvas-wrapper svg)
-           [:dispatch [:page/render-highlights page-no page svg]]
+           [:dispatch [:page/render-highlights page-uid page-no page svg]]
            (when (some? pagemark)
              [:dispatch [:pagemark/render (first (first pagemark)) (second (first pagemark)) svg]])]})))
 
