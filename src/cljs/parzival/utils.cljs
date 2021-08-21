@@ -22,5 +22,4 @@
     value
     (throw (ex-info (str "spec-check-faild: " (s/explain-str spec value)) {}))))
 
-
 (def check-db (after (partial check-spec :parzival.db/db)))

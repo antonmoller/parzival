@@ -2,6 +2,7 @@
   (:require
    [re-frame.core :as rf :refer [subscribe dispatch reg-event-fx reg-fx reg-event-db reg-sub after]]
    [parzival.style :refer [PAGEMARK-COLOR HIGHLIGHT-COLOR]]
+   [parzival.utils :refer [gen-uid]]
    ["pdfjs-dist" :as pdfjs]
    ["pdfjs-dist/web/pdf_viewer.js" :as pdfjs-viewer]
    [cljs.core.async :refer [go]]
@@ -9,65 +10,25 @@
    [day8.re-frame.tracing :refer-macros [fn-traced]]))
 
 (def SVG-NAMESPACE "http://www.w3.org/2000/svg")
-
 (def path (js/require "path"))
 (def fs (js/require "fs"))
 
-;;; Subs
-
-(rf/reg-sub
- :pdf?
- (fn [db _]
-   (some? (get db :pdf))))
-
-(rf/reg-sub
- :pdf
- (fn [db _]
-   (get db :pdf)))
-
-(rf/reg-sub
- :pdf/no-pages
- (fn [db _]
-   (get db :pdf/pages)))
-
-(rf/reg-sub
- :pdf/loading?
- (fn [db _]
-   (get db :pdf/loading?)))
+;;; PDF
 
 (rf/reg-sub
  :pdf/width
  (fn [db _]
    (get db :pdf/width)))
 
-(defn gen-uid
-  [prefix]
-  (str prefix "-" (random-uuid)))
-
-;;; Events
-
-(rf/reg-event-fx
- :pdf/load-success
- (fn [_ [_ pdf-viewer pdf]]
-   (.setDocument pdf-viewer pdf)
-   (.setDocument ^js (.-linkService pdf-viewer) pdf nil)))
-
-;TODO: Change error handling so it's actually useful
-(reg-event-fx
- :pdf/load-failure
- (fn [_ [_ err]]
-   (js/console.log err)))
-
-; destroy previously opened document 
 (reg-fx
  :pdf/document
- (fn [{:keys [data viewer worker on-success on-failure]}]
+ (fn [{:keys [data viewer worker]}]
    (go
      (try
-       (let [pdf (<p! (.-promise (.getDocument pdfjs (js-obj "data" data
-                                                             "worker" worker))))]
-         (dispatch (conj on-success viewer pdf)))
-       (catch js/Error e (dispatch (conj on-failure (ex-cause e))))))))
+       (let [pdf (<p! (.-promise (.getDocument pdfjs (js-obj "data" data "worker" worker))))]
+         (.setDocument viewer pdf)
+         (.setDocument (.-linkService ^js viewer) pdf nil))
+       (catch js/Error e (js/console.log (ex-cause e)))))))
 
 (reg-sub
  :page/active
@@ -92,9 +53,7 @@
      {:fx [[:dispatch [:page/set-active uid]]
            [:pdf/document {:data pdf-file
                            :worker pdf-worker
-                           :viewer pdf-viewer
-                           :on-success [:pdf/load-success]
-                           :on-failure [:pdf/load-failure]}]]})))
+                           :viewer pdf-viewer}]]})))
 
 (reg-event-fx
  :pdf/init-viewer
