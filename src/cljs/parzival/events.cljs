@@ -1,8 +1,28 @@
 (ns parzival.events
   (:require
    [parzival.utils :refer [gen-uid check-spec]] 
-   [re-frame.core :as re-frame :refer [dispatch reg-event-db reg-event-fx reg-sub]]
+   [re-frame.core :as re-frame :refer [dispatch reg-event-db reg-event-fx reg-sub reg-fx]]
    [day8.re-frame.tracing :refer-macros [fn-traced]]))
+
+;;; debounce
+(defonce timeouts
+  (atom {}))
+
+(reg-fx
+ :dispatch-debounce
+ (fn [[id event-vec s]]
+   (js/clearTimeout (@timeouts id))
+   (swap! timeouts assoc id
+          (js/setTimeout (fn []
+                           (dispatch event-vec)
+                           (swap! timeouts dissoc id))
+                         (* 1000 s)))))
+
+(reg-fx
+ :stop-all-debounce
+ (fn [_]
+   (run! (fn [[_ v]] (js/clearTimeout v)) @timeouts)
+   (reset! timeouts nil)))
 
 ;;; left-sidebar
 (reg-sub
@@ -83,3 +103,13 @@
                                         :highlights {} :pagemarks {}))]
      {:db (->> (check-spec :parzival.db/page data)
                (assoc-in db [:pages uid]))})))
+
+(reg-sub
+ :page/active
+ (fn [db _]
+   (:page/active db)))
+
+(reg-event-db
+ :page/set-active
+ (fn [db [_ uid]]
+   (assoc db :page/active uid)))

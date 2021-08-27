@@ -2,8 +2,6 @@
   (:require
    [parzival.db :as db]
    ["path" :as path]
-  ;;  ["fs" :as fs]
-  ;;  ["electron" :refer [ipcRenderer]]
    ["pdfjs-dist" :as pdfjs]
    [cljs.core.async :refer [go]]
    [cljs.core.async.interop :refer [<p!]]
@@ -12,11 +10,10 @@
 
 (def ipcRenderer (.-ipcRenderer (js/require "electron")))
 (def fs (js/require "fs"))
-
 (def DB-INDEX "index.transit")
 (def PDFS-DIR-NAME "pdfs")
 
-
+;;; Filesystem
 
 (defn pdf-dir
   [db-filepath]
@@ -52,8 +49,7 @@
  (fn [{:keys [filename filepath data worker]}]
    (go
      (try
-       (let [pdf (<p! (.-promise (.getDocument pdfjs (js-obj "data" data
-                                                             "worker" worker))))
+       (let [pdf (<p! (.-promise (.getDocument pdfjs (js-obj "data" data "worker" worker))))
              meta (<p! (.getMetadata pdf))
              title (.. meta -info -Title)
              author (.. meta -info -Author)]
@@ -144,25 +140,6 @@
  (fn [_]
    (.send ipcRenderer "exit-app")))
 
-(defonce timeouts
-  (atom {}))
-
-(reg-fx
- :dispatch-debounce
- (fn [[id event-vec s]]
-   (js/clearTimeout (@timeouts id))
-   (swap! timeouts assoc id
-          (js/setTimeout (fn []
-                           (dispatch event-vec)
-                           (swap! timeouts dissoc id))
-                         (* 1000 s)))))
-
-(reg-fx
- :stop-all-debounce
- (fn [_]
-   (run! (fn [[_ v]] (js/clearTimeout v)) @timeouts)
-   (reset! timeouts nil)))
-
 (reg-event-fx
  :boot/desktop
  (fn []
@@ -181,6 +158,5 @@
  (fn [{:keys [db]} _]
    (let [db-filepath (get db :db/filepath)]
      {:fx [[:stop-all-debounce]
-        ;;  [:dispatch [:modal/close-all]]
            [:fs/write-db! [(assoc db :db/synced? true) db-filepath]]
            [:electron/quit!]]})))

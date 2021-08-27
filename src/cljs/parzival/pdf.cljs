@@ -15,11 +15,6 @@
 
 ;;; PDF
 
-(rf/reg-sub
- :pdf/width
- (fn [db _]
-   (get db :pdf/width)))
-
 (reg-fx
  :pdf/document
  (fn [{:keys [data viewer worker]}]
@@ -29,16 +24,6 @@
          (.setDocument viewer pdf)
          (.setDocument (.-linkService ^js viewer) pdf nil))
        (catch js/Error e (js/console.log (ex-cause e)))))))
-
-(reg-sub
- :page/active
- (fn [db _]
-   (:page/active db)))
-
-(reg-event-db
- :page/set-active
- (fn [db [_ uid]]
-   (assoc db :page/active uid)))
 
 (reg-event-fx
  :pdf/load
@@ -144,7 +129,9 @@
                    (== y0-1 y1-1) (max x0-1 x1-1)
                    :else x1-1)})
 
-;; Subs
+(defn dec-to-percentage
+  [dec]
+  (-> dec (* 100) (str "%")))
 
 (rf/reg-sub
  :highlight/anchor
@@ -155,12 +142,6 @@
  :highlight/edit
  (fn [db _]
    (get db :highlight/selected)))
-
-(defn dec-to-percentage
-  [dec]
-  (-> dec (* 100) (str "%")))
-
-;; Events
 
 (reg-event-fx
  :highlight/render
@@ -666,11 +647,3 @@
                         :height height
                         :edit? (not= 0 (.-length (.getElementsByClassName page "pagemark")))
                         :page page}]]]})))
-
-(defn per-fn
-  [top]
-  (-> (* 100 (/ 37) (dec top)) (str "%")))
-
-(defn calc-height
-  [start-page end-page width height]
-  (-> (- end-page start-page) (+ (* width height)) (* 100 (/ 37)) (str "%")))
