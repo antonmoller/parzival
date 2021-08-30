@@ -95,11 +95,11 @@
 
 (reg-event-fx
  :page/create
- (fn [{:keys [db]} [_ {:keys [title authors filename]}]]
+ (fn [{:keys [db]} [_ {:keys [title num-pages authors filename]}]]
    (let [uid (gen-uid "page")
          timestamp (.getTime (js/Date.))
          data (cond-> {:title title :modified timestamp :added timestamp :refs []}
-                (some? filename) (assoc :filename filename :authors authors
+                (some? filename) (assoc :filename filename :num-pages num-pages :authors authors
                                         :highlights {} :pagemarks {}))]
      {:db (->> (check-spec :parzival.db/page data)
                (assoc-in db [:pages uid]))})))

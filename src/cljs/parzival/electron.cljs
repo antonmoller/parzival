@@ -52,9 +52,11 @@
        (let [pdf (<p! (.-promise (.getDocument pdfjs (js-obj "data" data "worker" worker))))
              meta (<p! (.getMetadata pdf))
              title (.. meta -info -Title)
-             author (.. meta -info -Author)]
+             author (.. meta -info -Author)
+             num-pages (.-numPages pdf)]
          (dispatch [:page/create
                     {:title (if (and (some? title) (not= "" title)) title filename)
+                     :num-pages num-pages
                      :authors (if (some? author) author "")
                      :filename filename}])
          (dispatch [:fs/write! filepath data])

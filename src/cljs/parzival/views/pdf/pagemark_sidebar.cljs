@@ -317,14 +317,14 @@
 ; FIXME
 (defn pagemark-sidebar
   []
-  (let [;pagemarks @(subscribe [:pagemark/fetch])
-        ;pagemark? @(subscribe [:pagemark?])
-        ;no-pages @(subscribe [:pdf/no-pages])
-        ;page-percentage (/ no-pages)
+  (let [pagemark? @(subscribe [:pagemark?])
+        pagemarks @(subscribe [:pdf/pagemarks-sidebar])
+        num-pages @(subscribe [:pdf/num-pages])
+        page-percentage (/ num-pages)
         ]
     [:div]))
     ;; (if pagemark?
-    ;;   [pagemark-change pagemarks no-pages page-percentage]
+    ;;   [pagemark-change pagemarks num-pages page-percentage]
     ;;   (into [:div]
     ;;         (map (fn [[id type top height]]
     ;;                ^{:key id}

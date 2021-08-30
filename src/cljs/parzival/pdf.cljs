@@ -13,7 +13,18 @@
 (def path (js/require "path"))
 (def fs (js/require "fs"))
 
-;;; PDF
+;;; Pdf
+
+;;; Highlights
+
+;;; Pagemarks
+
+(reg-sub
+ :pdf/num-pages
+ :<- [:page/active]
+ :<- [:pages]
+ (fn [[page-uid pages]  _]
+   (get-in pages [page-uid :num-pages])))
 
 (reg-fx
  :pdf/document
@@ -310,7 +321,6 @@
 ;; Helpers
 
 (def stroke-width 8)
-
 (def min-px 100)
 
 (defn px-to-percentage
@@ -439,9 +449,15 @@
 
 (rf/reg-sub
  :pdf/pagemarks-sidebar
- :<- [:pdf/pagemarks]
- (fn [pagemarks _]
-   (group-consecutive-pages pagemarks)))
+ :<- [:page/active]
+ :<- [:pages]
+ (fn [[page-uid pages] _]
+   (js/console.log
+     (->> (get-in pages [page-uid :pagemarks])
+          (map (fn [[_ v]] v))
+          (doto)))
+   (-> (get-in pages [page-uid :pagemarks])
+       (group-consecutive-pages))))
 
 ;; Events
 

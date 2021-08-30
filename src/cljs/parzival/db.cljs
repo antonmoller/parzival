@@ -69,17 +69,18 @@
 ;; Blocks
 (s/def ::block-uid string?)
 
-;; Documents
+;; Pages
 (s/def ::page-uid string?) ; FIXME prefix = page-
 (s/def ::title string?)
 (s/def ::authors string?)
+(s/def ::num-pages pos-int?)
 (s/def ::filename string?) 
 (s/def ::refs (s/coll-of ::block-uid :kind vector?))
 (s/def ::modified pos-int?)
 (s/def ::added pos-int?)
 (s/def :page/active (s/or ::page-uid nil?)) ; FIXME prefix = page-
 (s/def ::page (s/keys :req-un [::title ::modified ::added ::refs] 
-                      :opt-un [::filename ::authors ::highlights ::pagemarks]))
+                      :opt-un [::filename ::authors ::num-pages ::highlights ::pagemarks]))
 (s/def ::pages (s/map-of ::page-uid ::page))
 
 ;; App-db
