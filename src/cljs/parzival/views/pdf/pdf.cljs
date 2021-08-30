@@ -39,5 +39,5 @@
      :scroll-container-id "viewerContainer" ; the container where the scrollbar would be
      :container-id "viewer" ; The container that contains the content that will be scrolled
      :container-width "1000px" ; The width of the container
-     :scrollbar-content [pagemark-sidebar]
+     :scrollbar-content [:div] ; [pagemark-sidebar]
      :scrollbar-width PDF-SCROLLBAR-WIDTH}]])

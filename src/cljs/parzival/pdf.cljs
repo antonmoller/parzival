@@ -1,6 +1,6 @@
 (ns parzival.pdf
   (:require
-   [re-frame.core :as rf :refer [subscribe dispatch reg-event-fx reg-fx reg-event-db reg-sub after]]
+   [re-frame.core :refer [dispatch reg-event-fx reg-fx reg-event-db reg-sub]]
    [parzival.style :refer [PAGEMARK-COLOR HIGHLIGHT-COLOR]]
    [parzival.utils :as utils]
    ["pdfjs-dist" :as pdfjs]
@@ -81,7 +81,7 @@
    {}))
 
 ;; TODO: Create a more general version by looking at pagemark-resize
-(rf/reg-event-fx
+(reg-event-fx
  :pdf/resize
  (fn [_ [_ button target pointer-id id]]
    (when (= 1 button)
@@ -100,6 +100,29 @@
                                           (dispatch [:pdf/change-size]))
                             (js-obj "once" true)))))
    {}))
+
+(reg-event-fx
+ :pdf/render-page
+ (fn [{:keys [db]} [_ page]]
+   (let [page-uid (get db :page/active)
+         page-num (int (.getAttribute page "data-page-number"))
+         page-rect (.getBoundingClientRect (.querySelector page "canvas"))
+         page-containers (.-children (.querySelector page ".textLayer"))
+         svg (.createElementNS js/document SVG-NAMESPACE "svg")
+         canvas-wrapper (.querySelector page ".canvasWrapper")
+         pagemark (get-in db [:pages page-uid :pagemarks page-num])
+         highlights (get-in db [:pages page-uid :highlights page-num])]
+     (doto svg
+       (.setAttribute "class" "svgLayer")
+       (.setAttribute "style" "position: absolute; inset: 0; width: 100%; height: 100%;
+                               mix-blend-mode: multiply; z-index: 1; pointer-events: none; 
+                               overflow: visible;"))
+     {:fx (cond-> [(.append canvas-wrapper svg)]
+            (some? pagemark) (conj [:dispatch [:pagemark/render pagemark svg]])
+            (some? highlights) (concat (map (fn [v]
+                                              [:highlight/render
+                                               [(second v) (first v) svg page-rect page-containers]])
+                                            highlights)))})))
 
 ;;; Highlights
 
@@ -149,15 +172,7 @@
              {:merged highlight :highlights {}}
              page))
 
-(reg-sub
- :highlight/anchor
- (fn [db _]
-   (:highlight/anchor db)))
-
-(reg-sub
- :highlight/edit
- (fn [db _]
-   (:highlight/selected db)))
+;; CRUD
 
 (reg-fx
  :highlight/render
@@ -181,57 +196,6 @@
                                           "height: " (.-height coords) "px;"))
          (.append group rect)))
      (.append svg group))))
-
-(reg-event-fx
- :pdf/render-highlights
- (fn [{:keys [db]} [_ page-uid page-no page svg]]
-   (when-let [highlights (get-in db [:pages page-uid :highlights page-no])]
-     (let [page-rect  (.getBoundingClientRect (.querySelector page "canvas"))
-           containers (.-children (.querySelector page ".textLayer"))]
-       {:fx (into [] (map
-                      #(vector :highlight/render [(second %) (first %) svg page-rect containers])
-                      highlights))}))))
-
-(reg-event-fx
- :pdf/render-page
- (fn [{:keys [db]} [_ page]]
-   (let [page-uid (get db :page/active)
-         page-no (int (.getAttribute page "data-page-number"))
-         svg (.createElementNS js/document SVG-NAMESPACE "svg")
-         canvas-wrapper (.querySelector page ".canvasWrapper")
-         pagemark (get-in db [:pages page-uid :pagemarks page-no])]
-     (doto svg
-       (.setAttribute "class" "svgLayer")
-       (.setAttribute "style" "position: absolute; inset: 0; width: 100%; height: 100%;
-                               mix-blend-mode: multiply; z-index: 1; pointer-events: none; 
-                               overflow: visible;"))
-     {:fx [(.append canvas-wrapper svg)
-           [:dispatch [:pdf/render-highlights page-uid page-no page svg]]
-           (when (some? pagemark)
-             [:dispatch [:pagemark/render pagemark svg]])]})))
-
-(reg-event-fx
- :highlight/remove
- (fn [{:keys [db]} _]
-   (let [{:keys [element]} (get db :highlight/selected)
-         page-uid (get db :page/active)
-         page (.closest element ".page")]
-     {:db (update-in db [:pages page-uid :highlights (utils/pdf-page-num page)]
-                     dissoc (utils/highlight-uid element))
-      :fx [(.remove element)]})))
-
-(reg-event-fx
- :highlight/edit
- (fn [{:keys [db]} [_ color]]
-   (let [{:keys [element]} (get db :highlight/selected)
-         page-uid (get db :page/active)
-         page (.closest element ".page")]
-     (set! (.. element -style -fill) (:color (color HIGHLIGHT-COLOR)))
-     (set! (.. element -style -fillOpacity) (:opacity (color HIGHLIGHT-COLOR)))
-     {:db (update-in db [:pages page-uid :highlights
-                         (utils/pdf-page-num page)
-                         (utils/highlight-uid element)]
-                     assoc :color color)})))
 
 (reg-event-fx
  :highlight/add
@@ -261,29 +225,64 @@
                [:highlight/render [merged merged-uid svg page-rect containers]]]})))))
 
 (reg-event-fx
+ :highlight/remove
+ (fn [{:keys [db]} _]
+   (let [{:keys [element]} (get db :highlight/selected)
+         page-uid (get db :page/active)
+         page (.closest element ".page")]
+     {:db (update-in db [:pages page-uid :highlights (utils/pdf-page-num page)]
+                     dissoc (utils/highlight-uid element))
+      :fx [(.remove element)]})))
+
+(reg-event-fx
+ :highlight/edit
+ (fn [{:keys [db]} [_ color]]
+   (let [{:keys [element]} (get db :highlight/selected)
+         page-uid (get db :page/active)
+         page (.closest element ".page")]
+     (set! (.. element -style -fill) (:color (color HIGHLIGHT-COLOR)))
+     (set! (.. element -style -fillOpacity) (:opacity (color HIGHLIGHT-COLOR)))
+     {:db (update-in db [:pages page-uid :highlights
+                         (utils/pdf-page-num page)
+                         (utils/highlight-uid element)]
+                     assoc :color color)})))
+
+;; Toolbar
+
+(reg-sub
+ :highlight/selected
+ (fn [db _]
+   (:highlight/selected db)))
+
+(reg-event-db
+ :highlight/set-selected
+ (fn [db [_ m]]
+   (assoc db :highlight/selected m)))
+
+(reg-sub
+ :highlight/toolbar-anchor
+ (fn [db _]
+   (:highlight/toolbar-anchor db)))
+
+(reg-event-fx
  :highlight/toolbar-set-anchor
  (fn [{:keys [db]} [_ rect]]
    {:db (if (nil? rect)
-          (assoc db :highlight/anchor nil)
+          (assoc db :highlight/toolbar-anchor nil)
           (as-> (.getBoundingClientRect (.getElementById js/document "viewer")) page-rect
             (assoc db
-                   :highlight/anchor
+                   :highlight/toolbar-anchor
                    {:left (+ (- (.-x rect) (.-x page-rect)) (/ (.-width rect) 2))
                     :top (- (.-bottom rect) (.-y page-rect))
                     :page-right (.-right page-rect)})))}))
 
-(reg-event-db
- :highlight/selected
- (fn [db [_ m]]
-   (assoc db :highlight/selected m)))
-
 (reg-event-fx
- :highlight/close
+ :highlight/toolbar-close
  (fn [{:keys [db]} _]
    (as->  (:element (get db :highlight/selected)) selected-highlight
      (.addEventListener js/document "mousedown"
                         (fn []
-                          (dispatch [:highlight/selected nil])
+                          (dispatch [:highlight/set-selected nil])
                           (dispatch [:highlight/toolbar-set-anchor nil])
                           (when (some? selected-highlight)
                             (set! (.. selected-highlight -style -fillOpacity)
@@ -292,12 +291,11 @@
 
 (reg-event-fx
  :highlight/toolbar-edit
- (fn [_ [_ highlight]]
-   (js/console.log highlight)
-   (set!  (.. highlight -style -fillOpacity) (/ (.. highlight -style -fillOpacity) 2))
-   {:fx [[:dispatch [:highlight/selected {:element highlight
-                                          :color (.. highlight -style -fill)}]]
-         [:dispatch [:highlight/toolbar-set-anchor (.getBoundingClientRect highlight)]]]}))
+ (fn [_ [_ element]]
+   (set!  (.. element -style -fillOpacity) (/ (.. element -style -fillOpacity) 2))
+   {:fx [[:dispatch [:highlight/set-selected {:element element
+                                              :color (.. element -style -fill)}]]
+         [:dispatch [:highlight/toolbar-set-anchor (.getBoundingClientRect element)]]]}))
 
 (reg-event-fx
  :highlight/toolbar-create
@@ -377,22 +375,22 @@
 
 ;; Subs
 
-(rf/reg-sub
+(reg-sub
  :pagemark/anchor
  (fn [db _]
-   (get db :pagemark/anchor)))
+   (:pagemark/anchor db)))
 
-(rf/reg-sub
+(reg-sub
  :pagemark?
  (fn [db _]
    (get db :pagemark?)))
 
-(rf/reg-sub
+(reg-sub
  :pagemark/sidebar
  (fn [db _]
    (get db :pagemark/sidebar)))
 
-(rf/reg-sub
+(reg-sub
  :pdf/pagemarks
  (fn [db _]
    (get db :pdf/pagemarks)))
@@ -440,7 +438,7 @@
              '()
              (into (sorted-map) pagemarks)))
 
-(rf/reg-sub
+(reg-sub
  :pdf/pagemarks-sidebar
  :<- [:page/active]
  :<- [:pages]
@@ -454,7 +452,7 @@
 
 ;; Events
 
-(rf/reg-event-db
+(reg-event-db
  :pagemark-state
  (fn [db [_ bool]]
    (assoc db :pagemark? bool)))
@@ -471,7 +469,7 @@
    {:fx [[:dispatch [:pagemark-state true]]]}))
 
 ;; TODO: Will always be :done and hence have :width and :height
-(rf/reg-event-db
+(reg-event-db
  :pagemark/resize
  (fn [db [_ target]]
    (assoc-in db
@@ -557,7 +555,7 @@
    {:db (update-in db [:pages page-uid :pagemarks] dissoc page-no)
     :fx [[:dispatch [:pagemark/remove-render page]]]})))
 
-(rf/reg-event-db
+(reg-event-db
  :pagemark/set-anchor
  (fn [db [_ coords]]
    (assoc db :pagemark/anchor coords)))
@@ -584,7 +582,7 @@
           []
           pages))
 
-(rf/reg-event-fx
+(reg-event-fx
  :pagemark/sidebar-remove
  (fn [{:keys [db]} [_ start-page end-page deadline]]
    (let [pages (get-pages start-page end-page)]
@@ -593,7 +591,7 @@
             (into [] (create-pagemark-fx pages :pagemark/remove-render))
             [])})))
 
-(rf/reg-event-fx
+(reg-event-fx
  :pagemark/sidebar-add-edit
  (fn [{:keys [db]} [_ {:keys [start-page end-page deadline edit-start edit-end]}]]
    (let [pages-to-add (cond-> '()

@@ -19,7 +19,7 @@
    :right-sidebar/width 32
    :pagemark? false
    :pagemark/anchor nil ;  {:left :top :height :edit :page}
-   :highlight/anchor nil ; [x y]
+   :highlight/toolbar-anchor nil ; [x y]
    :highlight/selected nil ; [color page id] [color page id]
    :page/active nil
 
