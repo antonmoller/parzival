@@ -48,13 +48,12 @@
 (s/def ::page-no pos-int?)
 
 ;; Pagemarks
-(s/def ::pagemark-uid string?) ; FIXME prefix = pagemark-
 (s/def ::deadline string?) ; FIXME
 (s/def ::skip? true?)
 (s/def ::width (s/and float? #(<= 0 % 1)))
 (s/def ::height (s/and float? #(<= 0 % 1)))
 (s/def ::pagemark (s/keys :req-un [(or ::deadline ::skip? (and ::width ::height))]))
-(s/def ::pagemarks (s/map-of ::page-no (s/map-of ::pagemark-uid ::pagemark)))
+(s/def ::pagemarks (s/map-of ::page-no ::pagemark))
 
 ;; Highlights
 (s/def ::highlight-uid string?) ; FIXME prefix = highlight-

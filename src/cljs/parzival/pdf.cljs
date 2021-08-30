@@ -69,6 +69,7 @@
                                                      "textLayerMode" 2))]
      (set! (.. pdfjs -GlobalWorkerOptions -workerSrc) "./js/compiled/pdf.worker.js")
      (.setViewer link-service pdf-viewer)
+     (js/console.log pdf-viewer)
      (.on event-bus "pagesinit" #(set! (.-currentScaleValue pdf-viewer) "page-width"))
      (.on event-bus "textlayerrendered" #(dispatch [:render/page (.. % -source -textLayerDiv -parentNode)]))
      {:db (-> db
