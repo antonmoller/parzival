@@ -63,9 +63,10 @@
 (defn highlight-toolbar
   []
   (let [pos   @(subscribe [:highlight/anchor])
-        edit? @(subscribe [:highlight/edit])]
+        edit  @(subscribe [:highlight/edit])]
+    (js/console.log edit)
     (when (some? pos)
-      (dispatch [:highlighting/close])
+      (dispatch [:highlight/close])
       [:div#highlight-toolbar
        [:div (merge (use-style anchor-style)
                     {:style {:left (str (:left pos) "px")
@@ -75,14 +76,14 @@
                              :left (get-position pos)}})
         (doall
          (for [[k {color :color}] HIGHLIGHT-COLOR]
-           (if (and (some? edit?) (= (:color edit?) color))
+           (if (and (some? edit) (= (:color edit) color))
              [:div (merge (use-style button-style)
                           {:key (str "highlight-" color)
                            :on-mouse-down #(dispatch [:highlight/remove])})
               [:> CancelRounded {:style {:color color}}]]
              [:div (merge (use-style button-style)
                           {:key (str "highlight-" color)
-                           :on-mouse-down #(if (nil? edit?)
+                           :on-mouse-down #(if (nil? edit)
                                              (dispatch [:highlight/add k])
                                              (dispatch [:highlight/edit k]))})
               [:> Brightness1Rounded  {:style {:color color}}]])))]])))

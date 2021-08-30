@@ -37,7 +37,10 @@
 ;; (s/def :db/sync-time pos-int?)
 ;; (s/def :db/filepath string?) ;; FIXME actually chech that it's a valid filepath
 
-;; UI
+;;; UI
+;; Highlights
+(s/def :highlight/anchor (or nil? (s/coll-of nat-int? :kind vector? :count 3)))
+;; (s/def :highlight/selected (s/or nil? (s/tuple ))) ;TODO
 ;; (s/def :theme/dark? boolean?) ;; FIXME change in db to 
 ;; (s/def :modal/content (or nil? keyword?))
 ;; (s/def :left-sidebar/open? boolean?)

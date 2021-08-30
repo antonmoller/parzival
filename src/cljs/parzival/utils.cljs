@@ -15,6 +15,18 @@
   [prefix]
   (str prefix "-" (random-uuid)))
 
+(defn dec-to-percentage
+  [dec]
+  (-> dec (* 100) (str "%")))
+
+(defn pdf-page-num
+  [page]
+  (int (.getAttribute page "data-page-number")))
+
+(defn highlight-uid
+  [highlight]
+  (.getAttribute highlight "id"))
+
 (defn check-spec
   "Throws and exception if 'value' doesn't match 'spec'"
   [spec value]
