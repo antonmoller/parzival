@@ -19,10 +19,26 @@
   [dec]
   (-> dec (* 100) (str "%")))
 
-(defn pdf-page-num
-  [page]
-  (int (.getAttribute page "data-page-number")))
+(defn px-to-percentage
+  [bounding-px new-px]
+  (-> new-px
+      (/ bounding-px)
+      (* 100)
+      (str "%")))
 
+(defn percentage-to-float
+  [p]
+  (-> (js/parseFloat p)
+      (/ 100)))
+
+; TODO move to pdf
+(defn pdf-page-num
+  [target]
+  (-> (.closest target ".page")
+      (.getAttribute "data-page-number")
+      (int)))
+
+; TODO move to pdf, no just rename to get-uid
 (defn highlight-uid
   [highlight]
   (.getAttribute highlight "id"))

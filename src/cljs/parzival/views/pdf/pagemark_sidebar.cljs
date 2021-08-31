@@ -322,7 +322,21 @@
         num-pages @(subscribe [:pdf/num-pages])
         page-percentage (/ num-pages)
         ]
-    [:div]))
+    ;; (for [{:keys [start-page end-page]} pagemarks]
+    ;;   (js/console.log start-page end-page))
+    [:div]
+    
+    ;; (into [:div]
+    ;;         (map (fn [[id type top height]]
+    ;;                ^{:key id}
+    ;;                [pagemark {:id id
+    ;;                           :type type
+    ;;                           :top top
+    ;;                           :height height
+    ;;                           :style :sidebar
+    ;;                           :edit? false}]))
+    ;;         pagemarks)
+    ))
     ;; (if pagemark?
     ;;   [pagemark-change pagemarks num-pages page-percentage]
     ;;   (into [:div]

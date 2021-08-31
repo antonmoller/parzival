@@ -15,7 +15,6 @@
 
 ;;; Pdf
 
-;;; Pagemarks
 
 (reg-sub
  :pdf/num-pages
@@ -118,7 +117,7 @@
                                mix-blend-mode: multiply; z-index: 1; pointer-events: none; 
                                overflow: visible;"))
      {:fx (cond-> [(.append canvas-wrapper svg)]
-            (some? pagemark) (conj [:dispatch [:pagemark/render pagemark svg]])
+            (some? pagemark) (conj [:pagemark/render [pagemark svg]])
             (some? highlights) (concat (map (fn [v]
                                               [:highlight/render
                                                [(second v) (first v) svg page-rect page-containers]])
@@ -314,18 +313,7 @@
 (def stroke-width 8)
 (def min-px 100)
 
-(defn px-to-percentage
-  [bounding-px new-px]
-  (-> new-px
-      (/ bounding-px)
-      (* 100)
-      (str "%")))
-
-(defn percentage-to-float
-  [p]
-  (-> (js/parseFloat p)
-      (/ 100)))
-
+;TODO
 (defn resize-handler
   [e]
   (let [target (.-target e)
@@ -339,23 +327,18 @@
         height-px (+ (.-height b-box) (.-movementY e))]
     (set! (.-width style) (if (contains? #{"ew-resize" "nwse-resize"} cursor)
                             (cond
-                              (< width-px min-px) (px-to-percentage page-width-px min-px)
+                              (< width-px min-px) (utils/px-to-percentage page-width-px min-px)
                               (> width-px page-width-px) "100%"
-                              :else (px-to-percentage page-width-px width-px))
+                              :else (utils/px-to-percentage page-width-px width-px))
                             (.-width style)))
     (set! (.-height style) (if (contains? #{"ns-resize" "nwse-resize"} cursor)
                              (cond
-                               (< height-px min-px) (px-to-percentage page-height-px min-px)
+                               (< height-px min-px) (utils/px-to-percentage page-height-px min-px)
                                (> height-px page-height-px) "100%"
-                               :else (px-to-percentage page-height-px height-px))
+                               :else (utils/px-to-percentage page-height-px height-px))
                              (.-height style)))))
 
-(defn page-id
-  [target]
-  (-> (.closest target ".page")
-      (.getAttribute "data-page-number")
-      (int)))
-
+;TODO
 (defn set-cursor
   [target x y]
   (let [b-box ^js (.getBBox target)
@@ -375,27 +358,32 @@
 
 ;; Subs
 
+;TODO
 (reg-sub
  :pagemark/anchor
  (fn [db _]
    (:pagemark/anchor db)))
 
+;TODO
 (reg-sub
  :pagemark?
  (fn [db _]
-   (get db :pagemark?)))
+   (:pagemark? db)))
 
+;TODO
 (reg-sub
  :pagemark/sidebar
  (fn [db _]
-   (get db :pagemark/sidebar)))
+   (:pagemark/sidebar db)))
 
+;TODO
 (reg-sub
  :pdf/pagemarks
  (fn [db _]
-   (get db :pdf/pagemarks)))
+   (:pdf/pagemarks db)))
 
-(defn merge?
+;TODO
+(defn pagemark-merge?
   [p-0 p-1]
   (and
    (some? p-0)
@@ -404,7 +392,8 @@
    (= (:type p-0) (:type p-1))
    (and (some? (:schedule p-0)) (= (:schedule p-0) (:schedule p-1)))))
 
-(defn merge-pagemarks
+;TODO
+(defn pagemark-merge
   [{:keys [type schedule start-page]} p-1]
   {:type type
    :schedule schedule
@@ -412,6 +401,7 @@
    :end-page (:end-page p-1)
    :end-area (:end-area p-1)})
 
+;TODO
 (defn get-type
   [{:keys [done skip schedule]}]
   (cond
@@ -419,6 +409,7 @@
     skip :skip
     (not= "" schedule) :schedule))
 
+;TODO
 (defn group-consecutive-pages
   [pagemarks]
   (reduce-kv (fn [[head & tail] k v]
@@ -432,12 +423,13 @@
                                                (/ 10000))
                                            1)}]
                  (cond
-                   (merge? head pagemark) (conj tail (merge-pagemarks head pagemark))
+                   (pagemark-merge? head pagemark) (conj tail (pagemark-merge head pagemark))
                    (some? head) (conj tail head pagemark)
                    :else (conj tail pagemark))))
              '()
              (into (sorted-map) pagemarks)))
 
+;TODO
 (reg-sub
  :pdf/pagemarks-sidebar
  :<- [:page/active]
@@ -452,11 +444,13 @@
 
 ;; Events
 
+;TODO
 (reg-event-db
  :pagemark-state
  (fn [db [_ bool]]
    (assoc db :pagemark? bool)))
 
+;TODO
 (reg-event-fx
  :pagemark?
  (fn [_ _]
@@ -468,14 +462,14 @@
                           (dispatch [:pagemark-state false]))))
    {:fx [[:dispatch [:pagemark-state true]]]}))
 
-;; TODO: Will always be :done and hence have :width and :height
 (reg-event-db
+ ;"Will always be of type :done and hence have :width and :height"
  :pagemark/resize
  (fn [db [_ target]]
    (assoc-in db
-             [:pages (get db :page/active) :pagemarks (page-id target)]
-             {:width (percentage-to-float (.. target -style -width))
-              :height (percentage-to-float (.. target -style -height))})))
+             [:pages (get db :page/active) :pagemarks (utils/pdf-page-num target)]
+             {:width (utils/percentage-to-float (.. target -style -width))
+              :height (utils/percentage-to-float (.. target -style -height))})))
 
 (defn pagemark-done
   [rect width height]
@@ -508,18 +502,19 @@
     (.setAttribute "style" (str "pointer-events: auto; width: 100%; height: 100%;
                                  fill: " (:skip PAGEMARK-COLOR) "; fill-opacity: 0.3;"))))
 
-(reg-event-fx
+(reg-fx
  :pagemark/render
- (fn [_ [_ pagemark svg]]
+ (fn [[pagemark svg]]
    (let [rect (.createElementNS js/document SVG-NAMESPACE "rect")]
      (cond
-       (and (contains? pagemark :width)
-            (contains? pagemark :height)) (pagemark-done rect
-                                                         (utils/dec-to-percentage (:width pagemark))
-                                                         (utils/dec-to-percentage (:height pagemark)))
+       (every? #(contains? pagemark %) [:width :height]) (pagemark-done
+                                                          rect
+                                                          (utils/dec-to-percentage (:width pagemark))
+                                                          (utils/dec-to-percentage (:height pagemark)))
        (contains? pagemark :skip?) (pagemark-skip rect))
-     {:fx [(.append svg rect)]})))
+     (.append svg rect))))
 
+;TODO
 (defn group-pages
   [pages]
   (reduce (fn [[head & tail] v]
@@ -532,47 +527,51 @@
 (reg-event-fx
  :pagemark/add
  (fn [{:keys [db]} [_   page width height]]
-   (let [page-no (int (.getAttribute page "data-page-number"))
+   (let [page-num (utils/pdf-page-num page)
          page-uid (get db :page/active)
          pagemark {:width width :height height}
          svg (.querySelector page ".svgLayer")]
-     {:db (assoc-in db [:pages page-uid :pagemarks page-no] pagemark)
-      :fx [[:dispatch [:pagemark/remove-render page]]
-           [:dispatch [:pagemark/render pagemark svg]]]})))
+     {:db (assoc-in db [:pages page-uid :pagemarks page-num] pagemark)
+      :fx [[:pagemark/remove-render page]
+           [:pagemark/render [pagemark svg]]]})))
 
-(reg-event-fx
+(reg-fx
  :pagemark/remove-render
- (fn [_ [_ page]]
+ (fn [page]
    (as-> (.querySelector page "rect.pagemark") pagemark
-     {:fx [(when (some? pagemark)
-             (.remove pagemark))]})))
+     (when (some? pagemark)
+       (.remove pagemark)))))
 
 (reg-event-fx
  :pagemark/remove
  (fn [{:keys [db]} [_ page]]
- (let [page-uid (get db :page/active)
-       page-no (int (.getAttribute page "data-page-number"))]
-   {:db (update-in db [:pages page-uid :pagemarks] dissoc page-no)
-    :fx [[:dispatch [:pagemark/remove-render page]]]})))
+   (let [page-uid (get db :page/active)
+         page-no (int (.getAttribute page "data-page-number"))]
+     {:db (update-in db [:pages page-uid :pagemarks] dissoc page-no)
+      :fx [[:pagemark/remove-render page]]})))
 
 (reg-event-db
  :pagemark/set-anchor
  (fn [db [_ coords]]
    (assoc db :pagemark/anchor coords)))
 
+;TODO
 (defn get-pages
   [start-page end-page]
   (range (dec (int start-page)) (int end-page)))
 
+;TODO
 (defn add-pages
   [list start-page end-page]
   (concat list (range (dec (int start-page)) (int end-page))))
 
+;TODO
 (defn page-rendered
   [page-no]
   (.querySelector js/document (str "div.page[data-page-number=\"" (inc page-no)
                                    "\"][data-loaded=\"true\"]")))
 
+;TODO
 (defn create-pagemark-fx
   [pages fx]
   (reduce (fn [m v]
@@ -582,6 +581,7 @@
           []
           pages))
 
+;TODO
 (reg-event-fx
  :pagemark/sidebar-remove
  (fn [{:keys [db]} [_ start-page end-page deadline]]
@@ -591,6 +591,7 @@
             (into [] (create-pagemark-fx pages :pagemark/remove-render))
             [])})))
 
+;TODO
 (reg-event-fx
  :pagemark/sidebar-add-edit
  (fn [{:keys [db]} [_ {:keys [start-page end-page deadline edit-start edit-end]}]]
@@ -615,6 +616,7 @@
                              (create-pagemark-fx pages-to-remove :pagemark/remove-render)))
             [])})))
 
+;TODO
 (reg-event-fx
  :pagemark/close
  (fn [_ _]
@@ -622,6 +624,7 @@
                       #(dispatch [:pagemark/set-anchor nil])
                       (js-obj "once" true))))
 
+;TODO
 (reg-event-fx
  :pagemark/menu
  (fn [_ [_ target x y]]
