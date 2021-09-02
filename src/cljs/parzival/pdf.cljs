@@ -23,6 +23,12 @@
  (fn [[page-uid pages]  _]
    (get-in pages [page-uid :num-pages])))
 
+(reg-sub
+ :pdf/page-quota
+ :<- [:pdf/num-pages]
+ (fn [num-pages _]
+   (/ num-pages)))
+
 (reg-fx
  :pdf/document
  (fn [{:keys [data viewer worker]}]
@@ -356,13 +362,6 @@
       (set! (.. target -style -cursor) "ns-resize") ; bottom
       :else (set! (.. target -style -cursor) "default"))))
 
-;; Subs
-
-;TODO
-(reg-sub
- :pagemark/anchor
- (fn [db _]
-   (:pagemark/anchor db)))
 
 ;TODO
 (reg-sub
@@ -429,38 +428,52 @@
              '()
              (into (sorted-map) pagemarks)))
 
+(defn pagemark-type
+  [{:keys [width height deadline skip?]}]
+  (cond
+    skip? :skip
+    (some? deadline) :deadline
+    (and (some? width) (some? height)) :done))
+
+(defn calc-top-percentage
+  [{:keys [start-page]} page-quota]
+  (-> start-page (dec) (* page-quota 100) (str "%")))
+
+(defn calc-height-percentage
+  [{:keys [start-page end-page end-area]} page-quota]
+  (-> end-page (+ end-area) (- start-page) (* page-quota 100) (str "%")))
+
 ;TODO
 (reg-sub
  :pdf/pagemarks-sidebar
  :<- [:page/active]
  :<- [:pages]
- (fn [[page-uid pages] _]
-   (js/console.log
-     (->> (get-in pages [page-uid :pagemarks])
-          (map (fn [[_ v]] v))
-          (doto)))
-   (-> (get-in pages [page-uid :pagemarks])
-       (group-consecutive-pages))))
+ :<- [:pdf/num-pages]
+ (fn [[page-uid pages num-pages] _]
+   (->> (get-in pages [page-uid :pagemarks])
+        (into (sorted-map))
+        (reduce-kv
+         (fn [[head & tail :as l] k {:keys [width height] :as v}]
+           (let [end-area (* (or width 1) (or height 1))
+                 type (pagemark-type v)]
+             (cond
+               (empty? l) (conj l {:type type :start-page k :end-page k :end-area end-area})
+               (and (= (:type head) type)
+                    (= (+ (:end-page head)
+                          (:end-area head)) k)) (conj tail (assoc head :end-page k :end-area end-area))
+               :else (conj l {:type type :start-page k :end-page k :end-area end-area}))))
+         [])
+        (map (fn [{:keys [type start-page end-page] :as v}]
+               {:type type
+                :start-page start-page
+                :end-page end-page
+                :top (calc-top-percentage v (/ num-pages))
+                :height (calc-height-percentage v (/ num-pages))})))))
+   
+  ;;  (-> (get-in pages [page-uid :pagemarks])
+  ;;      (group-consecutive-pages))))
 
 ;; Events
-
-;TODO
-(reg-event-db
- :pagemark-state
- (fn [db [_ bool]]
-   (assoc db :pagemark? bool)))
-
-;TODO
-(reg-event-fx
- :pagemark?
- (fn [_ _]
-   (.addEventListener js/document
-                      "pointerdown"
-                      (fn close-pagemark [e]
-                        (when (nil? (.closest (.-target e) "#createPagemark"))
-                          (.removeEventListener js/document "pointerdown" close-pagemark)
-                          (dispatch [:pagemark-state false]))))
-   {:fx [[:dispatch [:pagemark-state true]]]}))
 
 (reg-event-db
  ;"Will always be of type :done and hence have :width and :height"
@@ -550,11 +563,6 @@
      {:db (update-in db [:pages page-uid :pagemarks] dissoc page-no)
       :fx [[:pagemark/remove-render page]]})))
 
-(reg-event-db
- :pagemark/set-anchor
- (fn [db [_ coords]]
-   (assoc db :pagemark/anchor coords)))
-
 ;TODO
 (defn get-pages
   [start-page end-page]
@@ -615,6 +623,35 @@
             (into [] (concat (create-pagemark-fx pages-to-add :pagemark/render)
                              (create-pagemark-fx pages-to-remove :pagemark/remove-render)))
             [])})))
+
+;TODO
+(reg-sub
+ :pagemark/anchor
+ (fn [db _]
+   (:pagemark/anchor db)))
+
+;TODO
+(reg-event-db
+ :pagemark-state
+ (fn [db [_ bool]]
+   (assoc db :pagemark? bool)))
+
+;TODO
+(reg-event-fx
+ :pagemark?
+ (fn [_ _]
+   (.addEventListener js/document
+                      "pointerdown"
+                      (fn close-pagemark [e]
+                        (when (nil? (.closest (.-target e) "#createPagemark"))
+                          (.removeEventListener js/document "pointerdown" close-pagemark)
+                          (dispatch [:pagemark-state false]))))
+   {:fx [[:dispatch [:pagemark-state true]]]}))
+
+(reg-event-db
+ :pagemark/set-anchor
+ (fn [db [_ coords]]
+   (assoc db :pagemark/anchor coords)))
 
 ;TODO
 (reg-event-fx

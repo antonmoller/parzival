@@ -40,7 +40,7 @@
 (reg-fx
  :fs/write-db!
  (fn [[db db-filepath]]
-   (->> (dissoc db :current-route :pdf/active :pdf/viewer :pdf/worker :modal/content)
+   (->> (dissoc db :current-route :pdf/active :pdf/viewer :pdf/worker :modal/content :pagemark?)
         (t/write (t/writer :json))
         (.writeFileSync fs db-filepath))))
 
@@ -99,7 +99,7 @@
          bkp-filepath (.resolve path (.dirname path db-filepath) bkp-filename)]
 
      {:db (-> (t/read (t/reader :json) db-file)
-              (assoc :current-route :home :modal/content nil :pdf/active nil))
+              (assoc :current-route :home :modal/content nil :pdf/active nil :pagemark? false))
       :fx [[:fs/copy! [db-filepath bkp-filepath]]]})))
 
 (reg-event-fx
