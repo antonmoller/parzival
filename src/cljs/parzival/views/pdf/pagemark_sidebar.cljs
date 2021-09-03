@@ -314,10 +314,10 @@
                         :height height
                         :background (type PAGEMARK-COLOR)
                         :cursor "pointer"
-                        ;; :border-top (when (= :edit style)
-                        ;;               (str "1px solid " (type PAGEMARK-COLOR)))
-                        ;; :border-bottom (when (= :edit style)
-                        ;;                  (str "1px solid " (type PAGEMARK-COLOR)))
+                        :border-top (when (= :edit style)
+                                      (str "1px solid " (type PAGEMARK-COLOR)))
+                        :border-bottom (when (= :edit style)
+                                         (str "1px solid " (type PAGEMARK-COLOR)))
                         ;; :cursor (cond
                         ;;           (not= :edit style) "default"
                         ;;           (= :done type) "not-allowed"
@@ -341,67 +341,79 @@
                        :end-page ""
                        :low-lim "0%"
                        :high-lim "100%"})
-        calc-top-percentage #(-> (int (:start-page @state))
+        calc-top-percentage (fn [page]
+                              (-> (int page)
                                  (dec)
                                  (* page-quota 100)
-                                 (str "%"))
-        calc-height-percentage #(-> (int (:end-page @state))
-                                    (- (int (:start-page @state)))
-                                    (inc)
-                                    (* page-quota 100) (str "%"))
-        calc-high-lim #(-> % (js/parseFloat) (/ 100) (/ page-quota) (int))
-        ; TODO: Why + 2? Possible to write universal?
-        calc-low-lim (fn [top height]
-                       (-> (js/parseFloat top) (+ (js/parseFloat height)) (/ 100) (/ page-quota) (+ 2) (int)))
+                                 (str "%")))
+        calc-height-percentage (fn [start-page end-page]
+                                 (-> (- (int end-page) (int start-page))
+                                     (inc)
+                                     (* page-quota 100) (str "%")))
+        calc-lim (fn [[top height]]
+                   (-> (+ (js/parseFloat top) (js/parseFloat height))
+                       (/ 100 page-quota)
+                       (+ (if (= "0%" height) 1 2))
+                       (int)))
         page-change (fn [e page]
                       (swap! state assoc page (.. e -target -value))
-                      (set! (.. (:selected @state) -style -top) (calc-top-percentage))
-                      (set! (.. (:selected @state) -style -height) (calc-height-percentage)))
-        ]
-  (fn [pagemarks]
-    [:div#createPagemark (merge (use-style pagemark-style)
-                                {:on-pointer-down #(.stopPropagation %)})
-     [:form (use-style pagemark-card-style)
-      [:label (use-sub-style pagemark-card-style :label) "Pages"]
-      [:input (use-sub-style pagemark-card-style :input 
-                             {:type "number" 
-                              :required true
-                              :value (:start-page @state)
-                              :min (:low-lim @state)
-                              :max (:end-page @state)
-                              :on-change #(page-change % :start-page)
-                              })]
-      [:input (use-sub-style pagemark-card-style :input 
-                             {:type "number" 
-                              :required true
-                              :value (:end-page @state)
-                              :min (:start-page @state)
-                              :max (:high-lim @state)
-                              :on-change #(page-change % :end-page)})]
-      [:label (use-sub-style pagemark-card-style :label) "Deadline"]
-      [:input (use-sub-style pagemark-card-style :input {:type "date"})]
-      [:div (use-sub-style pagemark-card-style :row-container)
-       [button {:type "button"}
-        [:> Close]]
-       [button {:type "submit"}
-        [:> Done]]]]
-     (into [:div (use-sub-style pagemark-style :change-container)]
-        (map (fn [{:keys [type start-page end-page top height]}]
-               [pagemark {:id (str "pagemark-" type "-" top "-" height)
-                          :handle-click (fn [e]
-                                          (.stopPropagation e)
-                                          (swap! state assoc
-                                                 :start-page start-page
-                                                 :end-page end-page
-                                                 :selected (.. e -target)
-                                                 :low-lim (calc-low-lim (.. e -target -previousSibling -style -top)
-                                                                        (.. e -target -previousSibling -style -height))
-                                                 :high-lim (calc-high-lim (.. e -target -nextSibling -style -top))))
-                          :type type
-                          :top top
-                          :height height
-                          :style :edit}])
-             pagemarks))
+                      (set! (.. (:selected @state) -style -top) (calc-top-percentage (:start-page @state)))
+                      (set! (.. (:selected @state) -style -height) (calc-height-percentage (:start-page @state)
+                                                                                           (:end-page @state))))
+        handle-submit #(.preventDefault %)]
+    (fn [pagemarks]
+      [:div#createPagemark (merge (use-style pagemark-style)
+                                  {:on-pointer-down #(.stopPropagation %)})
+       [:form (use-style pagemark-card-style
+                         {:on-submit handle-submit})
+        [:label (use-sub-style pagemark-card-style :label) "Pages"]
+        [:input (use-sub-style pagemark-card-style :input
+                               {:type "number"
+                                :required true
+                                :value (:start-page @state)
+                                :min (:low-lim @state)
+                                :max (:end-page @state)
+                                :on-change #(page-change % :start-page)})]
+        [:input (use-sub-style pagemark-card-style :input
+                               {:type "number"
+                                :required true
+                                :value (:end-page @state)
+                                :min (:start-page @state)
+                                :max (:high-lim @state)
+                                :on-change #(page-change % :end-page)})]
+        [:label (use-sub-style pagemark-card-style :label) "Deadline"]
+        [:input (use-sub-style pagemark-card-style :input {:type "date"})]
+        [:div (use-sub-style pagemark-card-style :row-container)
+         [button {:type "button"}
+          [:> Close]]
+         [button {:type "submit"}
+          [:> Done]]]]
+       (into [:div (use-sub-style pagemark-style :change-container)]
+             (map (fn [{:keys [type start-page end-page top height]}]
+                    [pagemark {:id (str "pagemark-" type "-" top "-" height)
+                               :handle-click (fn [e]
+                                               (let [previous-sibling (.. e -target -previousSibling)
+                                                     next-sibling (.. e -target -nextSibling)]
+                                                 (.stopPropagation e)
+                                                 (set! (.. e -target -style -width) "100%")
+                                                 (swap! state assoc
+                                                        :start-page start-page
+                                                        :end-page end-page
+                                                        :selected (.. e -target)
+                                                        :low-lim (calc-lim
+                                                                  (if (nil? previous-sibling)
+                                                                    ["0%" "0%"]
+                                                                    [(.. previous-sibling -style -top)
+                                                                     (.. previous-sibling -style -height)]))
+                                                        :high-lim (calc-lim
+                                                                   (if (nil? next-sibling)
+                                                                     [(calc-top-percentage num-pages) "0%"]
+                                                                     [(.. next-sibling -style -top) "0%"])))))
+                               :type type
+                               :top top
+                               :height height
+                               :style :edit}])
+                  pagemarks))
 
       ;;  (into [:div (use-sub-style pagemark-style :change-container
       ;;                             {:on-click handle-click-scrollbar})
@@ -423,7 +435,7 @@
       ;;                                      (.stopPropagation e))
       ;;                          :style :edit
       ;;                          :edit? true}]) pagemarks))
-     ])))
+       ])))
 
 ; FIXME
 (defn pagemark-sidebar
