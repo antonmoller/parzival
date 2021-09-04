@@ -360,7 +360,27 @@
                       (set! (.. (:selected @state) -style -top) (calc-top-percentage (:start-page @state)))
                       (set! (.. (:selected @state) -style -height) (calc-height-percentage (:start-page @state)
                                                                                            (:end-page @state))))
-        handle-submit #(.preventDefault %)]
+        handle-submit #(.preventDefault %)
+        handle-click-pagemark (fn [e start-page end-page]
+                                (let [previous-sibling (.. e -target -nextSibling) ; The list is in reverse order
+                                      next-sibling (.. e -target -previousSibling)]
+                                  (.stopPropagation e)
+                                  (set! (.. e -target -style -width) "100%")
+                                  (swap! state assoc
+                                         :selected (.. e -target)
+                                         :start-page start-page
+                                         :end-page end-page
+                                         :low-lim (calc-lim
+                                                   (if (nil? previous-sibling)
+                                                     ["0%" "0%"]
+                                                     [(.. previous-sibling -style -top)
+                                                      (.. previous-sibling -style -height)]))
+                                         :high-lim (calc-lim
+                                                    (if (nil? next-sibling)
+                                                      [(calc-top-percentage num-pages) "0%"]
+                                                      [(.. next-sibling -style -top) "0%"])))))
+        
+        ]
     (fn [pagemarks]
       [:div#createPagemark (merge (use-style pagemark-style)
                                   {:on-pointer-down #(.stopPropagation %)})
@@ -391,24 +411,7 @@
        (into [:div (use-sub-style pagemark-style :change-container)]
              (map (fn [{:keys [type start-page end-page top height]}]
                     [pagemark {:id (str "pagemark-" type "-" top "-" height)
-                               :handle-click (fn [e]
-                                               (let [previous-sibling (.. e -target -previousSibling)
-                                                     next-sibling (.. e -target -nextSibling)]
-                                                 (.stopPropagation e)
-                                                 (set! (.. e -target -style -width) "100%")
-                                                 (swap! state assoc
-                                                        :start-page start-page
-                                                        :end-page end-page
-                                                        :selected (.. e -target)
-                                                        :low-lim (calc-lim
-                                                                  (if (nil? previous-sibling)
-                                                                    ["0%" "0%"]
-                                                                    [(.. previous-sibling -style -top)
-                                                                     (.. previous-sibling -style -height)]))
-                                                        :high-lim (calc-lim
-                                                                   (if (nil? next-sibling)
-                                                                     [(calc-top-percentage num-pages) "0%"]
-                                                                     [(.. next-sibling -style -top) "0%"])))))
+                               :handle-click #(handle-click-pagemark % start-page end-page)
                                :type type
                                :top top
                                :height height
@@ -444,6 +447,7 @@
         pagemarks  @(subscribe [:pdf/pagemarks-sidebar])
         num-pages  @(subscribe [:pdf/num-pages])
         page-quota @(subscribe [:pdf/page-quota])]
+    (js/console.log pagemarks)
     (if pagemark?
       [pagemark-change pagemarks num-pages page-quota]
       (into [:div]

@@ -456,13 +456,10 @@
          (fn [[head & tail :as l] k {:keys [width height] :as v}]
            (let [end-area (* (or width 1) (or height 1))
                  type (pagemark-type v)]
-             (cond
-               (empty? l) (conj l {:type type :start-page k :end-page k :end-area end-area})
-               (and (= (:type head) type)
-                    (= (+ (:end-page head)
-                          (:end-area head)) k)) (conj tail (assoc head :end-page k :end-area end-area))
-               :else (conj l {:type type :start-page k :end-page k :end-area end-area}))))
-         [])
+             (if (and (= (:type head) type) (= (+ (:end-page head) (:end-area head)) k))
+               (conj tail (assoc head :end-page k :end-area end-area))
+               (conj l {:type type :start-page k :end-page k :end-area end-area}))))
+         '())
         (map (fn [{:keys [type start-page end-page] :as v}]
                {:type type
                 :start-page start-page
@@ -470,9 +467,6 @@
                 :top (calc-top-percentage v (/ num-pages))
                 :height (calc-height-percentage v (/ num-pages))})))))
    
-  ;;  (-> (get-in pages [page-uid :pagemarks])
-  ;;      (group-consecutive-pages))))
-
 ;; Events
 
 (reg-event-db
