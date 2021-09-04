@@ -343,9 +343,9 @@
                        :high-lim "100%"})
         calc-top-percentage (fn [page]
                               (-> (int page)
-                                 (dec)
-                                 (* page-quota 100)
-                                 (str "%")))
+                                  (dec)
+                                  (* page-quota 100)
+                                  (str "%")))
         calc-height-percentage (fn [start-page end-page]
                                  (-> (- (int end-page) (int start-page))
                                      (inc)
@@ -361,10 +361,15 @@
                       (set! (.. (:selected @state) -style -height) (calc-height-percentage (:start-page @state)
                                                                                            (:end-page @state))))
         handle-submit #(.preventDefault %)
+        reset-css (fn []
+                    (set! (.-width (:style @state)) WIDTH)
+                    (swap! state assoc :selected nil)
+                    )
         handle-click-pagemark (fn [e start-page end-page]
                                 (let [previous-sibling (.. e -target -nextSibling) ; The list is in reverse order
                                       next-sibling (.. e -target -previousSibling)]
                                   (.stopPropagation e)
+                                  (reset-css)
                                   (set! (.. e -target -style -width) "100%")
                                   (swap! state assoc
                                          :selected (.. e -target)
@@ -378,9 +383,7 @@
                                          :high-lim (calc-lim
                                                     (if (nil? next-sibling)
                                                       [(calc-top-percentage num-pages) "0%"]
-                                                      [(.. next-sibling -style -top) "0%"])))))
-        
-        ]
+                                                      [(.. next-sibling -style -top) "0%"])))))]
     (fn [pagemarks]
       [:div#createPagemark (merge (use-style pagemark-style)
                                   {:on-pointer-down #(.stopPropagation %)})
