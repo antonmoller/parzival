@@ -381,53 +381,6 @@
  (fn [db _]
    (:pdf/pagemarks db)))
 
-;TODO
-(defn pagemark-merge?
-  [p-0 p-1]
-  (and
-   (some? p-0)
-   (= (inc (:end-page p-0)) (:start-page p-1))
-   (= 1 (:end-area p-0))
-   (= (:type p-0) (:type p-1))
-   (and (some? (:schedule p-0)) (= (:schedule p-0) (:schedule p-1)))))
-
-;TODO
-(defn pagemark-merge
-  [{:keys [type schedule start-page]} p-1]
-  {:type type
-   :schedule schedule
-   :start-page start-page
-   :end-page (:end-page p-1)
-   :end-area (:end-area p-1)})
-
-;TODO
-(defn get-type
-  [{:keys [done skip schedule]}]
-  (cond
-    (some? done) :done
-    skip :skip
-    (not= "" schedule) :schedule))
-
-;TODO
-(defn group-consecutive-pages
-  [pagemarks]
-  (reduce-kv (fn [[head & tail] k v]
-               (let [pagemark {:type (get-type v)
-                               :schedule (:schedule v)
-                               :start-page (inc k)
-                               :end-page (inc k)
-                               :end-area (if (some? (:done v))
-                                           (-> (js/parseFloat (get-in v [:done :width]))
-                                               (* (js/parseFloat (get-in v [:done :height])))
-                                               (/ 10000))
-                                           1)}]
-                 (cond
-                   (pagemark-merge? head pagemark) (conj tail (pagemark-merge head pagemark))
-                   (some? head) (conj tail head pagemark)
-                   :else (conj tail pagemark))))
-             '()
-             (into (sorted-map) pagemarks)))
-
 (defn pagemark-type
   [{:keys [width height deadline skip?]}]
   (cond
