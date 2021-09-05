@@ -10,8 +10,10 @@
    [day8.re-frame.tracing :refer-macros [fn-traced]]))
 
 (def SVG-NAMESPACE "http://www.w3.org/2000/svg")
-(def path (js/require "path"))
-(def fs (js/require "fs"))
+
+(when (utils/electron?)
+  (def path (js/require "path"))
+  (def fs (js/require "fs")))
 
 ;;; Pdf
 
@@ -34,7 +36,10 @@
  (fn [{:keys [data viewer worker]}]
    (go
      (try
-       (let [pdf (<p! (.-promise (.getDocument pdfjs (js-obj "data" data "worker" worker))))]
+       (let [obj (if (utils/electron?) 
+                   (js-obj "data" data "worker" worker)
+                   (js-obj "url" data "worker" worker))
+             pdf (<p! (.-promise (.getDocument pdfjs obj)))]
          (.setDocument viewer pdf)
          (.setDocument (.-linkService ^js viewer) pdf nil))
        (catch js/Error e (js/console.log (ex-cause e)))))))
@@ -44,11 +49,14 @@
  (fn [{:keys [db]} [_ uid pdf-filename]]
    (let [pdf-viewer (get db :pdf/viewer)
          pdf-worker (get db :pdf/worker)
-         pdf-file (as-> (get db :db/filepath) p
-                    (.dirname path p)
-                    (.resolve path p "pdfs")
-                    (.resolve path p pdf-filename)
-                    (.readFileSync fs p))]
+         pdf-file (if (utils/electron?)
+                    (as-> (get db :db/filepath) p
+                      (.dirname path p)
+                      (.resolve path p "pdfs")
+                      (.resolve path p pdf-filename)
+                      (.readFileSync fs p))
+                    (-> (get db :db/filepath)
+                        (str "/" pdf-filename)))]
      {:fx [[:dispatch [:page/set-active uid]]
            [:pdf/document {:data pdf-file
                            :worker pdf-worker

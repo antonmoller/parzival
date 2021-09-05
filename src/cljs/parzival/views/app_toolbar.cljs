@@ -1,17 +1,18 @@
 (ns parzival.views.app-toolbar
   (:require
-    ["@material-ui/icons/Menu" :default Menu]
-    ["@material-ui/icons/FileCopy" :default FileCopy]
-    ["@material-ui/icons/FiberManualRecord" :default FiberManualRecord]
-    ["@material-ui/icons/InsertDriveFile" :default InsertDriveFile]
-    ["@material-ui/icons/Search" :default Search]
-    ["@material-ui/icons/StarBorder" :default StarBorder]
-    ["@material-ui/icons/Settings" :default Settings]
-    ["@material-ui/icons/VerticalSplit" :default VerticalSplit]
-    [re-frame.core :refer [subscribe dispatch]]
-    [parzival.style :refer [ZINDICES]]
-    [parzival.views.buttons :refer [button]]
-    [stylefy.core :as stylefy :refer [use-style]]))
+   ["@material-ui/icons/Menu" :default Menu]
+   ["@material-ui/icons/FileCopy" :default FileCopy]
+   ["@material-ui/icons/FiberManualRecord" :default FiberManualRecord]
+   ["@material-ui/icons/InsertDriveFile" :default InsertDriveFile]
+   ["@material-ui/icons/Search" :default Search]
+   ["@material-ui/icons/StarBorder" :default StarBorder]
+   ["@material-ui/icons/Settings" :default Settings]
+   ["@material-ui/icons/VerticalSplit" :default VerticalSplit]
+   [re-frame.core :refer [subscribe dispatch]]
+   [parzival.utils :as utils]
+   [parzival.style :refer [ZINDICES]]
+   [parzival.views.buttons :refer [button]]
+   [stylefy.core :as stylefy :refer [use-style]]))
 
 ;;; Styles
 
@@ -62,8 +63,9 @@
                :active (= @route-name :pdf)}
        [:> InsertDriveFile]]]
      [:header (use-style right-toolbar-style)
-      [:div (use-style save-state-style)
-       [:> FiberManualRecord {:style {:color (if @synced? "green" "yellow")}}]]
+      (when (utils/electron?)
+        [:div (use-style save-state-style)
+         [:> FiberManualRecord {:style {:color (if @synced? "green" "yellow")}}]])
       [button {:on-click #(dispatch [:modal/set-content :search])
                :active (= :search @modal-content)}
        [:> Search]]

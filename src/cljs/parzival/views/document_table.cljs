@@ -60,7 +60,6 @@
                                    (dispatch [:navigate :pdf])
                                    (dispatch [:pdf/load uid filename]))})
            title]
-          [:td authors ;(join ", " authors)
-           ]
+          [:td authors] ;(join ", " authors)
           [:td (use-sub-style table-style :td-date) (date-string modified)]
           [:td (use-sub-style table-style :td-date) (date-string added)]]))]]))

@@ -1,8 +1,53 @@
 (ns parzival.events
   (:require
+   [parzival.db :as db]
    [parzival.utils :refer [gen-uid check-spec]] 
+   ["path" :as path]
    [re-frame.core :as re-frame :refer [dispatch reg-event-db reg-event-fx reg-sub reg-fx]]
    [day8.re-frame.tracing :refer-macros [fn-traced]]))
+
+(reg-event-fx
+ :boot/web
+ (fn []
+   (as-> (dissoc db/default-db :db/synced? :db/sync-time :db/filepath) db
+     (assoc db :db/filepath "/pdfs")
+     (assoc db :pages {"page-8f1fc1ab-2298-40be-a874-c66eaa9dbf66" {:refs []
+                                                                    :added 1630828789820
+                                                                    :highlights {}
+                                                                    :pagemarks {}
+                                                                    :modified 1630828789820
+                                                                    :title "arXiv:astro-ph/0102126v1 7 Feb 2001"
+                                                                    :filename "Astronomical engineering.pdf"
+                                                                    :authors ""
+                                                                    :num-pages 22}
+                       "page-5b616eaa-33c5-47ca-976c-5fc3e2271178" {:refs []
+                                                                    :added 1630828789846
+                                                                    :highlights {}
+                                                                    :pagemarks {}
+                                                                    :modified 1630828789846
+                                                                    :title "The right time to learn.pdf"
+                                                                    :filename "The right time to learn.pdf"
+                                                                    :authors "Smolen, Paul D"
+                                                                    :num-pages 34}
+                       "page-d91143cd-e7f1-4cd2-90c7-9ec2937e7b44" {:refs []
+                                                                    :added 1630828789848
+                                                                    :highlights {}
+                                                                    :pagemarks {}
+                                                                    :modified 1630828789848
+                                                                    :title "Yale Psilo Dep Manual_final w DOI.pdf"
+                                                                    :filename "Yale Psilo Dep Manual_final w DOI.pdf"
+                                                                    :authors "Jordan Sloshower"
+                                                                    :num-pages 79}
+                       "page-dbd97eac-eb25-455c-b46f-1e4dff970b6f" {:refs []
+                                                                    :added 1630828789850
+                                                                    :highlights {}
+                                                                    :pagemarks {}
+                                                                    :modified 1630828789850
+                                                                    :title "re-frame"
+                                                                    :filename "re-frame.pdf"
+                                                                    :authors "D8"
+                                                                    :num-pages 156}})
+     {:db db})))
 
 ;;; debounce
 (defonce timeouts

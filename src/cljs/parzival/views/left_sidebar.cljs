@@ -4,9 +4,10 @@
    ["@material-ui/icons/Star" :default Star]
    ["@material-ui/icons/Add" :default Add]
    ["@material-ui/icons/ChevronRight" :default ChevronRight]
+   [parzival.utils :as utils]
    [parzival.views.buttons :refer [button]]
    [parzival.style :refer [color OPACITIES]]
-   [stylefy.core :as stylefy :refer [use-style use-sub-style]]))
+   [stylefy.core :as stylefy :refer [use-style]]))
 
 ;;; Styles
 ;TODO
@@ -123,5 +124,6 @@
       [:div (use-style button-container-style)
        [button {:primary true} [:<> [:span "Start Learning"] [:> ChevronRight]]]
        [button [:<> [:span "Start Reviewing"] [:> ChevronRight]]]
-       [button {:on-click #(dispatch [:modal/set-content :filesystem])}
+       [button {:on-click #(dispatch [:modal/set-content :filesystem])
+                :disabled (not (utils/electron?))}
         [:<> [:span "Upload Files"] [:> Add]]]]]]))

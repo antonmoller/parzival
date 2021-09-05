@@ -3,15 +3,17 @@
    [parzival.db :as db]
    ["path" :as path]
    ["pdfjs-dist" :as pdfjs]
+   [parzival.utils :as utils]
    [cljs.core.async :refer [go]]
    [cljs.core.async.interop :refer [<p!]]
    [cognitect.transit :as t]
    [re-frame.core :refer [dispatch reg-event-db reg-event-fx reg-fx reg-sub]]))
 
-(def ipcRenderer (.-ipcRenderer (js/require "electron")))
-(def fs (js/require "fs"))
-(def DB-INDEX "index.transit")
-(def PDFS-DIR-NAME "pdfs")
+(when (utils/electron?)
+  (def ipcRenderer (.-ipcRenderer (js/require "electron")))
+  (def fs (js/require "fs"))
+  (def DB-INDEX "index.transit")
+  (def PDFS-DIR-NAME "pdfs"))
 
 ;;; Filesystem
 

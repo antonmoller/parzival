@@ -3,6 +3,7 @@
    [reagent.dom :as rdom]
    [re-frame.core :as rf]
    [parzival.style :as style]
+   [parzival.utils :as utils]
    [parzival.events]
    [parzival.listeners]
    [parzival.pdf]
@@ -29,8 +30,11 @@
   []
   (style/init)
   (stylefy/tag "body" style/app-styles)
-  (rf/dispatch-sync [:listeners/init])
-  (rf/dispatch-sync [:boot/desktop])
+  (if (utils/electron?)
+    (do
+      (rf/dispatch-sync [:listeners/init])
+      (rf/dispatch-sync [:boot/desktop]))
+    (rf/dispatch-sync [:boot/web]))
   (dev-setup)
   (mount-root)
   (rf/dispatch [:pdf/init-viewer]))
