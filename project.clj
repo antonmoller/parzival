@@ -42,8 +42,8 @@
                                                       :web-worker true}}
                                          ; :pdf.viewer {:init-fn parzival.pdf/init
                                          ;              :depends-on #{:shared}}}
-                               :release {:output-dir "docs/js" ;TODO: Creates demo for now
-                                         :asset-pageh "/js"
+                               :release {:output-dir "docs/js/compiled" ;TODO: Creates demo for now
+                                         :asset-path "/js/compiled"
                                          :build-options
                                          {:ns-aliases
                                           {day8.re-frame.tracing day8.re-frame.tracing-stubs}}}
