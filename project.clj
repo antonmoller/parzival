@@ -42,7 +42,9 @@
                                                       :web-worker true}}
                                          ; :pdf.viewer {:init-fn parzival.pdf/init
                                          ;              :depends-on #{:shared}}}
-                               :release {:build-options
+                               :release {:output-dir "docs/js" ;TODO: Creates demo for now
+                                         :asset-pageh "/js"
+                                         :build-options
                                          {:ns-aliases
                                           {day8.re-frame.tracing day8.re-frame.tracing-stubs}}}
                                :dev {:compiler-options {:closure-defines {re-frame.trace.trace-enabled? true
@@ -106,9 +108,9 @@
                             ["shell" "echo" "\"DEPRECATED: Please use lein release instead.\""]
                             ["release"]]
 
-            "release"      ["with-profile" "prod" "do"
+            "release"      ["with-profile" "prod" "do" ; Creates demo for github pages for now
                             ["shadow" "release" "app"]]
-
+            
             "build-report" ["with-profile" "prod" "do"
                             ["shadow" "run" "shadow.cljs.build-report" "app" "target/build-report.html"]
                             ["shell" "open" "target/build-report.html"]]
