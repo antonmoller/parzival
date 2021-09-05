@@ -10,7 +10,7 @@
  :boot/web
  (fn []
    (as-> (dissoc db/default-db :db/synced? :db/sync-time :db/filepath) db
-     (assoc db :db/filepath "/pdfs")
+     (assoc db :db/filepath "/parzival/pdfs")
      (assoc db :pages {"page-8f1fc1ab-2298-40be-a874-c66eaa9dbf66" {:refs []
                                                                     :added 1630828789820
                                                                     :highlights {}
