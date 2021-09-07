@@ -374,35 +374,40 @@
                               (set! (.. selected -style -background) color)
                               (set! (.. selected -style -borderTop) (str "1px solid " color))
                               (set! (.. selected -style -borderBottom) (str "1px solid " color)))
+        low-limit #(-> (some (fn [p] (when (< (:end-page p) %) (:end-page p))) pagemarks) (inc))
+        high-limit #(let [page (some (fn [p] (when (> (:start-page p) %) (:start-page p))) (reverse pagemarks))]
+                      (if (some? page) (dec page) num-pages))
         handle-click-pagemark (fn [e {:keys [type start-page end-page top height]}]
-                                (let [l (-> (some #(when (< (:end-page %) start-page) (:end-page %))
-                                                  pagemarks)
-                                            (inc))
-                                      h (as-> (some #(when (> (:start-page %) end-page) (:start-page %))
-                                                    (reverse pagemarks)) p
-                                          (if (some? p) (dec p) num-pages))]
-                                  (.stopPropagation e)
-                                  (reset-css)
-                                  (set! (.. e -target -style -width) "100%")
-                                  (swap! state assoc
-                                         :selected (.. e -target)
-                                         :before-edit {:top top :height height :color (type PAGEMARK-COLOR)}
-                                         :start-page start-page
-                                         :end-page end-page
-                                         :low-lim l
-                                         :high-lim h)))
+                                (.stopPropagation e)
+                                (reset-css)
+                                (set! (.. e -target -style -width) "100%")
+                                (swap! state assoc
+                                       :selected (.. e -target)
+                                       :before-edit {:top top :height height :color (type PAGEMARK-COLOR)}
+                                       :start-page start-page
+                                       :end-page end-page
+                                       :low-lim (low-limit start-page)
+                                       :high-lim (high-limit end-page)))
         handle-click-scrollbar (fn [e]
                                  (let [pagemark (.getElementById js/document "pagemark-tmp")
-                                       page (as-> (.getComputedStyle js/window (.-target e)) x
-                                              (js/parseFloat (.-height x))
-                                              (/ (.-clientY e) x)
-                                              (-> x (/ page-quota) (int) (inc)))
-                                       top (calc-top-percentage page)
-                                       height (calc-height-percentage page page)]
-                                   (set! (.. e -target) pagemark)
+                                       page     (as-> (.getComputedStyle js/window (.-target e)) x
+                                                  (js/parseFloat (.-height x))
+                                                  (/ (.-clientY e) x)
+                                                  (-> x (/ page-quota) (int) (inc)))
+                                       top      (calc-top-percentage page)
+                                       height   (calc-height-percentage page page)]
+                                   (.stopPropagation e)
+                                   (reset-css)
                                    (set! (.. pagemark -style -top) top)
                                    (set! (.. pagemark -style -height) height)
-                                   (handle-click-pagemark e {:type :skip :start-page page :end-page page :top top :height height})))]
+                                   (swap! state assoc
+                                          :selected pagemark
+                                          :before-edit {:top top :height height :color (:skip PAGEMARK-COLOR)}
+                                          :add? true
+                                          :start-page page
+                                          :end-page page
+                                          :low-lim (low-limit page)
+                                          :high-lim (high-limit page))))]
     (fn [pagemarks]
       [:div#createPagemark (merge (use-style pagemark-style)
                                   {:on-pointer-down #(.stopPropagation %)})
@@ -437,8 +442,7 @@
           [:> Close]]
          [button {:type "submit"}
           [:> Done]]]]
-       (into [:div (use-sub-style pagemark-style :change-container
-                                  {:on-click handle-click-scrollbar})
+       (into [:div (use-sub-style pagemark-style :change-container {:on-click handle-click-scrollbar})
               [:div (merge (use-sub-style pagemark-style :edit)
                            {:id "pagemark-tmp"
                             :style {:display (if (:add? @state) "block" "none")
@@ -452,7 +456,7 @@
                                :top top
                                :height height
                                :style :edit}])
-                  pagemarks))
+                  pagemarks))])))
 
       ;;  (into [:div (use-sub-style pagemark-style :change-container
       ;;                             {:on-click handle-click-scrollbar})
@@ -474,7 +478,7 @@
       ;;                                      (.stopPropagation e))
       ;;                          :style :edit
       ;;                          :edit? true}]) pagemarks))
-       ])))
+      ;;  ])))
 
 ; FIXME
 (defn pagemark-sidebar
