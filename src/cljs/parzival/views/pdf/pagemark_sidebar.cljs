@@ -4,6 +4,7 @@
    ["@material-ui/icons/Done" :default Done]
    [re-frame.core :refer [dispatch subscribe]]
    [reagent.core :as r]
+   [parzival.utils :as utils]
    [parzival.style :refer [DEPTH-SHADOWS PAGEMARK-COLOR color PDF-SCROLLBAR-WIDTH]]
    [parzival.views.buttons :refer [button]]
    [stylefy.core :as stylefy :refer [use-style use-sub-style]]))
@@ -347,20 +348,11 @@
                 (str (.getFullYear date) "-"
                      (.padStart (str (inc (.getMonth date))) 2 "0") "-"
                      (.padStart (str (.getDate date)) 2 "0")))
-        calc-top-percentage (fn [page]
-                              (-> (int page)
-                                  (dec)
-                                  (* page-quota 100)
-                                  (str "%")))
+        calc-top-percentage #(-> (int %) (dec) (* page-quota 100) (str "%"))
         calc-height-percentage (fn [start-page end-page]
                                  (-> (- (int end-page) (int start-page))
                                      (inc)
                                      (* page-quota 100) (str "%")))
-        calc-lim (fn [[top height]]
-                   (-> (+ (js/parseFloat top) (js/parseFloat height))
-                       (/ 100 page-quota)
-                       (+ (if (= "0%" height) 1 2))
-                       (int)))
         page-change (fn [e page]
                       (swap! state assoc page (.. e -target -value))
                       (set! (.. (:selected @state) -style -top) (calc-top-percentage (:start-page @state)))
@@ -382,19 +374,13 @@
                               (set! (.. selected -style -background) color)
                               (set! (.. selected -style -borderTop) (str "1px solid " color))
                               (set! (.. selected -style -borderBottom) (str "1px solid " color)))
-        handle-click-scrollbar (fn [e]
-                                 (let [pagemark (.getElementById js/document "pagemark-tmp")]
-                                   (reset-css)
-                                   (js/console.log e)
-                                   (swap! state assoc 
-                                          :add? true 
-                                          :selected pagemark
-                                          :before-edit {:top "80%" :height "5%" :color (:skip PAGEMARK-COLOR)})
-                                   (set! (.. pagemark -style -top) "80%")
-                                   (set! (.. pagemark -style -height) "5%")))
-        handle-click-pagemark (fn [e type start-page end-page top height]
-                                (let [previous-sibling (.. e -target -nextSibling) ; The list is in reverse order
-                                      next-sibling (.. e -target -previousSibling)]
+        handle-click-pagemark (fn [e {:keys [type start-page end-page top height]}]
+                                (let [l (-> (some #(when (< (:end-page %) start-page) (:end-page %))
+                                                  pagemarks)
+                                            (inc))
+                                      h (as-> (some #(when (> (:start-page %) end-page) (:start-page %))
+                                                    (reverse pagemarks)) p
+                                          (if (some? p) (dec p) num-pages))]
                                   (.stopPropagation e)
                                   (reset-css)
                                   (set! (.. e -target -style -width) "100%")
@@ -403,15 +389,20 @@
                                          :before-edit {:top top :height height :color (type PAGEMARK-COLOR)}
                                          :start-page start-page
                                          :end-page end-page
-                                         :low-lim (calc-lim
-                                                   (if (nil? previous-sibling)
-                                                     ["0%" "0%"]
-                                                     [(.. previous-sibling -style -top)
-                                                      (.. previous-sibling -style -height)]))
-                                         :high-lim (calc-lim
-                                                    (if (nil? next-sibling)
-                                                      [(calc-top-percentage num-pages) "0%"]
-                                                      [(.. next-sibling -style -top) "0%"])))))]
+                                         :low-lim l
+                                         :high-lim h)))
+        handle-click-scrollbar (fn [e]
+                                 (let [pagemark (.getElementById js/document "pagemark-tmp")
+                                       page (as-> (.getComputedStyle js/window (.-target e)) x
+                                              (js/parseFloat (.-height x))
+                                              (/ (.-clientY e) x)
+                                              (-> x (/ page-quota) (int) (inc)))
+                                       top (calc-top-percentage page)
+                                       height (calc-height-percentage page page)]
+                                   (set! (.. e -target) pagemark)
+                                   (set! (.. pagemark -style -top) top)
+                                   (set! (.. pagemark -style -height) height)
+                                   (handle-click-pagemark e {:type :skip :start-page page :end-page page :top top :height height})))]
     (fn [pagemarks]
       [:div#createPagemark (merge (use-style pagemark-style)
                                   {:on-pointer-down #(.stopPropagation %)})
@@ -453,11 +444,10 @@
                             :style {:display (if (:add? @state) "block" "none")
                                     :width "100%"
                                     ;; :cursor "pointer"
-                                    :background (:skip PAGEMARK-COLOR)
-                                    }})]]
-             (map (fn [{:keys [type start-page end-page top height]}]
+                                    :background (:skip PAGEMARK-COLOR)}})]]
+             (map (fn [{:keys [type start-page end-page top height] :as v}]
                     [pagemark {:id (str "pagemark-" type "-" top "-" height)
-                               :handle-click #(handle-click-pagemark % type start-page end-page top height)
+                               :handle-click #(handle-click-pagemark % v)
                                :type type
                                :top top
                                :height height
@@ -493,7 +483,6 @@
         pagemarks  @(subscribe [:pdf/pagemarks-sidebar])
         num-pages  @(subscribe [:pdf/num-pages])
         page-quota @(subscribe [:pdf/page-quota])]
-    (js/console.log pagemarks)
     (if pagemark?
       [pagemark-change pagemarks num-pages page-quota]
       (into [:div]

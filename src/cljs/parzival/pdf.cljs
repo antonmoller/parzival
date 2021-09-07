@@ -404,7 +404,7 @@
   [{:keys [start-page end-page end-area]} page-quota]
   (-> end-page (+ end-area) (- start-page) (* page-quota 100) (str "%")))
 
-;TODO
+;TODO Rewrite to use vector and last instead of destructuring
 (reg-sub
  :pdf/pagemarks-sidebar
  :<- [:page/active]

@@ -2,7 +2,6 @@
   (:require
    [parzival.db :as db]
    [parzival.utils :refer [gen-uid check-spec]] 
-   ["path" :as path]
    [re-frame.core :as re-frame :refer [dispatch reg-event-db reg-event-fx reg-sub reg-fx]]
    [day8.re-frame.tracing :refer-macros [fn-traced]]))
 
