@@ -36,7 +36,7 @@
 
 (defn pdf-menu
   []
-  (let [{:keys [left top height edit? page]} @(subscribe [:pagemark/anchor])]
+  (let [{:keys [left top height edit? page-num]} @(subscribe [:pagemark/anchor])]
     (when (some? left)
       (dispatch [:pagemark/close]))
     [:ul#pagemark-menu (merge (use-style menu-style)
@@ -44,11 +44,11 @@
                                        :left left
                                        :top top}})
      [:li (merge (use-sub-style menu-style :item)
-                 {:on-mouse-down #(dispatch [:pagemark/add page 1 height])})
+                 {:on-mouse-down #(dispatch [:pagemark/add page-num {:width 1 :height height}])})
       [:> BookmarkBorder]
       [:span "Pagemark to Current Location"]]
      [:li (merge (use-sub-style menu-style :item)
-                 {:on-mouse-down #(dispatch [:pagemark/add page 1 1])})
+                 {:on-mouse-down #(dispatch [:pagemark/add page-num {:width 1 :height 1}])})
       [:> Bookmark]
       [:span "Mark Entire Page as Read"]]
      [:li (merge (use-sub-style menu-style :item)
@@ -57,7 +57,7 @@
       [:span "Skip/Schedule Pages"]]
      (when edit?
        [:li (merge (use-sub-style menu-style :item)
-                   {:on-mouse-down #(dispatch [:pagemark/remove page])
+                   {:on-mouse-down #(dispatch [:pagemark/remove page-num])
                     :style {:color "red"}})
         [:> Remove]
         [:span "Remove Pagemark"]])]))

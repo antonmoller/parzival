@@ -370,43 +370,23 @@
       (set! (.. target -style -cursor) "ns-resize") ; bottom
       :else (set! (.. target -style -cursor) "default"))))
 
-
-;TODO
 (reg-sub
  :pagemark?
  (fn [db _]
    (:pagemark? db)))
 
-;TODO
-(reg-sub
- :pagemark/sidebar
- (fn [db _]
-   (:pagemark/sidebar db)))
-
-;TODO
-(reg-sub
- :pdf/pagemarks
- (fn [db _]
-   (:pdf/pagemarks db)))
-
-(defn pagemark-type
-  [{:keys [width height deadline skip?]}]
-  (cond
-    skip? :skip
-    (some? deadline) :deadline
-    (and (some? width) (some? height)) :done))
-
+;TODO REUSE in sidebar
 (defn calc-top-percentage
   [{:keys [start-page]} page-quota]
   (-> start-page (dec) (* page-quota 100) (str "%")))
 
+;TODO REUSE in sidebar
 (defn calc-height-percentage
   [{:keys [start-page end-page end-area]} page-quota]
   (-> end-page (+ end-area) (- start-page) (* page-quota 100) (str "%")))
 
-;TODO Rewrite to use vector and last instead of destructuring
 (reg-sub
- :pdf/pagemarks-sidebar
+ :pdf/pagemarks
  :<- [:page/active]
  :<- [:pages]
  :<- [:pdf/num-pages]
@@ -414,19 +394,22 @@
    (->> (get-in pages [page-uid :pagemarks])
         (into (sorted-map))
         (reduce-kv
-         (fn [[head & tail :as l] k {:keys [width height] :as v}]
+         (fn [[head & tail :as l] k {:keys [width height skip? deadline]}]
            (let [end-area (* (or width 1) (or height 1))
-                 type (pagemark-type v)]
-             (if (and (= (:type head) type) (= (+ (:end-page head) (:end-area head)) k))
+                 type (cond
+                        skip? :skip
+                        deadline :deadline
+                        (and width height) :done)]
+             (if (and (= (:type head) type)
+                      (= (+ (:end-page head) (:end-area head)) k)
+                      (or (nil? deadline) (= deadline (:deadline head))))
                (conj tail (assoc head :end-page k :end-area end-area))
-               (conj l {:type type :start-page k :end-page k :end-area end-area}))))
+               (conj l {:type type :deadline (or deadline "") :start-page k :end-page k :end-area end-area}))))
          '())
-        (map (fn [{:keys [type start-page end-page] :as v}]
-               {:type type
-                :start-page start-page
-                :end-page end-page
-                :top (calc-top-percentage v (/ num-pages))
-                :height (calc-height-percentage v (/ num-pages))})))))
+        (map #(-> (dissoc % :end-area)
+                  (assoc :top (calc-top-percentage % (/ num-pages))
+                         :height (calc-height-percentage % (/ num-pages))))
+                 ))))
    
 ;; Events
 
@@ -482,102 +465,56 @@
        (contains? pagemark :skip?) (pagemark-skip rect))
      (.append svg rect))))
 
-;TODO
-(defn group-pages
-  [pages]
-  (reduce (fn [[head & tail] v]
-            (if (or (nil? (first head)) (= v (inc (first head))))
-              (conj tail (conj head v))
-              (conj tail head (list v))))
-          '()
-          (sort pages)))
+(defn svg-layer
+  [page-num]
+  (some-> (.querySelector js/document (str "div.page[data-page-number=\""
+                                           page-num "\"][data-loaded=\"true\"]"))
+          (.querySelector ".svgLayer")))
 
 (reg-event-fx
  :pagemark/add
- (fn [{:keys [db]} [_   page width height]]
-   (let [page-num (utils/pdf-page-num page)
-         page-uid (get db :page/active)
-         pagemark {:width width :height height}
-         svg (.querySelector page ".svgLayer")]
-     {:db (assoc-in db [:pages page-uid :pagemarks page-num] pagemark)
-      :fx [[:pagemark/remove-render page]
-           [:pagemark/render [pagemark svg]]]})))
+ (fn [{:keys [db]} [_  page-num pagemark]]
+   (let [page-uid (get db :page/active)
+         svg (svg-layer page-num)]
+     (cond-> {:db (assoc-in db [:pages page-uid :pagemarks page-num] pagemark)}
+       (some? svg) (assoc :fx [[:pagemark/remove-render svg]
+                               [:pagemark/render [pagemark svg]]])))))
 
 (reg-fx
  :pagemark/remove-render
- (fn [page]
-   (as-> (.querySelector page "rect.pagemark") pagemark
-     (when (some? pagemark)
-       (.remove pagemark)))))
+ (fn [svg]
+   (some-> (.querySelector svg "rect.pagemark")
+           (.remove))))
 
 (reg-event-fx
  :pagemark/remove
- (fn [{:keys [db]} [_ page]]
+ (fn [{:keys [db]} [_ page-num]]
    (let [page-uid (get db :page/active)
-         page-no (int (.getAttribute page "data-page-number"))]
-     {:db (update-in db [:pages page-uid :pagemarks] dissoc page-no)
-      :fx [[:pagemark/remove-render page]]})))
+         svg (svg-layer page-num)]
+     (cond-> {:db (update-in db [:pages page-uid :pagemarks] dissoc page-num)}
+       (some? svg) (assoc :fx [[:pagemark/remove-render svg]])))))
 
-;TODO
-(defn get-pages
-  [start-page end-page]
-  (range (dec (int start-page)) (int end-page)))
-
-;TODO
-(defn add-pages
-  [list start-page end-page]
-  (concat list (range (dec (int start-page)) (int end-page))))
-
-;TODO
-(defn page-rendered
-  [page-no]
-  (.querySelector js/document (str "div.page[data-page-number=\"" (inc page-no)
-                                   "\"][data-loaded=\"true\"]")))
-
-;TODO
-(defn create-pagemark-fx
-  [pages fx]
-  (reduce (fn [m v]
-            (if-let [page (page-rendered v)]
-              (conj m [:dispatch [fx page :skip]])
-              m))
-          []
-          pages))
-
-;TODO
 (reg-event-fx
- :pagemark/sidebar-remove
- (fn [{:keys [db]} [_ start-page end-page deadline]]
-   (let [pages (get-pages start-page end-page)]
-     {:db (update db :pdf/pagemarks #(apply dissoc % pages))
-      :fx (if (= "" deadline)
-            (into [] (create-pagemark-fx pages :pagemark/remove-render))
-            [])})))
+ :pagemark/sidebar-create
+ (fn [_ [_ start-page end-page deadline]]
+   {:fx (map (fn [page-num]
+               [:dispatch [:pagemark/add page-num (if (empty? deadline) 
+                                                    {:skip? true} 
+                                                    {:deadline deadline})]])
+             (range start-page (inc end-page)))}))
 
-;TODO
 (reg-event-fx
- :pagemark/sidebar-add-edit
- (fn [{:keys [db]} [_ {:keys [start-page end-page deadline edit-start edit-end]}]]
-   (let [pages-to-add (cond-> '()
-                        (< (int start-page) (int edit-start)) (add-pages start-page (dec (int edit-start)))
-                        true (add-pages edit-start edit-end)
-                        (< (int edit-end) (int end-page)) (add-pages (inc (int edit-end)) end-page))
-         pages-to-remove (cond-> '()
-                           (< (int edit-start) (int start-page)) (add-pages edit-start
-                                                                            (dec (int start-page)))
-                           (< (int end-page) (int edit-end)) (add-pages (inc (int end-page))
-                                                                        edit-end))]
-     {:db (-> db
-              (update :pdf/pagemarks into (zipmap pages-to-add
-                                                  (repeat (count pages-to-add)
-                                                          {:done nil ; Can't set :done from the scrollbar
-                                                           :skip (= "" deadline)
-                                                           :schedule deadline})))
-              (update :pdf/pagemarks #(apply dissoc % pages-to-remove)))
-      :fx (if (= "" deadline)
-            (into [] (concat (create-pagemark-fx pages-to-add :pagemark/render)
-                             (create-pagemark-fx pages-to-remove :pagemark/remove-render)))
-            [])})))
+ :pagemark/sidebar-update
+ (fn [_ [_ start new-start end new-end deadline]]
+   {:fx [(when (< start new-start) [:dispatch [:pagemark/sidebar-delete start (dec new-start)]])
+         (when (< new-end end) [:dispatch [:pagemark/sidebar-delete (inc new-end) end]])
+         [:dispatch [:pagemark/sidebar-create new-start new-end deadline]]]}))
+
+(reg-event-fx
+ :pagemark/sidebar-delete
+ (fn [_ [_ start-page end-page]]
+   {:fx (map (fn [page-num] [:dispatch [:pagemark/remove page-num]])
+             (range start-page (inc end-page)))}))
 
 ;TODO
 (reg-sub
@@ -621,6 +558,7 @@
  :pagemark/menu
  (fn [_ [_ target x y]]
    (let [page (.closest target ".page")
+         page-num (int (.getAttribute page "data-page-number"))
          viewer-rect (.getBoundingClientRect (.getElementById js/document "viewer"))
          page-rect (.getBoundingClientRect page)
          viewer-height (-> (.getElementById js/document "viewerContainer")
@@ -644,4 +582,4 @@
                         :top top
                         :height height
                         :edit? (not= 0 (.-length (.getElementsByClassName page "pagemark")))
-                        :page page}]]]})))
+                        :page-num page-num}]]]})))
