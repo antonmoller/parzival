@@ -31,6 +31,14 @@
   (-> (js/parseFloat p)
       (/ 100)))
 
+(defn height-percentage
+  [{:keys [start-page end-page end-area]} page-quota]
+  (-> end-page (+ end-area) (- start-page) (* page-quota 100) (str "%")))
+
+(defn top-percentage
+  [{:keys [start-page]} page-quota]
+  (-> start-page (dec) (* page-quota 100) (str "%")))
+
 ; TODO move to pdf
 (defn pdf-page-num
   [target]

@@ -115,21 +115,19 @@
                 (str (.getFullYear date) "-"
                      (.padStart (str (inc (.getMonth date))) 2 "0") "-"
                      (.padStart (str (.getDate date)) 2 "0")))
-        calc-top-percentage #(-> (int %) (dec) (* page-quota 100) (str "%"))
-        calc-height-percentage (fn [start-page end-page]
-                                 (-> (- (int end-page) (int start-page))
-                                     (inc)
-                                     (* page-quota 100) (str "%")))
         page-change (fn [e page]
                       (swap! state assoc page (int (.. e -target -value)))
-                      (set! (.. (:selected @state) -style -top) (calc-top-percentage (:start-page @state)))
-                      (set! (.. (:selected @state) -style -height) (calc-height-percentage (:start-page @state)
-                                                                                           (:end-page @state))))
+                      (set! (.. (:selected @state) -style -top) 
+                            (utils/top-percentage {:start-page (:start-page @state)} page-quota))
+                      (set! (.. (:selected @state) -style -height) 
+                            (utils/height-percentage {:start-page (:start-page @state) 
+                                                      :end-page (:end-page @state) 
+                                                      :end-area 1}
+                                                     page-quota)))
         valid-click? (fn [page] (not-any? #(<= (:start-page %) page (:end-page %)) @pagemarks))
         low-limit #(-> (some (fn [p] (when (< (:end-page p) %) (:end-page p))) @pagemarks) (inc))
         high-limit #(let [page (some (fn [p] (when (> (:start-page p) %) (:start-page p)))
                                      (reverse @pagemarks))]
-                      (js/console.log page)
                       (if (some? page) (dec page) num-pages))
         reset-css #(let [selected (:selected @state)
                          {:keys [top height color]} (:before-edit @state)]
@@ -166,9 +164,11 @@
                                               (-> x (/ page-quota) (int) (inc)))]
                                    (when (valid-click? page)
                                      (let [pagemark (.getElementById js/document "pagemark-tmp")
-                                           top (calc-top-percentage page)
-                                           height (calc-height-percentage page page)]
-                                       (js/console.log (low-limit page) (high-limit page))
+                                           top (utils/top-percentage {:start-page page} page-quota)
+                                           height (utils/height-percentage {:start-page page 
+                                                                            :end-page page 
+                                                                            :end-area 1} 
+                                                                           page-quota)]
                                        (set! (.. pagemark -style -top) top)
                                        (set! (.. pagemark -style -height) height)
                                        (set! (.. pagemark -style -width) "100%")

@@ -17,7 +17,6 @@
 
 ;;; Pdf
 
-
 (reg-sub
  :pdf/num-pages
  :<- [:page/active]
@@ -370,21 +369,18 @@
       (set! (.. target -style -cursor) "ns-resize") ; bottom
       :else (set! (.. target -style -cursor) "default"))))
 
+;TODO
 (reg-sub
  :pagemark?
  (fn [db _]
    (:pagemark? db)))
 
-;TODO REUSE in sidebar
-(defn calc-top-percentage
-  [{:keys [start-page]} page-quota]
-  (-> start-page (dec) (* page-quota 100) (str "%")))
+(reg-sub
+ :pagemark/anchor
+ (fn [db _]
+   (:pagemark/anchor db)))
 
-;TODO REUSE in sidebar
-(defn calc-height-percentage
-  [{:keys [start-page end-page end-area]} page-quota]
-  (-> end-page (+ end-area) (- start-page) (* page-quota 100) (str "%")))
-
+;TODO
 (reg-sub
  :pdf/pagemarks
  :<- [:page/active]
@@ -407,12 +403,10 @@
                (conj l {:type type :deadline (or deadline "") :start-page k :end-page k :end-area end-area}))))
          '())
         (map #(-> (dissoc % :end-area)
-                  (assoc :top (calc-top-percentage % (/ num-pages))
-                         :height (calc-height-percentage % (/ num-pages))))
-                 ))))
+                  (assoc :top (utils/top-percentage % (/ num-pages))
+                         :height (utils/height-percentage % (/ num-pages))))))))
    
-;; Events
-
+;TODO
 (reg-event-db
  ;"Will always be of type :done and hence have :width and :height"
  :pagemark/resize
@@ -422,6 +416,7 @@
              {:width (utils/percentage-to-float (.. target -style -width))
               :height (utils/percentage-to-float (.. target -style -height))})))
 
+;TODO: Change to fx
 (defn pagemark-done
   [rect width height]
   (doto rect
@@ -446,6 +441,7 @@
                                      (set! (.. e -target -style -cursor) "default")
                                      (dispatch [:pagemark/resize (.-target e)])))))
 
+;TODO: Change to fx
 (defn pagemark-skip
   [rect]
   (doto rect
@@ -453,6 +449,7 @@
     (.setAttribute "style" (str "pointer-events: auto; width: 100%; height: 100%;
                                  fill: " (:skip PAGEMARK-COLOR) "; fill-opacity: 0.3;"))))
 
+;TODO
 (reg-fx
  :pagemark/render
  (fn [[pagemark svg]]
@@ -465,12 +462,14 @@
        (contains? pagemark :skip?) (pagemark-skip rect))
      (.append svg rect))))
 
+;TODO
 (defn svg-layer
   [page-num]
   (some-> (.querySelector js/document (str "div.page[data-page-number=\""
                                            page-num "\"][data-loaded=\"true\"]"))
           (.querySelector ".svgLayer")))
 
+;TODO
 (reg-event-fx
  :pagemark/add
  (fn [{:keys [db]} [_  page-num pagemark]]
@@ -480,12 +479,14 @@
        (some? svg) (assoc :fx [[:pagemark/remove-render svg]
                                [:pagemark/render [pagemark svg]]])))))
 
+;TODO
 (reg-fx
  :pagemark/remove-render
  (fn [svg]
    (some-> (.querySelector svg "rect.pagemark")
            (.remove))))
 
+;TODO
 (reg-event-fx
  :pagemark/remove
  (fn [{:keys [db]} [_ page-num]]
@@ -494,6 +495,7 @@
      (cond-> {:db (update-in db [:pages page-uid :pagemarks] dissoc page-num)}
        (some? svg) (assoc :fx [[:pagemark/remove-render svg]])))))
 
+;TODO
 (reg-event-fx
  :pagemark/sidebar-create
  (fn [_ [_ start-page end-page deadline]]
@@ -503,6 +505,7 @@
                                                     {:deadline deadline})]])
              (range start-page (inc end-page)))}))
 
+;TODO
 (reg-event-fx
  :pagemark/sidebar-update
  (fn [_ [_ start new-start end new-end deadline]]
@@ -510,17 +513,12 @@
          (when (< new-end end) [:dispatch [:pagemark/sidebar-delete (inc new-end) end]])
          [:dispatch [:pagemark/sidebar-create new-start new-end deadline]]]}))
 
+;TODO
 (reg-event-fx
  :pagemark/sidebar-delete
  (fn [_ [_ start-page end-page]]
    {:fx (map (fn [page-num] [:dispatch [:pagemark/remove page-num]])
              (range start-page (inc end-page)))}))
-
-;TODO
-(reg-sub
- :pagemark/anchor
- (fn [db _]
-   (:pagemark/anchor db)))
 
 ;TODO
 (reg-event-db
@@ -540,12 +538,13 @@
                           (dispatch [:pagemark-state false]))))
    {:fx [[:dispatch [:pagemark-state true]]]}))
 
+;TODO ->pdf-menu
 (reg-event-db
  :pagemark/set-anchor
  (fn [db [_ coords]]
    (assoc db :pagemark/anchor coords)))
 
-;TODO
+;TODO ->pdf-menu
 (reg-event-fx
  :pagemark/close
  (fn [_ _]
@@ -553,7 +552,7 @@
                       #(dispatch [:pagemark/set-anchor nil])
                       (js-obj "once" true))))
 
-;TODO
+;TODO ->pdf-menu
 (reg-event-fx
  :pagemark/menu
  (fn [_ [_ target x y]]
@@ -574,9 +573,9 @@
                (str (- y (.-y viewer-rect)) "px")
                (str (- y (.-y viewer-rect) menu-height 10) "px"))
          height-px (- y (.-y page-rect))
-         height (-> (if (> height-px min-px)
+         height (if (> height-px min-px)
                       (/ height-px (.-height page-rect))
-                      (/ min-px (.-height page-rect))))]
+                      (/ min-px (.-height page-rect)))]
      {:fx [[:dispatch [:pagemark/set-anchor
                        {:left left
                         :top top
