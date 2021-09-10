@@ -32,7 +32,7 @@
                 [:div#viewer.pdfViewer {:on-mouse-up #(dispatch [:highlight/toolbar-create])
                                         :on-context-menu (fn [e]
                                                            (.preventDefault e)
-                                                           (dispatch [:pagemark/menu
+                                                           (dispatch [:pdf/menu-open
                                                                       (.-target e)
                                                                       (.-clientX e)
                                                                       (.-clientY e)]))}]]

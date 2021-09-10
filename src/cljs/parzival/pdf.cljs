@@ -15,6 +15,9 @@
   (def path (js/require "path"))
   (def fs (js/require "fs")))
 
+(def STROKE-WIDTH 8)
+(def MIN-PX 100)
+
 ;;; Pdf
 
 (reg-sub
@@ -86,7 +89,7 @@
               (assoc :pdf/worker (pdfjs/PDFWorker. "pdf-worker")))})))
 
 (reg-event-fx
- :pdf/change-size
+ :pdf/update-size
  (fn [{:keys [db]} _]
    (when-let [pdf-viewer (get db :pdf/viewer)]
      (set! (.-currentScaleValue pdf-viewer) "page-width"))
@@ -109,7 +112,7 @@
          (.addEventListener "pointerup" (fn [_]
                                           (.removeEventListener target "pointermove" handle-resize)
                                           (.releasePointerCapture target pointer-id)
-                                          (dispatch [:pdf/change-size]))
+                                          (dispatch [:pdf/update-size]))
                             (js-obj "once" true)))))
    {}))
 
@@ -135,6 +138,55 @@
                                               [:highlight/render
                                                [(second v) (first v) svg page-rect page-containers]])
                                             highlights)))})))
+
+;; Menu
+
+(reg-sub
+ :pdf/menu-anchor
+ (fn [db _]
+   (:pdf/menu-anchor db)))
+
+(reg-event-db
+ :pdf/menu-set-anchor
+ (fn [db [_ coords]]
+   (assoc db :pdf/menu-anchor coords)))
+
+(reg-event-fx
+ :pdf/menu-open
+ (fn [_ [_ target x y]]
+   (let [page (.closest target ".page")
+         page-num (int (.getAttribute page "data-page-number"))
+         viewer-rect (.getBoundingClientRect (.getElementById js/document "viewer"))
+         page-rect (.getBoundingClientRect page)
+         viewer-height (-> (.getElementById js/document "viewerContainer")
+                           (.getBoundingClientRect)
+                           (.-height))
+         style (.getComputedStyle js/window (.getElementById js/document "pagemark-menu"))
+         menu-width (js/parseFloat (.-width style))
+         menu-height (js/parseFloat (.-height style))
+         left (if (< (+ x menu-width) (- (.-right viewer-rect) 20))
+                (str (- x (.-x viewer-rect)) "px")
+                (str (- (.-width viewer-rect) menu-width 20) "px"))
+         top (if (< (+ y menu-height) (- viewer-height 10))
+               (str (- y (.-y viewer-rect)) "px")
+               (str (- y (.-y viewer-rect) menu-height 10) "px"))
+         height-px (- y (.-y page-rect))
+         height (if (> height-px MIN-PX)
+                      (/ height-px (.-height page-rect))
+                      (/ MIN-PX (.-height page-rect)))]
+     {:fx [[:dispatch [:pdf/menu-set-anchor
+                       {:left left
+                        :top top
+                        :height height
+                        :edit? (not= 0 (.-length (.getElementsByClassName page "pagemark")))
+                        :page-num page-num}]]]})))
+                        
+(reg-event-fx
+ :pdf/menu-close
+ (fn [_ _]
+   (.addEventListener js/document "mousedown"
+                      #(dispatch [:pdf/menu-set-anchor nil])
+                      (js-obj "once" true))))
 
 ;;; Highlights
 
@@ -322,9 +374,6 @@
 ;;; Pagemarks
 
 ;; Helpers
-
-(def STROKE-WIDTH 8)
-(def MIN-PX 100)
 
 ;TODO
 (defn resize-handler
@@ -523,53 +572,3 @@
                           (.removeEventListener js/document "pointerdown" close-pagemark)
                           (dispatch [:pagemark/sidebar-set-state false]))))
    {:fx [[:dispatch [:pagemark/sidebar-set-state true]]]}))
-
-;;;;;;;TODO ->pdf-menu
-
-(reg-sub
- :pagemark/anchor
- (fn [db _]
-   (:pagemark/anchor db)))
-
-(reg-event-db
- :pagemark/set-anchor
- (fn [db [_ coords]]
-   (assoc db :pagemark/anchor coords)))
-
-(reg-event-fx
- :pagemark/sidebar-close
- (fn [_ _]
-   (.addEventListener js/document "mousedown"
-                      #(dispatch [:pagemark/set-anchor nil])
-                      (js-obj "once" true))))
-
-;TODO ->pdf-menu
-(reg-event-fx
- :pagemark/menu
- (fn [_ [_ target x y]]
-   (let [page (.closest target ".page")
-         page-num (int (.getAttribute page "data-page-number"))
-         viewer-rect (.getBoundingClientRect (.getElementById js/document "viewer"))
-         page-rect (.getBoundingClientRect page)
-         viewer-height (-> (.getElementById js/document "viewerContainer")
-                           (.getBoundingClientRect)
-                           (.-height))
-         style (.getComputedStyle js/window (.getElementById js/document "pagemark-menu"))
-         menu-width (js/parseFloat (.-width style))
-         menu-height (js/parseFloat (.-height style))
-         left (if (< (+ x menu-width) (- (.-right viewer-rect) 20))
-                (str (- x (.-x viewer-rect)) "px")
-                (str (- (.-width viewer-rect) menu-width 20) "px"))
-         top (if (< (+ y menu-height) (- viewer-height 10))
-               (str (- y (.-y viewer-rect)) "px")
-               (str (- y (.-y viewer-rect) menu-height 10) "px"))
-         height-px (- y (.-y page-rect))
-         height (if (> height-px MIN-PX)
-                      (/ height-px (.-height page-rect))
-                      (/ MIN-PX (.-height page-rect)))]
-     {:fx [[:dispatch [:pagemark/set-anchor
-                       {:left left
-                        :top top
-                        :height height
-                        :edit? (not= 0 (.-length (.getElementsByClassName page "pagemark")))
-                        :page-num page-num}]]]})))

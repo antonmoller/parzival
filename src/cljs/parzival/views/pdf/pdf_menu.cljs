@@ -36,9 +36,9 @@
 
 (defn pdf-menu
   []
-  (let [{:keys [left top height edit? page-num]} @(subscribe [:pagemark/anchor])]
+  (let [{:keys [left top height edit? page-num]} @(subscribe [:pdf/menu-anchor])]
     (when (some? left)
-      (dispatch [:pagemark/sidebar-close]))
+      (dispatch [:pdf/menu-close]))
     [:ul#pagemark-menu (merge (use-style menu-style)
                               {:style {:visibility (if (some? left) "visible" "hidden")
                                        :left left
