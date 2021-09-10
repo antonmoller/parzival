@@ -62,6 +62,4 @@
 
 (defn electron?
   []
-  (->> (.. js/navigator -userAgent toLowerCase)
-       (re-find #"electron")
-       (boolean)))
+  (->> (.. js/navigator -userAgent toLowerCase) (re-find #"electron") (boolean)))

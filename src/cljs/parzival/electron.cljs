@@ -57,9 +57,9 @@
              author (.. meta -info -Author)
              num-pages (.-numPages pdf)]
          (dispatch [:page/create
-                    {:title (if (and (some? title) (not= "" title)) title filename)
+                    {:title (if (not-empty title) title filename)
                      :num-pages num-pages
-                     :authors (if (some? author) author "")
+                     :authors (if (not-empty author) author "")
                      :filename filename}])
          (dispatch [:fs/write! filepath data])
          (<p! (.destroy (.-loadingTask pdf))))
