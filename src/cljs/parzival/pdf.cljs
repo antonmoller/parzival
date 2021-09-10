@@ -33,6 +33,26 @@
  (fn [num-pages _]
    (/ num-pages)))
 
+
+(reg-fx
+ :pdf/create
+ (fn [{:keys [filename filepath data worker]}]
+   (go
+     (try
+       (let [pdf (<p! (.-promise (.getDocument pdfjs (js-obj "data" data "worker" worker))))
+             meta (<p! (.getMetadata pdf))
+             title (.. meta -info -Title)
+             author (.. meta -info -Author)
+             num-pages (.-numPages pdf)]
+         (dispatch [:page/create
+                    {:title (if (not-empty title) title filename)
+                     :num-pages num-pages
+                     :authors (if (not-empty author) author "")
+                     :filename filename}])
+         (dispatch [:fs/write! filepath data])
+         (<p! (.destroy (.-loadingTask pdf))))
+       (catch js/Error e (js/console.log (ex-cause e)))))))
+
 (reg-fx
  :pdf/document
  (fn [{:keys [data viewer worker]}]

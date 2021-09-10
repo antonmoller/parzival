@@ -2,12 +2,11 @@
   (:require
    [parzival.db :as db]
    ["path" :as path]
-   ["pdfjs-dist" :as pdfjs]
    [parzival.utils :as utils]
    [cljs.core.async :refer [go]]
    [cljs.core.async.interop :refer [<p!]]
    [cognitect.transit :as t]
-   [re-frame.core :refer [dispatch reg-event-db reg-event-fx reg-fx reg-sub]]))
+   [re-frame.core :refer [reg-event-db reg-event-fx reg-fx reg-sub]]))
 
 (when (utils/electron?)
   (def ipcRenderer (.-ipcRenderer (js/require "electron")))
@@ -46,25 +45,6 @@
         (t/write (t/writer :json))
         (.writeFileSync fs db-filepath))))
 
-(reg-fx
- :pdf/create
- (fn [{:keys [filename filepath data worker]}]
-   (go
-     (try
-       (let [pdf (<p! (.-promise (.getDocument pdfjs (js-obj "data" data "worker" worker))))
-             meta (<p! (.getMetadata pdf))
-             title (.. meta -info -Title)
-             author (.. meta -info -Author)
-             num-pages (.-numPages pdf)]
-         (dispatch [:page/create
-                    {:title (if (not-empty title) title filename)
-                     :num-pages num-pages
-                     :authors (if (not-empty author) author "")
-                     :filename filename}])
-         (dispatch [:fs/write! filepath data])
-         (<p! (.destroy (.-loadingTask pdf))))
-       (catch js/Error e (js/console.log (ex-cause e)))))))
-
 (reg-event-fx
  :fs/pdf-add
  (fn [{:keys [db]} _]
@@ -85,12 +65,6 @@
                         []
                         pdf-files)
                 (conj [:dispatch [:db/not-synced]] [:dispatch-debounce [:fs/pdf-add [:db/sync] sync-time]]))}))))
-
-(reg-event-db
- :db/update-filepath
- (fn [db filepath]
- (js/console.log filepath)  
-   (assoc db :db/filepath filepath)))
 
 (reg-event-fx
  :fs/load-db
@@ -113,6 +87,16 @@
       :fx [[:fs/write-db! [db db-filepath]]]})))
 
 (reg-event-db
+ :db/update-filepath
+ (fn [db filepath]
+   (assoc db :db/filepath filepath)))
+
+(reg-sub
+ :db/synced?
+ (fn [db _]
+   (:db/synced? db)))
+
+(reg-event-db
  :db/not-synced
  (fn [db _]
    (assoc db :db/synced? false)))
@@ -128,11 +112,6 @@
    (let [db-filepath (get db :db/filepath)]
      {:fx [[:fs/write-db! [db db-filepath]]
            [:dispatch [:db/synced]]]})))
-
-(reg-sub
- :db/synced?
- (fn [db _]
-   (:db/synced? db)))
 
 (reg-sub
  :db/sync-time
