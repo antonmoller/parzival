@@ -254,11 +254,11 @@
 
 (defn pagemark-sidebar
   []
-  (let [pagemark?  @(subscribe [:pagemark?])
-        pagemarks  (subscribe [:pdf/pagemarks])
+  (let [sidebar-open?  @(subscribe [:pagemark/sidebar-open?])
+        pagemarks  (subscribe [:pagemark/sidebar])
         num-pages  @(subscribe [:pdf/num-pages])
         page-quota @(subscribe [:pdf/page-quota])]
-    (if pagemark?
+    (if sidebar-open?
       [pagemark-change pagemarks num-pages page-quota]
       (into [:div] (map (fn [{:keys [type top height]}]
                           [pagemark {:type type

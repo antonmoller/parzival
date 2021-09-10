@@ -323,8 +323,8 @@
 
 ;; Helpers
 
-(def stroke-width 8)
-(def min-px 100)
+(def STROKE-WIDTH 8)
+(def MIN-PX 100)
 
 ;TODO
 (defn resize-handler
@@ -340,13 +340,13 @@
         height-px (+ (.-height b-box) (.-movementY e))]
     (set! (.-width style) (if (contains? #{"ew-resize" "nwse-resize"} cursor)
                             (cond
-                              (< width-px min-px) (utils/px-to-percentage page-width-px min-px)
+                              (< width-px MIN-PX) (utils/px-to-percentage page-width-px MIN-PX)
                               (> width-px page-width-px) "100%"
                               :else (utils/px-to-percentage page-width-px width-px))
                             (.-width style)))
     (set! (.-height style) (if (contains? #{"ns-resize" "nwse-resize"} cursor)
                              (cond
-                               (< height-px min-px) (utils/px-to-percentage page-height-px min-px)
+                               (< height-px MIN-PX) (utils/px-to-percentage page-height-px MIN-PX)
                                (> height-px page-height-px) "100%"
                                :else (utils/px-to-percentage page-height-px height-px))
                              (.-height style)))))
@@ -358,31 +358,128 @@
         width (.-width b-box)
         height (.-height b-box)]
     (cond
-      (and (<= (- width stroke-width) x width)
-           (<= (- height stroke-width) y height))
+      (and (<= (- width STROKE-WIDTH) x width)
+           (<= (- height STROKE-WIDTH) y height))
       (set! (.. target -style -cursor) "nwse-resize") ; lower right corner
-      (and (<= (- width stroke-width) x width)
-           (<= stroke-width y (- height stroke-width)))
+      (and (<= (- width STROKE-WIDTH) x width)
+           (<= STROKE-WIDTH y (- height STROKE-WIDTH)))
       (set! (.. target -style -cursor) "ew-resize") ; right
-      (and (<= stroke-width x (- width stroke-width))
-           (<= (- height stroke-width) y height))
+      (and (<= STROKE-WIDTH x (- width STROKE-WIDTH))
+           (<= (- height STROKE-WIDTH) y height))
       (set! (.. target -style -cursor) "ns-resize") ; bottom
       :else (set! (.. target -style -cursor) "default"))))
 
-;TODO
-(reg-sub
- :pagemark?
- (fn [db _]
-   (:pagemark? db)))
+(defn pagemark-done
+  [rect width height]
+  (doto rect
+    (.setAttribute "class" "pagemark")
+    (-> (.-style)
+        (set! (str "width: " width "; height:" height
+                   "; fill: none; stroke-width:" STROKE-WIDTH "; stroke:"
+                   (:done PAGEMARK-COLOR) "; pointer-events: auto;")))
+    (.addEventListener "pointermove" (fn [e]
+                                       (when-not (= (.-buttons e) 1)
+                                         (set-cursor (.-target e) (.-offsetX e) (.-offsetY e)))))
+    (.addEventListener "pointerdown" (fn [e]
+                                       (when (= (.-buttons e) 1)
+                                         (set! (.. e -target -style -fill) (:done PAGEMARK-COLOR))
+                                         (set! (.. e -target -style -fillOpacity) 0.2)
+                                         (.addEventListener rect "pointermove" resize-handler)
+                                         (.setPointerCapture rect (.-pointerId e)))))
+    (.addEventListener "pointerup" (fn [e]
+                                     (.removeEventListener rect "pointermove" resize-handler)
+                                     (.releasePointerCapture rect (.-pointerId e))
+                                     (set! (.. e -target -style -fill) "none")
+                                     (set! (.. e -target -style -cursor) "default")
+                                     (dispatch [:pagemark/resize (.-target e)])))))
+
+(defn pagemark-skip
+  [rect]
+  (doto rect
+    (.setAttribute "class" "pagemark")
+    (.setAttribute "style" (str "pointer-events: auto; width: 100%; height: 100%;
+                                 fill: " (:skip PAGEMARK-COLOR) "; fill-opacity: 0.3;"))))
+
+(defn svg-layer
+  [page-num]
+  (some-> (.querySelector js/document (str "div.page[data-page-number=\""
+                                           page-num "\"][data-loaded=\"true\"]"))
+          (.querySelector ".svgLayer")))
+
+(reg-event-db
+ ;"Will always be of type :done and hence have :width and :height"
+ :pagemark/resize
+ (fn [db [_ target]]
+   (assoc-in db
+             [:pages (get db :page/active) :pagemarks (utils/pdf-page-num target)]
+             {:width (utils/percentage-to-float (.. target -style -width))
+              :height (utils/percentage-to-float (.. target -style -height))})))
+
+(reg-fx
+ :pagemark/render
+ (fn [[pagemark svg]]
+   (let [rect (.createElementNS js/document SVG-NAMESPACE "rect")]
+     (cond
+       (every? #(contains? pagemark %) [:width :height]) (pagemark-done
+                                                          rect
+                                                          (utils/dec-to-percentage (:width pagemark))
+                                                          (utils/dec-to-percentage (:height pagemark)))
+       (:skip? pagemark) (pagemark-skip rect))
+     (.append svg rect))))
+
+(reg-fx
+ :pagemark/delete-render
+ (fn [svg]
+   (some-> (.querySelector svg "rect.pagemark") (.remove))))
+
+;; CRUD
+
+(reg-event-fx
+ :pagemark/create
+ (fn [{:keys [db]} [_  page-num pagemark]]
+   (let [page-uid (get db :page/active)
+         svg (svg-layer page-num)]
+     (cond-> {:db (assoc-in db [:pages page-uid :pagemarks page-num] pagemark)}
+       (some? svg) (assoc :fx [[:pagemark/delete-render svg]
+                               [:pagemark/render [pagemark svg]]])))))
+
+(reg-event-fx
+ :pagemark/delete
+ (fn [{:keys [db]} [_ page-num]]
+   (let [page-uid (get db :page/active)
+         svg (svg-layer page-num)]
+     (cond-> {:db (update-in db [:pages page-uid :pagemarks] dissoc page-num)}
+       (some? svg) (assoc :fx [[:pagemark/delete-render svg]])))))
+
+;; Sidebar 
+
+; CRUD
+(reg-event-fx
+ :pagemark/sidebar-create
+ (fn [_ [_ start-page end-page deadline]]
+   {:fx (map (fn [page-num]
+               [:dispatch [:pagemark/create page-num (if (empty? deadline)
+                                                       {:skip? true}
+                                                       {:deadline deadline})]])
+             (range start-page (inc end-page)))}))
+
+(reg-event-fx
+ :pagemark/sidebar-update
+ (fn [_ [_ start new-start end new-end deadline]]
+   {:fx [(when (< start new-start) [:dispatch [:pagemark/sidebar-delete start (dec new-start)]])
+         (when (< new-end end) [:dispatch [:pagemark/sidebar-delete (inc new-end) end]])
+         [:dispatch [:pagemark/sidebar-create new-start new-end deadline]]]}))
+
+(reg-event-fx
+ :pagemark/sidebar-delete
+ (fn [_ [_ start-page end-page]]
+   {:fx (map (fn [page-num] [:dispatch [:pagemark/delete page-num]])
+             (range start-page (inc end-page)))}))
+
+; UI
 
 (reg-sub
- :pagemark/anchor
- (fn [db _]
-   (:pagemark/anchor db)))
-
-;TODO
-(reg-sub
- :pdf/pagemarks
+ :pagemark/sidebar
  :<- [:page/active]
  :<- [:pages]
  :<- [:pdf/num-pages]
@@ -406,147 +503,41 @@
                   (assoc :top (utils/top-percentage % (/ num-pages))
                          :height (utils/height-percentage % (/ num-pages))))))))
    
-;TODO
+(reg-sub
+ :pagemark/sidebar-open?
+ (fn [db _]
+   (:pagemark/sidebar-open? db)))
+
 (reg-event-db
- ;"Will always be of type :done and hence have :width and :height"
- :pagemark/resize
- (fn [db [_ target]]
-   (assoc-in db
-             [:pages (get db :page/active) :pagemarks (utils/pdf-page-num target)]
-             {:width (utils/percentage-to-float (.. target -style -width))
-              :height (utils/percentage-to-float (.. target -style -height))})))
-
-;TODO: Change to fx
-(defn pagemark-done
-  [rect width height]
-  (doto rect
-    (.setAttribute "class" "pagemark")
-    (-> (.-style)
-        (set! (str "width: " width "; height:" height
-                   "; fill: none; stroke-width:" stroke-width "; stroke:"
-                   (:done PAGEMARK-COLOR) "; pointer-events: auto;")))
-    (.addEventListener "pointermove" (fn [e]
-                                       (when-not (= (.-buttons e) 1)
-                                         (set-cursor (.-target e) (.-offsetX e) (.-offsetY e)))))
-    (.addEventListener "pointerdown" (fn [e]
-                                       (when (= (.-buttons e) 1)
-                                         (set! (.. e -target -style -fill) (:done PAGEMARK-COLOR))
-                                         (set! (.. e -target -style -fillOpacity) 0.2)
-                                         (.addEventListener rect "pointermove" resize-handler)
-                                         (.setPointerCapture rect (.-pointerId e)))))
-    (.addEventListener "pointerup" (fn [e]
-                                     (.removeEventListener rect "pointermove" resize-handler)
-                                     (.releasePointerCapture rect (.-pointerId e))
-                                     (set! (.. e -target -style -fill) "none")
-                                     (set! (.. e -target -style -cursor) "default")
-                                     (dispatch [:pagemark/resize (.-target e)])))))
-
-;TODO: Change to fx
-(defn pagemark-skip
-  [rect]
-  (doto rect
-    (.setAttribute "class" "pagemark")
-    (.setAttribute "style" (str "pointer-events: auto; width: 100%; height: 100%;
-                                 fill: " (:skip PAGEMARK-COLOR) "; fill-opacity: 0.3;"))))
-
-;TODO
-(reg-fx
- :pagemark/render
- (fn [[pagemark svg]]
-   (let [rect (.createElementNS js/document SVG-NAMESPACE "rect")]
-     (cond
-       (every? #(contains? pagemark %) [:width :height]) (pagemark-done
-                                                          rect
-                                                          (utils/dec-to-percentage (:width pagemark))
-                                                          (utils/dec-to-percentage (:height pagemark)))
-       (contains? pagemark :skip?) (pagemark-skip rect))
-     (.append svg rect))))
-
-;TODO
-(defn svg-layer
-  [page-num]
-  (some-> (.querySelector js/document (str "div.page[data-page-number=\""
-                                           page-num "\"][data-loaded=\"true\"]"))
-          (.querySelector ".svgLayer")))
-
-;TODO
-(reg-event-fx
- :pagemark/add
- (fn [{:keys [db]} [_  page-num pagemark]]
-   (let [page-uid (get db :page/active)
-         svg (svg-layer page-num)]
-     (cond-> {:db (assoc-in db [:pages page-uid :pagemarks page-num] pagemark)}
-       (some? svg) (assoc :fx [[:pagemark/remove-render svg]
-                               [:pagemark/render [pagemark svg]]])))))
-
-;TODO
-(reg-fx
- :pagemark/remove-render
- (fn [svg]
-   (some-> (.querySelector svg "rect.pagemark")
-           (.remove))))
-
-;TODO
-(reg-event-fx
- :pagemark/remove
- (fn [{:keys [db]} [_ page-num]]
-   (let [page-uid (get db :page/active)
-         svg (svg-layer page-num)]
-     (cond-> {:db (update-in db [:pages page-uid :pagemarks] dissoc page-num)}
-       (some? svg) (assoc :fx [[:pagemark/remove-render svg]])))))
-
-;TODO
-(reg-event-fx
- :pagemark/sidebar-create
- (fn [_ [_ start-page end-page deadline]]
-   {:fx (map (fn [page-num]
-               [:dispatch [:pagemark/add page-num (if (empty? deadline) 
-                                                    {:skip? true} 
-                                                    {:deadline deadline})]])
-             (range start-page (inc end-page)))}))
-
-;TODO
-(reg-event-fx
- :pagemark/sidebar-update
- (fn [_ [_ start new-start end new-end deadline]]
-   {:fx [(when (< start new-start) [:dispatch [:pagemark/sidebar-delete start (dec new-start)]])
-         (when (< new-end end) [:dispatch [:pagemark/sidebar-delete (inc new-end) end]])
-         [:dispatch [:pagemark/sidebar-create new-start new-end deadline]]]}))
-
-;TODO
-(reg-event-fx
- :pagemark/sidebar-delete
- (fn [_ [_ start-page end-page]]
-   {:fx (map (fn [page-num] [:dispatch [:pagemark/remove page-num]])
-             (range start-page (inc end-page)))}))
-
-;TODO
-(reg-event-db
- :pagemark-state
+ :pagemark/sidebar-set-state
  (fn [db [_ bool]]
-   (assoc db :pagemark? bool)))
+   (assoc db :pagemark/sidebar-open? bool)))
 
-;TODO
 (reg-event-fx
- :pagemark?
+ :pagemark/sidebar-toggle
  (fn [_ _]
    (.addEventListener js/document
                       "pointerdown"
                       (fn close-pagemark [e]
                         (when (nil? (.closest (.-target e) "#createPagemark"))
                           (.removeEventListener js/document "pointerdown" close-pagemark)
-                          (dispatch [:pagemark-state false]))))
-   {:fx [[:dispatch [:pagemark-state true]]]}))
+                          (dispatch [:pagemark/sidebar-set-state false]))))
+   {:fx [[:dispatch [:pagemark/sidebar-set-state true]]]}))
 
-;TODO ->pdf-menu
+;;;;;;;TODO ->pdf-menu
+
+(reg-sub
+ :pagemark/anchor
+ (fn [db _]
+   (:pagemark/anchor db)))
+
 (reg-event-db
  :pagemark/set-anchor
  (fn [db [_ coords]]
    (assoc db :pagemark/anchor coords)))
 
-;TODO ->pdf-menu
 (reg-event-fx
- :pagemark/close
+ :pagemark/sidebar-close
  (fn [_ _]
    (.addEventListener js/document "mousedown"
                       #(dispatch [:pagemark/set-anchor nil])
@@ -573,9 +564,9 @@
                (str (- y (.-y viewer-rect)) "px")
                (str (- y (.-y viewer-rect) menu-height 10) "px"))
          height-px (- y (.-y page-rect))
-         height (if (> height-px min-px)
+         height (if (> height-px MIN-PX)
                       (/ height-px (.-height page-rect))
-                      (/ min-px (.-height page-rect)))]
+                      (/ MIN-PX (.-height page-rect)))]
      {:fx [[:dispatch [:pagemark/set-anchor
                        {:left left
                         :top top

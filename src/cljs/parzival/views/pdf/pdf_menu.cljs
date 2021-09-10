@@ -38,26 +38,26 @@
   []
   (let [{:keys [left top height edit? page-num]} @(subscribe [:pagemark/anchor])]
     (when (some? left)
-      (dispatch [:pagemark/close]))
+      (dispatch [:pagemark/sidebar-close]))
     [:ul#pagemark-menu (merge (use-style menu-style)
                               {:style {:visibility (if (some? left) "visible" "hidden")
                                        :left left
                                        :top top}})
      [:li (merge (use-sub-style menu-style :item)
-                 {:on-mouse-down #(dispatch [:pagemark/add page-num {:width 1 :height height}])})
+                 {:on-mouse-down #(dispatch [:pagemark/create page-num {:width 1 :height height}])})
       [:> BookmarkBorder]
       [:span "Pagemark to Current Location"]]
      [:li (merge (use-sub-style menu-style :item)
-                 {:on-mouse-down #(dispatch [:pagemark/add page-num {:width 1 :height 1}])})
+                 {:on-mouse-down #(dispatch [:pagemark/create page-num {:width 1 :height 1}])})
       [:> Bookmark]
       [:span "Mark Entire Page as Read"]]
      [:li (merge (use-sub-style menu-style :item)
-                 {:on-mouse-down #(dispatch [:pagemark?])})
+                 {:on-mouse-down #(dispatch [:pagemark/sidebar-toggle])})
       [:> Book]
       [:span "Skip/Schedule Pages"]]
      (when edit?
        [:li (merge (use-sub-style menu-style :item)
-                   {:on-mouse-down #(dispatch [:pagemark/remove page-num])
+                   {:on-mouse-down #(dispatch [:pagemark/delete page-num])
                     :style {:color "red"}})
         [:> Remove]
         [:span "Remove Pagemark"]])]))

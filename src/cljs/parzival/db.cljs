@@ -17,7 +17,7 @@
    :left-sidebar/open? true
    :right-sidebar/open? false
    :right-sidebar/width 32
-   :pagemark? false
+   :pagemark/sidebar-open? false
    :pagemark/anchor nil ;  {:left :top :height :edit :page}
    :highlight/toolbar-anchor nil ; [x y]
    :highlight/selected nil ; [color page id] [color page id]
