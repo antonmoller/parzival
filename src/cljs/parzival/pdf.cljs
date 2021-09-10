@@ -265,7 +265,7 @@
          r (js/Range.)]
      (doto group
        (.setAttribute "id" highlight-uid)
-       (.addEventListener "click" #(dispatch [:highlight/toolbar-edit group]))
+       (.addEventListener "click" #(dispatch [:highlight/toolbar-update group]))
        (.setAttribute "style" (str "cursor: pointer; pointer-events: auto; "
                                     "fill: " (:color (color HIGHLIGHT-COLOR))
                                     "; fill-opacity: " (:opacity (color HIGHLIGHT-COLOR)) ";")))
@@ -282,7 +282,7 @@
      (.append svg group))))
 
 (reg-event-fx
- :highlight/add
+ :highlight/create
  (fn [{:keys [db]} [_ color]]
    (let [selection (.getSelection js/document)]
      (when-not (.-isCollapsed selection)
@@ -309,17 +309,7 @@
                [:highlight/render [merged merged-uid svg page-rect containers]]]})))))
 
 (reg-event-fx
- :highlight/remove
- (fn [{:keys [db]} _]
-   (let [{:keys [element]} (get db :highlight/selected)
-         page-uid (get db :page/active)
-         page (.closest element ".page")]
-     {:db (update-in db [:pages page-uid :highlights (utils/pdf-page-num page)]
-                     dissoc (utils/highlight-uid element))
-      :fx [(.remove element)]})))
-
-(reg-event-fx
- :highlight/edit
+ :highlight/update
  (fn [{:keys [db]} [_ color]]
    (let [{:keys [element]} (get db :highlight/selected)
          page-uid (get db :page/active)
@@ -330,6 +320,16 @@
                          (utils/pdf-page-num page)
                          (utils/highlight-uid element)]
                      assoc :color color)})))
+
+(reg-event-fx
+ :highlight/delete
+ (fn [{:keys [db]} _]
+   (let [{:keys [element]} (get db :highlight/selected)
+         page-uid (get db :page/active)
+         page (.closest element ".page")]
+     {:db (update-in db [:pages page-uid :highlights (utils/pdf-page-num page)]
+                     dissoc (utils/highlight-uid element))
+      :fx [(.remove element)]})))
 
 ;; Toolbar
 
@@ -374,7 +374,7 @@
                         (js-obj "once" true)))))
 
 (reg-event-fx
- :highlight/toolbar-edit
+ :highlight/toolbar-update
  (fn [_ [_ element]]
    (set!  (.. element -style -fillOpacity) (/ (.. element -style -fillOpacity) 2))
    {:fx [[:dispatch [:highlight/set-selected {:element element
