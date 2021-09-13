@@ -513,7 +513,8 @@
  (fn [{:keys [db]} [_  page-num pagemark]]
    (let [page-uid (get db :page/active)
          svg (svg-layer page-num)]
-     (cond-> {:db (assoc-in db [:pages page-uid :pagemarks page-num] pagemark)}
+     (cond-> {:db (->> (utils/check-spec :parzival.db/pagemark pagemark)
+                       (assoc-in db [:pages page-uid :pagemarks page-num]))}
        (some? svg) (assoc :fx [[:pagemark/delete-render svg]
                                [:pagemark/render [pagemark svg]]])))))
 
