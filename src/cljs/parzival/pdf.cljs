@@ -289,22 +289,25 @@
        (let [page-uid (get db :page/active)
              range-obj (.getRangeAt selection 0)
              start-container (.. range-obj -startContainer -parentNode)
-             page      (.closest start-container ".page")
-             page-id   (utils/pdf-page-num page)
-             page-rect (.getBoundingClientRect (.querySelector page "canvas"))
-             svg (.querySelector page ".svgLayer")
+             pdf-page      (.closest start-container ".page")
+             pdf-page-num   (utils/pdf-page-num pdf-page)
+             page-rect (.getBoundingClientRect (.querySelector pdf-page "canvas"))
+             svg (.querySelector pdf-page ".svgLayer")
              containers (.-children (.closest start-container ".textLayer"))
              container-arr (.from js/Array containers)
              [end-container end-offset]  (highlight-get-end range-obj)
-             {:keys [merged highlights]} (highlight-merge (get-in db [:pages page-uid :highlights page-id])
-                                                           {:color color
-                                                            :start (.indexOf container-arr start-container)
-                                                            :start-offset (.-startOffset range-obj)
-                                                            :end (.indexOf container-arr end-container)
-                                                            :end-offset end-offset})
+             pdf-highlights (get-in db [:pages page-uid :highlights])
+             {:keys [merged highlights]} (highlight-merge (get pdf-highlights pdf-page-num)
+                                                          {:color color
+                                                           :start (.indexOf container-arr start-container)
+                                                           :start-offset (.-startOffset range-obj)
+                                                           :end (.indexOf container-arr end-container)
+                                                           :end-offset end-offset})
              merged-uid (utils/gen-uid "highlight")]
          {:db (->> (assoc highlights merged-uid merged)
-                   (assoc-in db [:pages page-uid :highlights page-id]))
+                   (assoc pdf-highlights pdf-page-num)
+                   (utils/check-spec :parzival.db/highlights)
+                   (assoc-in db [:pages page-uid :highlights]))
           :fx [(.collapse range-obj)
                [:highlight/render [merged merged-uid svg page-rect containers]]]})))))
 
@@ -326,9 +329,11 @@
  (fn [{:keys [db]} _]
    (let [{:keys [element]} (get db :highlight/selected)
          page-uid (get db :page/active)
-         page (.closest element ".page")]
-     {:db (update-in db [:pages page-uid :highlights (utils/pdf-page-num page)]
-                     dissoc (utils/highlight-uid element))
+         page (.closest element ".page")
+         pdf-highlights (get-in db [:pages page-uid :highlights])]
+     {:db (->> (update pdf-highlights (utils/pdf-page-num page) dissoc (utils/highlight-uid element))
+               (utils/check-spec :parzival.db/highlights)
+               (assoc-in db [:pages page-uid :highlights]))
       :fx [(.remove element)]})))
 
 ;; Toolbar

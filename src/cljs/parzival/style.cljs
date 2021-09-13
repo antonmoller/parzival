@@ -1,8 +1,8 @@
 (ns parzival.style
   (:require
-            [clojure.string]
-            [re-frame.core :refer [subscribe]]
-            [stylefy.core :as stylefy]))
+   [clojure.string]
+   [re-frame.core :refer [subscribe]]
+   [stylefy.core :as stylefy]))
 
 (def PDF-SCROLLBAR-WIDTH "20px")
 

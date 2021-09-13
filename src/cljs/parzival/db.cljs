@@ -1,6 +1,9 @@
 (ns parzival.db
   (:require
-   [cljs.spec.alpha :as s]))
+   [cljs.spec.alpha :as s]
+   [clojure.string :as str]
+   [parzival.style :refer [HIGHLIGHT-COLOR]]
+   ))
 
 (defonce default-db
   {;;; Router
@@ -48,7 +51,7 @@
 ;; (s/def :right-sidebar/width pos-int?)
 ;; (s/def ::pagemark? boolean?)
 
-(s/def ::page-no pos-int?)
+(s/def ::page-num pos-int?)
 
 ;; Pagemarks
 (s/def ::deadline string?) ; FIXME
@@ -56,17 +59,17 @@
 (s/def ::width (s/and float? #(<= 0 % 1)))
 (s/def ::height (s/and float? #(<= 0 % 1)))
 (s/def ::pagemark (s/keys :req-un [(or ::deadline ::skip? (and ::width ::height))]))
-(s/def ::pagemarks (s/map-of ::page-no ::pagemark))
+(s/def ::pagemarks (s/map-of ::page-num ::pagemark))
 
 ;; Highlights
-(s/def ::highlight-uid string?) ; FIXME prefix = highlight-
-(s/def ::color #{:orange :green :blue :purple})
+(s/def ::highlight-uid (s/and string? #(str/starts-with? % "highlight-")))
+(s/def ::color #(contains? HIGHLIGHT-COLOR %))
 (s/def ::start nat-int?)
 (s/def ::end nat-int?)
 (s/def ::start-offset nat-int?)
 (s/def ::end-offset nat-int?)
 (s/def ::highlight (s/keys :req-un [::color ::start ::start-offset ::end ::end-offset]))
-(s/def ::highlights (s/map-of ::page-no (s/map-of ::highlight-uid ::highlight)))
+(s/def ::highlights (s/map-of ::page-num (s/map-of ::highlight-uid ::highlight)))
 
 ;; Blocks
 (s/def ::block-uid string?)
