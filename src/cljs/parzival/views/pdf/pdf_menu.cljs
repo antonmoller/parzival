@@ -36,7 +36,7 @@
 
 (defn pdf-menu
   []
-  (let [{:keys [left top height edit? page-num]} @(subscribe [:pdf/menu-anchor])]
+  (let [{:keys [left top height edit? page-num] :as t} @(subscribe [:pdf/menu-anchor])]
     (when (some? left)
       (dispatch [:pdf/menu-close]))
     [:ul#pagemark-menu (merge (use-style menu-style)

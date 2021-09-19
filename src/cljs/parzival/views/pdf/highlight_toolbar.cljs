@@ -64,6 +64,7 @@
   []
   (let [pos       @(subscribe [:highlight/toolbar-anchor])
         selected  @(subscribe [:highlight/selected])]
+    (js/console.log selected)
     (when (some? pos)
       (dispatch [:highlight/toolbar-close])
       [:div#highlight-toolbar

@@ -51,6 +51,7 @@
      {:db db})))
 
 ;;; debounce
+
 (defonce timeouts
   (atom {}))
 
@@ -71,6 +72,7 @@
    (reset! timeouts nil)))
 
 ;;; left-sidebar
+
 (reg-sub
  :left-sidebar/open?
  (fn [db _]
@@ -82,6 +84,7 @@
    (update db :left-sidebar/open? not)))
 
 ;;; right-sidebar
+
 (reg-sub
  :right-sidebar/open?
  (fn [db _]
@@ -103,6 +106,7 @@
    (assoc db :right-sidebar/width width)))
 
 ;;; theme
+
 (reg-sub
  :theme/dark?
  (fn [db _]
@@ -114,6 +118,7 @@
    (update db :theme/dark? not)))
 
 ;;; modal
+
 (reg-sub
  :modal/content
  (fn [db _]
@@ -134,6 +139,7 @@
                                                     (dispatch [:modal/set-content nil])))))))
 
 ;;; pages
+
 (reg-sub
  :pages
  (fn [db _]

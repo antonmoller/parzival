@@ -51,14 +51,23 @@
   [highlight]
   (.getAttribute highlight "id"))
 
+;; (defn check-spec
+;;   "Throws and exception if 'value' doesn't match 'spec'"
+;;   [spec value]
+;;   (when-not (s/valid? spec value)
+;;     (throw (ex-info (str "spec-check-failed: " (s/explain-str spec value)) {}))))
+
 (defn check-spec
   "Throws and exception if 'value' doesn't match 'spec'"
   [spec value]
   (if (s/valid? spec value)
     value
-    (throw (ex-info (str "spec-check-faild: " (s/explain-str spec value)) {}))))
+    (throw (ex-info (str "spec-check-failed: " (s/explain-str spec value)) {}))))
 
-(def check-db (after (partial check-spec :parzival.db/db)))
+(def check-db (after (fn [db]
+                       (when-not (s/valid? :parzival.db/db db)
+                         (throw (ex-info (str "spec-check-failed: "
+                                              (s/explain-str :parzival.db/db db)) {}))))))
 
 (defn electron?
   []

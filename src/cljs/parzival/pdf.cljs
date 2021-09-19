@@ -33,7 +33,6 @@
  (fn [num-pages _]
    (/ num-pages)))
 
-
 (reg-fx
  :pdf/create
  (fn [{:keys [filename filepath data worker]}]
@@ -104,8 +103,7 @@
      (.setViewer link-service pdf-viewer)
      (.on event-bus "pagesinit" #(set! (.-currentScaleValue pdf-viewer) "page-width"))
      (.on event-bus "textlayerrendered" #(dispatch [:pdf/render-page (.. % -source -textLayerDiv -parentNode)]))
-     {:db (-> db
-              (assoc :pdf/viewer pdf-viewer)
+     {:db (-> (assoc db :pdf/viewer pdf-viewer)
               (assoc :pdf/worker (pdfjs/PDFWorker. "pdf-worker")))})))
 
 (reg-event-fx

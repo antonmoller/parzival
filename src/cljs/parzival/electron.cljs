@@ -3,8 +3,6 @@
    [parzival.db :as db]
    ["path" :as path]
    [parzival.utils :as utils]
-   [cljs.core.async :refer [go]]
-   [cljs.core.async.interop :refer [<p!]]
    [cognitect.transit :as t]
    [re-frame.core :refer [reg-event-db reg-event-fx reg-fx reg-sub]]))
 
@@ -13,8 +11,6 @@
   (def fs (js/require "fs"))
   (def DB-INDEX "index.transit")
   (def PDFS-DIR-NAME "pdfs"))
-
-;;; Filesystem
 
 (defn pdf-dir
   [db-filepath]
@@ -41,7 +37,8 @@
 (reg-fx
  :fs/write-db!
  (fn [[db db-filepath]]
-   (->> (dissoc db :current-route :pdf/active :pdf/viewer :pdf/worker :modal/content :pagemark?)
+   (->> (dissoc db :current-route :pdf/viewer :pdf/menu-anchor :pdf/worker :modal/content 
+                :pagemark/sidebar-open? :highlight/selected :highlight/toolbar-anchor)
         (t/write (t/writer :json))
         (.writeFileSync fs db-filepath))))
 
@@ -68,19 +65,19 @@
 
 (reg-event-fx
  :fs/load-db
-;;  [check-db]
+ [utils/check-db]
  (fn [_ [_ db-filepath]]
    (let [db-file (.readFileSync fs db-filepath)
          bkp-filename (str (.getTime (js/Date.)) "-index.transit.bkp")
          bkp-filepath (.resolve path (.dirname path db-filepath) bkp-filename)]
-
      {:db (-> (t/read (t/reader :json) db-file)
-              (assoc :current-route :home :modal/content nil :pdf/active nil :pagemark? false))
+              (assoc :current-route :home :modal/content nil :pagemark/sidebar-open? false 
+                     :pdf/viewer nil :pdf/worker nil :pdf/menu-anchor nil :highlight/selected nil :highlight/toolbar-anchor nil))
       :fx [[:fs/copy! [db-filepath bkp-filepath]]]})))
 
 (reg-event-fx
  :fs/create-new-db
-;;  [check-db]
+ [utils/check-db]
  (fn [_ [_ db-filepath]]
    (as-> (assoc db/default-db :db/filepath db-filepath) db
      {:db db
@@ -108,6 +105,7 @@
 
 (reg-event-fx
  :db/sync
+ [utils/check-db]
  (fn [{:keys [db]} _]
    (let [db-filepath (get db :db/filepath)]
      {:fx [[:fs/write-db! [db db-filepath]]
@@ -126,6 +124,7 @@
 (reg-event-fx
  :boot/desktop
  (fn []
+   (js/console.log "boot/desktop")
    (let [db-dir (as-> (.sendSync ipcRenderer "document-filepath") documents
                   (.resolve path documents "parzival-db"))
          db-filepath (.resolve path db-dir DB-INDEX)

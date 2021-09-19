@@ -1,6 +1,6 @@
 (ns parzival.router
   (:require
-    [re-frame.core :as rf]
+    [re-frame.core :refer [reg-sub reg-event-fx reg-event-db reg-fx dispatch]]
     [reitit.frontend :as rfe]
     [reitit.frontend.controllers :as rfc]
     [reitit.coercion.spec :as rss]
@@ -8,29 +8,29 @@
 
 ;;; Subs
 
-(rf/reg-sub
+(reg-sub
   :current-route
   (fn [db]
     (-> db :current-route)))
 
-(rf/reg-sub
+(reg-sub
   :current-route/name
   (fn [db]
     (-> db :current-route :data :name)))
 
 ;;; Events
 
-(rf/reg-event-fx
+(reg-event-fx
   :navigate
   (fn [_ [_ & route]]
     {:navigate! route}))
 
-(rf/reg-fx 
+(reg-fx 
   :navigate!
   (fn [route]
     (apply rfee/push-state route)))
 
-(rf/reg-event-db
+(reg-event-db
   :navigated
   (fn [db [_ new-match]]
     (let [old-match (:current-route db)
@@ -53,7 +53,7 @@
 (defn on-navigate
   [new-match]
   (when new-match
-    (rf/dispatch [:navigated new-match])))
+    (dispatch [:navigated new-match])))
 
 (defn init-routes! 
   []
